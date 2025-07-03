@@ -36,8 +36,8 @@ export default class MyPlugin extends Plugin {
         // Ensure there's only one GTD view open at a time.
         this.app.workspace.detachLeavesOfType(GTD_VIEW_TYPE);
 
-        // Get the right-hand leaf if it exists, otherwise create a new one.
-        const leaf = this.app.workspace.getRightLeaf(false) || this.app.workspace.getLeaf(true);
+        // Open in a new tab in the current group
+        const leaf = this.app.workspace.getLeaf('tab');
 
         await leaf.setViewState({
             type: GTD_VIEW_TYPE,

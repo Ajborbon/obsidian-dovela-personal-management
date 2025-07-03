@@ -99,6 +99,7 @@ function renderHierarchyViewRecursive(item: HierarchicalItem): string {
 export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd'): string {
     const hierarchyData = data.hierarchicalData;
     const gtdLists = data.gtdLists;
+    const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
     const hierarchyActiveClass = activeView === 'hierarchy' ? 'active' : '';
     const gtdActiveClass = activeView === 'gtd' ? 'active' : '';
@@ -116,6 +117,9 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
                 <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">Vista Jerárquica</button>
                 <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
                 <button class="gtd-refresh-button">Refrescar</button>
+            </div>
+            <div class="gtd-total-tasks">
+                <span>Total de Tareas Abiertas: ${totalOpenTasks}</span>
             </div>
             <div class="gtd-view-content">
                 ${viewContent}
