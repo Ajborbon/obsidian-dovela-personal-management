@@ -31,14 +31,17 @@ function sortChildrenRecursive(item: HierarchicalItem): void {
 }
 
 function calculateTaskCountsRecursive(item: HierarchicalItem): void {
-    let totalTasks = item.tasks.length;
-    if (item.children && item.children.length > 0) {
-        for (const child of item.children) {
-            calculateTaskCountsRecursive(child);
-            totalTasks += child.totalTaskCount;
-        }
+    if (!item.children || item.children.length === 0) {
+        item.descendantTaskCount = 0;
+        return;
     }
-    item.totalTaskCount = totalTasks;
+
+    let descendantCount = 0;
+    for (const child of item.children) {
+        calculateTaskCountsRecursive(child);
+        descendantCount += child.ownTaskCount + child.descendantTaskCount;
+    }
+    item.descendantTaskCount = descendantCount;
 }
 
 /**

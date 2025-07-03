@@ -65,11 +65,15 @@ function renderGtdListsView(gtdLists: Record<GtdList, Task[]>): string {
 function renderHierarchyViewRecursive(item: HierarchicalItem): string {
     const hasChildren = item.children.length > 0;
     const itemPath = item.file ? `data-item-path="${item.file.path}"` : '';
+    const totalTasks = item.ownTaskCount + item.descendantTaskCount;
+
+    const estado = item.frontmatter?.['estado'] ? `<span class="gtd-hierarchy-estado">${item.frontmatter['estado']}</span>` : '';
 
     const summaryContent = `
         <span class="gtd-hierarchy-type">[${item.type}]</span>
+        ${estado}
         <span class="gtd-hierarchy-name">${item.name}</span>
-        <span class="gtd-hierarchy-count">(${item.totalTaskCount})</span>
+        <span class="gtd-hierarchy-count">(${item.ownTaskCount}) - &lt;${totalTasks}&gt;</span>
     `;
 
     if (!hasChildren) {

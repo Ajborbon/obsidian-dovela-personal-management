@@ -67,7 +67,8 @@ export interface HierarchicalItem {
     parent?: HierarchicalItem;
     children: HierarchicalItem[];
     tasks: Task[];
-    totalTaskCount: number; // Tareas propias + tareas de todos los descendientes.
+    ownTaskCount: number; // Tareas abiertas propias de la nota.
+    descendantTaskCount: number; // Tareas abiertas de toda la descendencia.
     frontmatter: Record<string, any>; // Metadatos del frontmatter.
 }
 

@@ -145,7 +145,7 @@ export async function parseVault(vault: Vault, metadataCache: MetadataCache): Pr
 
         processedItems.push({
             id: file.path, type: itemType, name: file.basename, file: file,
-            children: [], tasks: tasks, totalTaskCount: tasks.length, frontmatter: frontmatter,
+            children: [], tasks: tasks, ownTaskCount: tasks.filter(t => !t.completed).length, descendantTaskCount: 0, frontmatter: frontmatter,
         });
     }
 
@@ -159,7 +159,7 @@ export async function parseVault(vault: Vault, metadataCache: MetadataCache): Pr
 
             processedItems.push({
                 id: folder.path, type: 'Group', name: folder.name, children: [],
-                tasks: [], totalTaskCount: 0, frontmatter: {},
+                tasks: [], ownTaskCount: 0, descendantTaskCount: 0, frontmatter: {},
             });
         }
     }
