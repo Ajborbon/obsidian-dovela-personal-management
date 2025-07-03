@@ -1,5 +1,19 @@
-import './styles/main.scss'; // Do not delete this line if you want to have a styles.css file in your build output.
-import { Plugin } from './Plugin.ts';
+import { Plugin } from 'obsidian';
 
-// eslint-disable-next-line import-x/no-default-export
-export default Plugin;
+export default class MyPlugin extends Plugin {
+    override async onload() {
+        console.log('Loading MyPlugin...');
+
+        this.addCommand({
+            id: 'my-plugin-command',
+            name: 'My Plugin Command',
+            callback: () => {
+                console.log('My Plugin Command executed!');
+            }
+        });
+    }
+
+    override onunload() {
+        console.log('Unloading MyPlugin...');
+    }
+}
