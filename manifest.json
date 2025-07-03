@@ -1,0 +1,9 @@
+{
+  "author": "Ajborbon",
+  "authorUrl": "https://github.com/Ajborbon/",
+  "description": "Personal Productivity Hub is an all‑in‑one GTD task manager and Second‑Brain toolkit for Obsidian. Capture and clarify tasks, organise projects, and surface insights with powerful query blocks and custom dashboards—turning your vault into a friction‑free personal management system.",
+  "id": "obsidian-dovela-personal-management",
+  "isDesktopOnly": false,
+  "name": "Obsidian Dovela Personal Management",
+  "version": "0.0.0"
+}

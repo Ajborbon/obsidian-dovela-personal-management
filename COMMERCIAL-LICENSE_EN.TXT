@@ -1,0 +1,112 @@
+CREZCO 360 SAS – COMMERCIAL LICENSE
+Version 1.0 · 10 June 2025
+
+IMPORTANT: BY DOWNLOADING, INSTALLING OR USING THE
+“Dovela Personal Management PRO” PLUGIN (THE “SOFTWARE”), YOU
+(THE “LICENSEE”) AGREE TO BE BOUND BY THE TERMS OF THIS COMMERCIAL LICENSE.
+IF YOU DO NOT ACCEPT THESE TERMS, DO NOT INSTALL OR USE THE SOFTWARE.
+
+─────────────────────────────────────────────────────────────────────────
+0. DEFINITIONS
+─────────────────────────────────────────────────────────────────────────
+“Licensor” means **Crezco 360 SAS**, headquartered
+in Bogotá D.C., Colombia.
+
+“Software” means the compiled `main.js`, associated resources, confidential
+source code and any update supplied by the Licensor under this agreement.
+
+“Authorised User” is a natural person identified by corporate e‑mail who is
+granted the right to install and use the Software.
+
+“Purchasing Area” is the internal unit, department or team that purchases the
+license. Only Authorised Users within that area may install the Software.
+
+─────────────────────────────────────────────────────────────────────────
+1. GRANT OF LICENSE
+─────────────────────────────────────────────────────────────────────────
+1.1 The Licensor grants the Licensee a **perpetual, non‑transferable,
+    non‑exclusive** license to:
+    a) Install and run the Software on devices owned by Authorised Users
+       within the Purchasing Area.
+    b) Integrate the Software into a SaaS operated by the Licensee, provided
+       each end user holds a valid license or a written enterprise agreement
+       is concluded with the Licensor.
+
+1.2 This license is granted **per individual user**. The current price
+    range (20‑60 USD) is published at  
+    <https://www.crezco360.com/dovela> and may change in the future.
+
+1.3 The Licensor reserves the right to offer **subscription models** in the
+    future that include additional features, extended support or priority
+    updates. The perpetual license granted here remains valid for the
+    versions paid at the time of purchase.
+
+─────────────────────────────────────────────────────────────────────────
+2. RESTRICTIONS
+─────────────────────────────────────────────────────────────────────────
+2.1 **No redistribution**: The Licensee may not assign, sell, sublicense,
+    rent, distribute or publish the Software to third parties, except as
+    permitted in clause 1.1 b.
+
+2.2 **Reverse engineering**: Decompiling, disassembling, reverse engineering
+    or attempting to derive the source code is prohibited, except to the
+    extent such restriction is contrary to applicable law.
+
+2.3 **Modifications**: The Software may not be modified or used to create
+    derivative works without the Licensor’s prior written consent.
+
+2.4 **Attribution**: The Licensee shall display in the “About” screen (or
+    equivalent) a visible notice:  
+    “Dovela Personal Management PRO © Crezco 360 SAS”.
+
+─────────────────────────────────────────────────────────────────────────
+3. SUPPORT AND UPDATES
+─────────────────────────────────────────────────────────────────────────
+3.1 The Licensee is entitled to minor updates and bug fixes for 12 months
+    after purchase.
+
+3.2 Support is provided exclusively by e‑mail to  
+    **AndresBorbon@crezco360.com** during Colombian business hours (GMT‑5).
+
+─────────────────────────────────────────────────────────────────────────
+4. LIMITED WARRANTY
+─────────────────────────────────────────────────────────────────────────
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY
+OR FITNESS FOR A PARTICULAR PURPOSE. THE LICENSOR DOES NOT WARRANT THAT
+THE SOFTWARE WILL OPERATE UNINTERRUPTED OR ERROR‑FREE.
+
+─────────────────────────────────────────────────────────────────────────
+5. LIMITATION OF LIABILITY
+─────────────────────────────────────────────────────────────────────────
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL
+OR CONSEQUENTIAL DAMAGES (INCLUDING LOSS OF PROFITS OR DATA) ARISING FROM
+THE USE OR INABILITY TO USE THE SOFTWARE. TOTAL LIABILITY IS LIMITED TO
+THE AMOUNT PAID FOR THE LICENSE.
+
+─────────────────────────────────────────────────────────────────────────
+6. TERMINATION
+─────────────────────────────────────────────────────────────────────────
+6.1 This agreement terminates automatically if the Licensee breaches any
+    term herein.  
+6.2 Termination does not entitle the Licensee to any refund and obliges the
+    Licensee to uninstall and destroy all copies of the Software.
+
+─────────────────────────────────────────────────────────────────────────
+7. GOVERNING LAW AND JURISDICTION
+─────────────────────────────────────────────────────────────────────────
+This agreement shall be governed by and construed in accordance with the
+laws of Colombia or, at the Licensor’s option, of the United States of
+America. Any dispute shall be submitted to the competent courts of
+Bogotá D.C. (Colombia) or the State of Florida (USA), as designated by
+the Licensor.
+
+─────────────────────────────────────────────────────────────────────────
+8. FINAL PROVISIONS
+─────────────────────────────────────────────────────────────────────────
+8.1 If any clause is held invalid, the remaining clauses shall remain in
+    full force and effect.  
+8.2 Failure by the Licensor to enforce any right shall not constitute a
+    waiver of any other rights.
+
+© 2025 Crezco 360 SAS. All rights reserved.

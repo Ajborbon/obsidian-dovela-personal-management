@@ -1,0 +1,112 @@
+CREZCO 360 SAS – LICENCIA COMERCIAL
+Versión 1.0 · 10 de junio de 2025
+
+IMPORTANTE: AL DESCARGAR, INSTALAR O UTILIZAR EL COMPLEMENTO “Dovela Personal Management PRO” (EL “SOFTWARE”), USTED (EL “LICENCIATARIO”) ACEPTA QUEDAR VINCULADO POR LOS TÉRMINOS DE ESTA LICENCIA COMERCIAL. SI NO ACEPTA LOS TÉRMINOS, NO INSTALE NI UTILICE EL SOFTWARE.
+
+─────────────────────────────────────────────────────────────────────────
+0. DEFINICIONES
+─────────────────────────────────────────────────────────────────────────
+“Licenciante” significa **Crezco 360 SAS**, con domicilio
+principal en Bogotá D.C., Colombia.
+
+“Software” significa el archivo compilado `main.js`, sus recursos asociados,
+código fuente confidencial y cualquier actualización que el Licenciante
+aporte bajo este contrato.
+
+“Usuario autorizado” es una persona física identificada por e‑mail corporativo
+a la que se le concede el derecho de instalación y uso.
+
+“Área compradora” es la unidad, departamento o equipo interno que adquiere
+la licencia. Solo los Usuarios autorizados pertenecientes a dicha área
+pueden instalar el Software.
+
+─────────────────────────────────────────────────────────────────────────
+1. CONCESIÓN DE LICENCIA
+─────────────────────────────────────────────────────────────────────────
+1.1 El Licenciante concede al Licenciatario una **licencia perpetua,
+    intransferible, no exclusiva**, para:
+    a) Instalar y ejecutar el Software en los dispositivos de los Usuarios
+       autorizados pertenecientes al Área compradora.
+    b) Integrar el Software en un servicio SaaS operado por el Licenciatario,
+       siempre que cada usuario final cuente con su propia licencia válida
+       o se alcance un acuerdo empresarial por escrito con el Licenciante.
+
+1.2 Esta licencia se otorga **por Usuario individual**. El precio vigente
+    (rango 20‑60 USD) se publicará en  
+    <https://www.crezco360.com/dovela> y podrá variar a futuro.
+
+1.3 El Licenciante se reserva el derecho de ofrecer, en el futuro, modelos
+    de **suscripción** que incluyan funciones adicionales, soporte ampliado
+    o actualizaciones prioritarias. La licencia perpetua aquí concedida
+    seguirá siendo válida para las versiones pagadas en la fecha de compra.
+
+─────────────────────────────────────────────────────────────────────────
+2. LIMITACIONES
+─────────────────────────────────────────────────────────────────────────
+2.1 **Prohibición de redistribución**: El Licenciatario no podrá ceder, vender,
+    sublicenciar, alquilar, distribuir ni publicar el Software a terceros,
+    salvo lo permitido en la cláusula 1.1 b.
+
+2.2 **Ingeniería inversa**: Se prohíbe descompilar, desensamblar, realizar
+    ingeniería inversa o intentar derivar el código fuente del Software,
+    excepto en la medida en que dicha restricción contravenga la ley
+    aplicable.
+
+2.3 **Modificaciones**: No se permite modificar el Software ni crear
+    productos derivados sin consentimiento expreso y escrito del Licenciante.
+
+2.4 **Atribución**: El Licenciatario mostrará en la sección “Acerca de” o
+    equivalente de su aplicación o servicio una nota visible:
+    “Dovela Personal Management PRO © Crezco 360 SAS”.
+
+─────────────────────────────────────────────────────────────────────────
+3. SOPORTE Y ACTUALIZACIONES
+─────────────────────────────────────────────────────────────────────────
+3.1 El Licenciatario tendrá derecho a recibir actualizaciones menores y
+    correcciones de errores durante los 12 meses posteriores a la compra.
+
+3.2 El soporte se ofrece exclusivamente por correo electrónico a  
+    **AndresBorbon@crezco360.com** y se prestará en horario laboral
+    de Colombia (GMT‑5).
+
+─────────────────────────────────────────────────────────────────────────
+4. GARANTÍA LIMITADA
+─────────────────────────────────────────────────────────────────────────
+EL SOFTWARE SE ENTREGA “TAL CUAL”, SIN GARANTÍAS DE NINGÚN TIPO, EXPRESAS
+O IMPLÍCITAS, INCLUYENDO, ENTRE OTRAS, GARANTÍAS DE COMERCIABILIDAD O
+IDONEIDAD PARA UN PROPÓSITO PARTICULAR. EL LICENCIANTE NO GARANTIZA QUE EL
+SOFTWARE FUNCIONE SIN INTERRUPCIONES NI ERRORES.
+
+─────────────────────────────────────────────────────────────────────────
+5. LIMITACIÓN DE RESPONSABILIDAD
+─────────────────────────────────────────────────────────────────────────
+EN NINGÚN CASO EL LICENCIANTE SERÁ RESPONSABLE POR DAÑOS DIRECTOS,
+INDIRECTOS, ESPECIALES O CONSECUENTES (INCLUYENDO PÉRDIDA DE BENEFICIOS O
+DATOS) QUE SURJAN DEL USO O IMPOSIBILIDAD DE USO DEL SOFTWARE. LA
+RESPONSABILIDAD TOTAL SE LIMITA AL IMPORTE PAGADO POR LA LICENCIA.
+
+─────────────────────────────────────────────────────────────────────────
+6. RESCISIÓN
+─────────────────────────────────────────────────────────────────────────
+6.1 El presente contrato quedará rescindido automáticamente si el
+    Licenciatario incumple cualquiera de sus términos.  
+6.2 La rescisión no dará lugar a reembolso alguno y obliga al Licenciatario
+    a desinstalar y destruir todas las copias del Software.
+
+─────────────────────────────────────────────────────────────────────────
+7. LEY APLICABLE Y JURISDICCIÓN
+─────────────────────────────────────────────────────────────────────────
+Este contrato se regirá e interpretará conforme a las leyes de Colombia
+o, a elección del Licenciante, de los Estados Unidos de América. Cualquier
+controversia será sometida a los tribunales competentes de Bogotá D.C.
+(Colombia) o del estado de Florida (EE. UU.), según determine el Licenciante.
+
+─────────────────────────────────────────────────────────────────────────
+8. DISPOSICIONES FINALES
+─────────────────────────────────────────────────────────────────────────
+8.1 Si alguna cláusula se declara inválida, las restantes mantendrán su
+    validez y eficacia.  
+8.2 El incumplimiento de un derecho por parte del Licenciante no implica
+    renuncia a los demás.
+
+© 2025 Crezco 360 SAS. Todos los derechos reservados.
