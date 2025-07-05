@@ -68,6 +68,9 @@ function renderHierarchyViewRecursive(item: HierarchicalItem): string {
     const totalTasks = item.ownTaskCount + item.descendantTaskCount;
 
     const estado = item.frontmatter?.['estado'] ? `<span class="gtd-hierarchy-estado">${item.frontmatter['estado']}</span>` : '';
+    
+    // Añadir una clase si la nota principal falta
+    const missingClass = item.isNoteMissing ? 'is-missing' : '';
 
     const summaryContent = `
         <span class="gtd-hierarchy-type">[${item.type}]</span>
@@ -78,14 +81,15 @@ function renderHierarchyViewRecursive(item: HierarchicalItem): string {
 
     if (!hasChildren) {
         return `
-            <div class="gtd-hierarchy-item" ${itemPath}>
+            <div class="gtd-hierarchy-item ${missingClass}" ${itemPath}>
                 ${summaryContent}
             </div>
         `;
     }
 
+    // Usar <details> para todos los elementos con hijos
     return `
-        <details class="gtd-hierarchy-item" open>
+        <details class="gtd-hierarchy-item ${missingClass}" open>
             <summary ${itemPath}>${summaryContent}</summary>
             <div class="gtd-hierarchy-children">
                 ${item.children.map(renderHierarchyViewRecursive).join('')}

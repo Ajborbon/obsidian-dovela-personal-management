@@ -7,10 +7,14 @@ import { TFile } from 'obsidian';
  * 2. Por el prefijo en el nombre del fichero o carpeta (para la mayoría de notas).
  * 3. Como un tipo por defecto para notas sin identificación.
  */
-export type HierarchicalItemType = 
-    // --- Tipos por Prefijo ---
+export type HierarchicalItemType =
+    // --- Tipos Estructurales y de Grupo ---
+    | 'GrupoAV' // Grupo de Áreas de Vida (ej. "01 - Productividad.md")
     | 'AV'   // Área de Vida
     | 'AI'   // Área de Interés
+    | 'Root'  // Raíz de la jerarquía (virtual)
+
+    // --- Tipos por Prefijo ---
     | 'PGTD' // Proyecto GTD
     | 'PQ'   // Proyecto de Trimestre
     | 'RR'   // Recurso Recurrente
@@ -32,10 +36,6 @@ export type HierarchicalItemType =
     | 'Q'    // Trimestral
     | 'H'    // Semestral
     | 'Y'    // Anual
-
-    // --- Tipos Estructurales (No de Notas) ---
-    | 'Root'  // Raíz de la jerarquía (virtual)
-    | 'Group' // Carpeta contenedora de AVs (ej. "01 - Productividad")
     ;
 
 // Representa una tarea extraída de una nota de Obsidian.
@@ -44,16 +44,17 @@ export interface Task {
     content: string;
     completed: boolean;
     priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'None';
-    creationDate?: string;
-    startDate?: string;
-    dueDate?: string;
-    scheduledDate?: string;
-    startTime?: string;
-    endTime?: string;
-    week?: string;
-    dependencies: string[];
-    contexts: string[];
-    assignedPeople: string[];
+    creationDate?: string; // Fecha de creación (formato YYYY-MM-DD)
+    startDate?: string;    // Fecha de inicio/programada (📅 YYYY-MM-DD)
+    dueDate?: string;      // Fecha de vencimiento/deseada (⏳ YYYY-MM-DD)
+    startTime?: string;    // Hora de inicio ([hI:: HH:mm])
+    endTime?: string;      // Hora de finalización ([hF:: HH:mm])
+    duration?: string;     // Duración ([Xmin] o [Xh])
+    week?: string;         // Semana planificada ([w:: [[YYYY-WXX]]])
+    dependencies: string[]; // Tareas de las que depende (⛔ ID)
+    contexts: string[];     // Contextos GTD (#cx-...)
+    assignedPeople: string[]; // Personas asignadas (#px-...)
+    tags: string[];         // Otros tags como #inbox, #GTD-AlgunDia
     sourceFile: TFile;
     lineNumber: number;
 }
@@ -70,6 +71,7 @@ export interface HierarchicalItem {
     ownTaskCount: number; // Tareas abiertas propias de la nota.
     descendantTaskCount: number; // Tareas abiertas de toda la descendencia.
     frontmatter: Record<string, any>; // Metadatos del frontmatter.
+    isNoteMissing?: boolean; // True si este item es un placeholder para una nota principal faltante.
 }
 
 // Contenedor para los datos procesados.

@@ -45,7 +45,10 @@ export class GtdView extends ItemView {
             // 1. Parse and process all data
             const parsedData = await parseVault(this.app.vault, this.app.metadataCache);
             const hierarchicalData = buildHierarchy(parsedData.hierarchicalData);
-            const gtdLists = processGtdLists(parsedData.allTasks);
+
+            // Create a map of all tasks by ID for dependency checking
+            const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
+            const gtdLists = processGtdLists(parsedData.allTasks, allTaskMap);
 
             const finalData: ProcessedVaultData = {
                 hierarchicalData: hierarchicalData,

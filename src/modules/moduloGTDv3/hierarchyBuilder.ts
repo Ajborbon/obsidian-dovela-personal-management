@@ -2,9 +2,9 @@ import type { HierarchicalItem, HierarchicalItemType } from './model.js';
 
 // Define el orden de clasificación para los tipos de item.
 const TYPE_ORDER: Record<HierarchicalItemType, number> = {
-    'Root': 0, 'Group': 1, 'AV': 2, 'AI': 3, 'PQ': 4, 'PGTD': 5, 'Cp': 6,
-    'EMkt': 7, 'Ax': 8, 'Tx': 9, 'Reu': 10, 'Rf': 11, 'Sue': 12, 'Vx': 13,
-    'RR': 14, 'RT': 15, 'RL': 16, 'Dly': 17, 'Wk': 18, 'M': 19, 'Q': 20,
+    'Root': 0, 'GrupoAV': 1, 'AV': 2, 'AI': 3, 'PQ': 4, 'PGTD': 5, 'Cp': 6,
+    'EMkt': 7, 'RR': 8, 'Ax': 9, 'Tx': 10, 'Reu': 11, 'Rf': 12, 'Sue': 13, 'Vx': 14,
+    'RT': 15, 'RL': 16, 'Dly': 17, 'Wk': 18, 'M': 19, 'Q': 20,
     'H': 21, 'Y': 22
 };
 
@@ -51,36 +51,76 @@ function calculateTaskCountsRecursive(item: HierarchicalItem): void {
  */
 export function buildHierarchy(items: HierarchicalItem[]): HierarchicalItem[] {
     const itemMap = new Map<string, HierarchicalItem>();
+
+    // 1. Prime the map with all actual notes from the vault.
     for (const item of items) {
-        itemMap.set(item.id, item);
-    }
-
-    // 1. Iterar sobre todos los items para establecer las relaciones padre-hijo.
-    for (const item of items) {
-        const pathParts = item.id.split('/');
-        pathParts.pop(); // Obtener la ruta de la carpeta contenedora.
-        const parentPath = pathParts.join('/');
-
-        if (!parentPath) continue; // Este item está en la raíz, no puede tener padre.
-
-        // Un padre puede ser una nota (ej. `AV - ... .md`) o una carpeta de grupo (ej. `01 - Productividad`).
-        // Se busca primero una nota padre, y si no, una carpeta padre.
-        const parent = itemMap.get(parentPath + '.md') ?? itemMap.get(parentPath);
-
-        if (parent && parent.id !== item.id) {
-            parent.children.push(item);
-            item.parent = parent;
+        // The key for a note is its path without the .md extension.
+        if (item.file) {
+            const key = item.file.path.replace(/\.md$/, '');
+            itemMap.set(key, item);
         }
     }
 
-    // 2. Los verdaderos nodos raíz son aquellos que no tienen padre después del proceso.
-    const roots = items.filter(item => !item.parent);
+    // 2. Link items to their parents, creating placeholders as needed.
+    // We iterate over the map's values, which includes notes and any newly created placeholders.
+    for (const item of itemMap.values()) {
+        // Determine the parent's key, which is the path of the containing folder.
+        const path = item.file ? item.file.path.replace(/\.md$/, '') : item.id;
+        const pathParts = path.split('/');
+        pathParts.pop();
+        const parentKey = pathParts.join('/');
 
-    // 3. Post-procesamiento del árbol (cálculos y ordenación).
-    for (const root of roots) {
-        calculateTaskCountsRecursive(root);
-        sortChildrenRecursive(root);
+        if (!parentKey) {
+            continue; // This item is at the root of the vault, so it has no parent.
+        }
+
+        let parent = itemMap.get(parentKey);
+
+        if (!parent) {
+            // If the parent doesn't exist in our map, it means there's no corresponding .md file.
+            // We must create a placeholder item for this folder.
+            const folderName = parentKey.split('/').pop() || parentKey;
+            parent = {
+                id: parentKey,
+                type: 'Ax', // Default type for a placeholder folder.
+                name: `[FALTA] ${folderName}`,
+                children: [],
+                tasks: [],
+                ownTaskCount: 0,
+                descendantTaskCount: 0,
+                frontmatter: {},
+                isNoteMissing: true, // Mark this item as a placeholder.
+            };
+            itemMap.set(parentKey, parent);
+        }
+
+        // Establish the parent-child relationship.
+        parent.children.push(item);
+        item.parent = parent;
     }
 
-    return roots;
+    // 3. Identify the true root items (those without a parent).
+    const roots = [...itemMap.values()].filter(item => !item.parent);
+
+    // 4. Create a virtual root to contain all top-level items and perform final processing.
+    const virtualRoot: HierarchicalItem = {
+        id: 'root',
+        type: 'Root',
+        name: 'Vault',
+        children: roots,
+        tasks: [],
+        ownTaskCount: 0,
+        descendantTaskCount: 0,
+        frontmatter: {},
+    };
+
+    for (const root of roots) {
+        root.parent = virtualRoot;
+    }
+
+    // Perform recursive calculations and sorting from the top down.
+    calculateTaskCountsRecursive(virtualRoot);
+    sortChildrenRecursive(virtualRoot);
+
+    return [virtualRoot];
 }
