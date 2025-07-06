@@ -39,12 +39,14 @@ export type HierarchicalItemType =
     ;
 
 export type DateSymbol = '🛫' | '⏳' | '📅';
+export type TaskStatus = 'incomplete' | 'completed' | 'in-progress';
 
 // Representa una tarea extraída de una nota de Obsidian.
 export interface Task {
     id: string;
     content: string;
-    completed: boolean;
+    status: TaskStatus; // Nuevo campo
+    completed: boolean; // Mantenemos este por retrocompatibilidad
     priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'None';
     creationDate?: string; // Fecha de creación (formato YYYY-MM-DD)
     date?: string;         // Fecha asociada a la tarea (YYYY-MM-DD)
@@ -81,7 +83,20 @@ export interface HierarchicalItem {
 export interface ProcessedVaultData {
     hierarchicalData: HierarchicalItem[];
     gtdLists: Record<string, Task[]>;
+    inProgressData: InProgressData;
     allTasks: Task[];
     uniqueContexts: string[];
     uniquePeople: string[];
+}
+
+export interface InProgressData {
+    inProgressTasks: Task[];
+    overdueTasks: Task[];
+    todayTasks: Task[];
+    otherTasks: Task[];
+    stats: {
+        total: number;
+        overdue: number;
+        totalDurationMinutes: number;
+    };
 }

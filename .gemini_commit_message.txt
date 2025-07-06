@@ -1,5 +1,20 @@
-fix(gtd): Corrige el enlace de navegación para la lista 'Algun dia/ Tal Vez'
+feat(gtd): Implementa la vista "En Progreso" para tareas activas
 
-Se ha corregido un error en la generación de los enlaces de navegación de la vista GTD que impedía el correcto funcionamiento del ancla para la lista 'Algun dia/ Tal Vez'.
+Se ha añadido una nueva vista al dashboard de GTD llamada "En Progreso", diseñada para proporcionar un centro de mando enfocado en las tareas que el usuario ha marcado como activas (`- [/]`).
 
-El problema se debía a que el carácter '/' en el nombre de la lista no se estaba saneando correctamente para el atributo `href`, lo que resultaba en un enlace roto. Se ha mejorado la expresión regular para que reemplace todos los caracteres no alfanuméricos (excepto guiones) por guiones, asegurando así que los IDs y los `href` sean válidos y coincidan.
+**Cambios Principales:**
+
+1.  **Reconocimiento del Estado `[/]`:**
+    *   Se ha modificado el `parser.ts` para que reconozca el estado `[/]` como 'in-progress'.
+    *   Se ha actualizado el modelo de datos en `model.ts`, añadiendo un campo `status` a la interfaz `Task` para manejar los estados ('incomplete', 'completed', 'in-progress').
+
+2.  **Nueva Lógica de Procesamiento:**
+    *   Se ha creado un nuevo módulo `inProgressProcessor.ts` que aísla la lógica para esta vista.
+    *   Este procesador filtra las tareas "en progreso", calcula estadísticas (total de tareas, vencidas, tiempo estimado total) y las agrupa en secciones lógicas: "Vencidas", "Prioridades de Hoy" y "Otras Tareas".
+
+3.  **Implementación de la Interfaz de Usuario:**
+    *   Se ha añadido un nuevo botón "En Progreso" a los controles de la vista en `htmlGenerator.ts`.
+    *   Se ha creado la función `renderInProgressView` para generar el HTML de la nueva vista, incluyendo la cabecera de resumen y las listas de tareas agrupadas.
+    *   Se ha actualizado el componente `view.ts` para manejar el estado de la nueva vista y renderizarla cuando está activa.
+
+Este desarrollo proporciona una herramienta potente para que el usuario gestione su foco diario, visualizando rápidamente la carga de trabajo comprometida y priorizando de manera efectiva.

@@ -80,7 +80,7 @@ function parseTimeToMinutes(timeStr: string | undefined): number | null {
 function parseTasks(content: string, sourceFile: TFile): Task[] {
     const tasks: Task[] = [];
     const lines = content.split('\n');
-    const taskRegex = /^\s*-\s+\[( |x|X)\]\s+(.*)/;
+    const taskRegex = /^\s*-\s+\[( |x|X|\/)\]\s+(.*)/;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -90,8 +90,25 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
 
         let currentTaskContent: string = match[2];
 
-        const completed = match[1]?.toLowerCase() === 'x';
+        const statusChar = match[1] || ' ';
+        let status: Task['status'];
+        let completed: boolean;
 
+        switch (statusChar.toLowerCase()) {
+            case 'x':
+                status = 'completed';
+                completed = true;
+                break;
+            case '/':
+                status = 'in-progress';
+                completed = false;
+                break;
+            default:
+                status = 'incomplete';
+                completed = false;
+                break;
+        }
+        
         const extractAndClean = (regex: RegExp): string | undefined => {
             const matchResult = currentTaskContent.match(regex);
             if (matchResult && matchResult[1] !== undefined) {
@@ -100,6 +117,7 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
             }
             return undefined;
         };
+
 
         const extractAndCleanAll = (regex: RegExp): string[] => {
             const allMatches = currentTaskContent.match(regex);
@@ -174,6 +192,7 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
         const task: Task = {
             id,
             content: currentTaskContent,
+            status,
             completed,
             priority,
             dependencies,

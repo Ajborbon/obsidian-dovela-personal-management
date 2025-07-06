@@ -1,6 +1,100 @@
-import type { HierarchicalItem, Task, ProcessedVaultData } from './model.js';
+import type { HierarchicalItem, Task, ProcessedVaultData, InProgressData } from './model.js';
 import { GtdList } from './gtdProcessor.js';
 import { isDatePast } from './dateUtils.js';
+
+function renderInProgressTask(task: Task, breadcrumb: string): string {
+    const prioritySymbols: Record<Task['priority'], string> = {
+        Highest: '⏫', High: '🔼', Medium: '🔽', Low: '⏬', None: ''
+    };
+
+    let metadataHtml = '';
+    if (task.date) {
+        const dateClass = isDatePast(task.date) ? 'is-overdue' : '';
+        metadataHtml += `<span class="${dateClass}">${task.dateSymbol} ${task.date}</span>`;
+    }
+    if (task.duration) {
+        metadataHtml += `<span>[${task.duration}]</span>`;
+    }
+    if (task.contexts.length > 0) metadataHtml += `<span>${task.contexts.join(' ')}</span>`;
+    if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
+    metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>'; // Add toggle icon
+
+    const linkedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
+        '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
+    );
+
+    const contextsData = JSON.stringify(task.contexts);
+    const peopleData = JSON.stringify(task.assignedPeople);
+
+    return `
+        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
+            <div class="gtd-task-content">
+                <input type="checkbox" />
+                <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
+                ${linkedContent}
+            </div>
+            <div class="gtd-task-metadata">${metadataHtml}</div>
+            <div class="gtd-breadcrumb-container">
+                <span class="gtd-breadcrumb-symbol">└─</span>
+                <span class="gtd-breadcrumb-path">${breadcrumb}</span>
+            </div>
+        </li>
+    `;
+}
+
+function renderInProgressView(data: InProgressData, taskBreadcrumbMap: Map<string, string>): string {
+    const { stats, overdueTasks, todayTasks, otherTasks } = data;
+    const hours = Math.floor(stats.totalDurationMinutes / 60);
+    const minutes = stats.totalDurationMinutes % 60;
+    const durationString = `${hours}h ${minutes}min`;
+
+    let html = `
+        <div class="in-progress-header">
+            <span>Tareas Activas: <strong>${stats.total}</strong></span>
+            <span>Tiempo Estimado: <strong>${durationString}</strong></span>
+            ${stats.overdue > 0 ? `<span>Vencidas: <strong class="is-overdue">${stats.overdue}</strong></span>` : ''}
+        </div>
+        <div class="in-progress-container">
+    `;
+
+    const renderTaskWithBreadcrumb = (task: Task) => renderInProgressTask(task, taskBreadcrumbMap.get(task.id) || '');
+
+    if (overdueTasks.length > 0) {
+        html += `
+            <div class="gtd-group">
+                <div class="gtd-group-title">🔴 Vencidas</div>
+                <ul class="gtd-task-list">
+                    ${overdueTasks.map(renderTaskWithBreadcrumb).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    if (todayTasks.length > 0) {
+        html += `
+            <div class="gtd-group">
+                <div class="gtd-group-title">⭐ Prioridades de Hoy</div>
+                <ul class="gtd-task-list">
+                    ${todayTasks.map(renderTaskWithBreadcrumb).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    if (otherTasks.length > 0) {
+        html += `
+            <div class="gtd-group">
+                <div class="gtd-group-title">Otras Tareas</div>
+                <ul class="gtd-task-list">
+                    ${otherTasks.map(renderTaskWithBreadcrumb).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    html += '</div>';
+    return html;
+}
 
 /**
  * Renders a single task item into an HTML string.
@@ -232,11 +326,12 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
  * @param taskBreadcrumbMap A map from task ID to its breadcrumb path.
  * @returns The complete HTML string for the view.
  */
-export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd', taskBreadcrumbMap: Map<string, string>): string {
+export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd' | 'inProgress', taskBreadcrumbMap: Map<string, string>): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
     const hierarchyActiveClass = activeView === 'hierarchy' ? 'active' : '';
     const gtdActiveClass = activeView === 'gtd' ? 'active' : '';
+    const inProgressActiveClass = activeView === 'inProgress' ? 'active' : '';
 
     let viewContent = '';
     let hierarchyControls = '';
@@ -247,8 +342,10 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
             <button class="gtd-hierarchy-control-button" data-action="expand-all">Expandir Todo</button>
             <button class="gtd-hierarchy-control-button" data-action="collapse-all">Colapsar Todo</button>
         `;
-    } else {
+    } else if (activeView === 'gtd') {
         viewContent = renderGtdListsView(data, taskBreadcrumbMap);
+    } else if (activeView === 'inProgress') {
+        viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap);
     }
 
     return `
@@ -256,6 +353,7 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
             <div class="gtd-view-controls">
                 <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">Vista Jerárquica</button>
                 <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
+                <button class="gtd-view-button ${inProgressActiveClass}" data-view="inProgress">En Progreso</button>
                 <button class="gtd-refresh-button">Refrescar</button>
                 ${hierarchyControls}
             </div>

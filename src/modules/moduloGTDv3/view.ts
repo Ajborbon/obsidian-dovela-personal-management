@@ -5,6 +5,7 @@ import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { parseVault } from './parser.js';
 import { buildHierarchy } from './hierarchyBuilder.js';
 import { processGtdLists } from './gtdProcessor.js';
+import { processInProgressTasks } from './inProgressProcessor.js';
 import { generateGtdViewHtml } from './htmlGenerator.js';
 import type { ProcessedVaultData, HierarchicalItem } from './model.js';
 
@@ -13,7 +14,7 @@ export const GTD_VIEW_DISPLAY_TEXT = 'GTD Dashboard';
 export const GTD_VIEW_ICON = 'list-checks';
 
 export class GtdView extends ItemView {
-    private activeView: 'hierarchy' | 'gtd' = 'hierarchy';
+    private activeView: 'hierarchy' | 'gtd' | 'inProgress' = 'hierarchy';
     private eventAbortController: AbortController = new AbortController();
 
     constructor(leaf: WorkspaceLeaf) {
@@ -82,10 +83,12 @@ export class GtdView extends ItemView {
             // Create a map of all tasks by ID for dependency checking
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
             const { gtdLists, uniqueContexts, uniquePeople } = processGtdLists(parsedData.allTasks, allTaskMap);
+            const inProgressData = processInProgressTasks(parsedData.allTasks);
 
             const finalData: ProcessedVaultData = {
                 hierarchicalData: hierarchicalData,
                 gtdLists: gtdLists,
+                inProgressData: inProgressData,
                 allTasks: parsedData.allTasks,
                 uniqueContexts: uniqueContexts,
                 uniquePeople: uniquePeople,
@@ -168,7 +171,7 @@ export class GtdView extends ItemView {
             const button = target.closest('button');
             if (button) {
                 if (button.classList.contains('gtd-view-button')) {
-                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd';
+                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress';
                     if (view && view !== this.activeView) {
                         this.activeView = view;
                         this.drawView();
