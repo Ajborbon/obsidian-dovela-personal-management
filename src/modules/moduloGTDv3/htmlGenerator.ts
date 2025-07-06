@@ -6,9 +6,10 @@ import { isDatePast } from './dateUtils.js';
 /**
  * Renders a single task item into an HTML string.
  * @param task The task to render.
+ * @param breadcrumb The hierarchical path of the task's source note.
  * @returns An HTML string for the task.
  */
-function renderTask(task: Task): string {
+function renderTask(task: Task, breadcrumb: string): string {
     const prioritySymbols: Record<Task['priority'], string> = {
         Highest: '⏫', High: '🔼', Medium: '🔽', Low: '⏬', None: ''
     };
@@ -20,6 +21,7 @@ function renderTask(task: Task): string {
     }
     if (task.contexts.length > 0) metadataHtml += `<span>${task.contexts.join(' ')}</span>`;
     if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
+    metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>'; // Add toggle icon
 
     // Convert wikilinks to clickable data-attributes
     const linkedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
@@ -36,6 +38,10 @@ function renderTask(task: Task): string {
                 ${linkedContent}
             </div>
             <div class="gtd-task-metadata">${metadataHtml}</div>
+            <div class="gtd-breadcrumb-container">
+                <span class="gtd-breadcrumb-symbol">└─</span>
+                <span class="gtd-breadcrumb-path">${breadcrumb}</span>
+            </div>
         </li>
     `;
 }
@@ -43,9 +49,10 @@ function renderTask(task: Task): string {
 /**
  * Renders the GTD Lists view into an HTML string.
  * @param data The processed data from the vault.
+ * @param taskBreadcrumbMap A map from task ID to its breadcrumb path.
  * @returns An HTML string for the GTD lists view.
  */
-function renderGtdListsView(data: ProcessedVaultData): string {
+function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
     const { gtdLists, uniqueContexts, uniquePeople } = data;
     let html = '<div class="gtd-lists-container">';
 
@@ -94,6 +101,8 @@ function renderGtdListsView(data: ProcessedVaultData): string {
             <details class="gtd-list" open id="${listId}">
                 <summary>${listName} <span class="gtd-list-count">(${tasks.length})</span></summary>
         `;
+        
+        const renderTaskWithBreadcrumb = (task: Task) => renderTask(task, taskBreadcrumbMap.get(task.id) || '');
 
         if (listName === GtdList.HopeToday) {
             tasks.sort((a, b) => {
@@ -117,7 +126,7 @@ function renderGtdListsView(data: ProcessedVaultData): string {
                         <div class="gtd-group">
                             <div class="gtd-group-title">${groupName}</div>
                             <ul class="gtd-task-list">
-                                ${groupTasks.map(renderTask).join('')}
+                                ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
                             </ul>
                         </div>
                     `;
@@ -127,7 +136,7 @@ function renderGtdListsView(data: ProcessedVaultData): string {
             tasks.sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
             html += `
                 <ul class="gtd-task-list">
-                    ${tasks.map(renderTask).join('')}
+                    ${tasks.map(renderTaskWithBreadcrumb).join('')}
                 </ul>
             `;
         } else if (listName === GtdList.Assigned) {
@@ -145,7 +154,7 @@ function renderGtdListsView(data: ProcessedVaultData): string {
                         <div class="gtd-group">
                             <div class="gtd-group-title">${groupName}</div>
                             <ul class="gtd-task-list">
-                                ${groupTasks.map(renderTask).join('')}
+                                ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
                             </ul>
                         </div>
                     `;
@@ -154,7 +163,7 @@ function renderGtdListsView(data: ProcessedVaultData): string {
         } else {
             html += `
                 <ul class="gtd-task-list">
-                    ${tasks.map(renderTask).join('')}
+                    ${tasks.map(renderTaskWithBreadcrumb).join('')}
                 </ul>
             `;
         }
@@ -211,9 +220,10 @@ function renderHierarchyViewRecursive(item: HierarchicalItem): string {
  * Generates the complete HTML for the GTD view, including view-switcher controls.
  * @param data The processed data from the vault.
  * @param activeView The view to display ('hierarchy' or 'gtd').
+ * @param taskBreadcrumbMap A map from task ID to its breadcrumb path.
  * @returns The complete HTML string for the view.
  */
-export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd'): string {
+export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd', taskBreadcrumbMap: Map<string, string>): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
     const hierarchyActiveClass = activeView === 'hierarchy' ? 'active' : '';
@@ -223,7 +233,7 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
     if (activeView === 'hierarchy') {
         viewContent = data.hierarchicalData.map(renderHierarchyViewRecursive).join('');
     } else {
-        viewContent = renderGtdListsView(data);
+        viewContent = renderGtdListsView(data, taskBreadcrumbMap);
     }
 
     return `

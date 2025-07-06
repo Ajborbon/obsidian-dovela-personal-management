@@ -6,7 +6,7 @@ import { parseVault } from './parser.js';
 import { buildHierarchy } from './hierarchyBuilder.js';
 import { processGtdLists } from './gtdProcessor.js';
 import { generateGtdViewHtml } from './htmlGenerator.js';
-import type { ProcessedVaultData } from './model.js';
+import type { ProcessedVaultData, HierarchicalItem, Task } from './model.js';
 
 export const GTD_VIEW_TYPE = 'gtd-view';
 export const GTD_VIEW_DISPLAY_TEXT = 'GTD Dashboard';
@@ -14,6 +14,7 @@ export const GTD_VIEW_ICON = 'list-checks';
 
 export class GtdView extends ItemView {
     private activeView: 'hierarchy' | 'gtd' = 'hierarchy';
+    private eventAbortController: AbortController;
 
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
@@ -37,14 +38,46 @@ export class GtdView extends ItemView {
     }
 
     override async onClose() {
+        this.eventAbortController?.abort();
         this.contentEl.empty();
     }
 
+    private createTaskBreadcrumbMap(hierarchicalData: HierarchicalItem[]): Map<string, string> {
+        const breadcrumbMap = new Map<string, string>();
+
+        function traverse(item: HierarchicalItem, path: string[]) {
+            // Clean the name for the breadcrumb view, removing the [FALTA] tag.
+            const cleanName = item.name.replace(/\s*\[FALTA\]\s*/g, '');
+            const currentPath = [...path, cleanName];
+            
+            // For each task in the current item, store its breadcrumb
+            for (const task of item.tasks) {
+                breadcrumbMap.set(task.id, currentPath.join(' > '));
+            }
+
+            // Recurse into children
+            for (const child of item.children) {
+                traverse(child, currentPath);
+            }
+        }
+
+        for (const rootItem of hierarchicalData) {
+            traverse(rootItem, []);
+        }
+
+        return breadcrumbMap;
+    }
+
     private async drawView(): Promise<void> {
+        // --- 1. Abort previous event listeners to prevent duplicates ---
+        this.eventAbortController?.abort();
+        this.eventAbortController = new AbortController();
+
         try {
-            // 1. Parse and process all data
+            // 2. Parse and process all data
             const parsedData = await parseVault(this.app.vault, this.app.metadataCache);
             const hierarchicalData = buildHierarchy(parsedData.hierarchicalData);
+            const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
 
             // Create a map of all tasks by ID for dependency checking
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
@@ -58,10 +91,10 @@ export class GtdView extends ItemView {
                 uniquePeople: uniquePeople,
             };
 
-            // 2. Generate HTML
-            const html = generateGtdViewHtml(finalData, this.activeView);
+            // 3. Generate HTML
+            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap);
 
-            // 3. Render and add interactivity
+            // 4. Render and add interactivity
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
             this.addEventListeners();
@@ -123,6 +156,13 @@ export class GtdView extends ItemView {
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
 
+            // Handle breadcrumb toggle
+            if (target.classList.contains('gtd-breadcrumb-toggle')) {
+                const taskEl = target.closest('.gtd-task');
+                taskEl?.classList.toggle('breadcrumb-is-open');
+                return;
+            }
+
             // Handle view switcher and refresh buttons
             const button = target.closest('button');
             if (button) {
@@ -165,6 +205,6 @@ export class GtdView extends ItemView {
                     });
                 }
             }
-        });
+        }, { signal: this.eventAbortController.signal });
     }
 }
