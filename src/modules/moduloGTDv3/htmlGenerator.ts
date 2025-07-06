@@ -85,7 +85,7 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
     const navLinks = listOrder
         .filter(listName => gtdLists[listName] && gtdLists[listName].length > 0)
         .map(listName => `
-            <a href="#gtd-list-${listName.replace(/\s+/g, '-')}" class="gtd-nav-link">${listName}</a>
+            <a href="#gtd-list-${listName.replace(/[^a-zA-Z0-9-]/g, '-')}" class="gtd-nav-link">${listName}</a>
         `).join(' | ');
     
     html += `<nav class="gtd-quick-nav">${navLinks}</nav>`;
@@ -95,7 +95,7 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         const tasks = gtdLists[listName];
         if (!tasks || tasks.length === 0) continue;
 
-        const listId = `gtd-list-${listName.replace(/\s+/g, '-')}`;
+        const listId = `gtd-list-${listName.replace(/[^a-zA-Z0-9-]/g, '-')}`;
         html += `
             <details class="gtd-list" open id="${listId}">
                 <summary>${listName} <span class="gtd-list-count">(${tasks.length})</span></summary>
