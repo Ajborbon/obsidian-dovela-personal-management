@@ -50,59 +50,84 @@ function calculateTaskCountsRecursive(item: HierarchicalItem): void {
  * @returns Una lista de los items raíz de la jerarquía.
  */
 export function buildHierarchy(items: HierarchicalItem[]): HierarchicalItem[] {
-    const itemMap = new Map<string, HierarchicalItem>();
+    const noteMap = new Map<string, HierarchicalItem>();
+    const hierarchyMap = new Map<string, HierarchicalItem>();
+    const allFolderPaths = new Set<string>();
 
-    // 1. Prime the map with all actual notes from the vault.
+    // 1. Map all notes by their path and collect all unique folder paths.
     for (const item of items) {
-        // The key for a note is its path without the .md extension.
-        if (item.file) {
-            const key = item.file.path.replace(/\.md$/, '');
-            itemMap.set(key, item);
+        if (!item.file) continue;
+        const pathWithoutExt = item.file.path.replace(/\.md$/, '');
+        noteMap.set(pathWithoutExt, item);
+
+        const pathParts = pathWithoutExt.split('/');
+        if (pathParts.length > 1) {
+            for (let i = pathParts.length - 1; i > 0; i--) {
+                allFolderPaths.add(pathParts.slice(0, i).join('/'));
+            }
         }
     }
 
-    // 2. Link items to their parents, creating placeholders as needed.
-    // We iterate over the map's values, which includes notes and any newly created placeholders.
-    for (const item of itemMap.values()) {
-        // Determine the parent's key, which is the path of the containing folder.
-        const path = item.file ? item.file.path.replace(/\.md$/, '') : item.id;
-        const pathParts = path.split('/');
-        pathParts.pop();
-        const parentKey = pathParts.join('/');
+    // 2. Fusion Step: Populate hierarchyMap with folder notes or placeholders.
+    for (const folderPath of allFolderPaths) {
+        if (hierarchyMap.has(folderPath)) continue;
 
-        if (!parentKey) {
-            continue; // This item is at the root of the vault, so it has no parent.
-        }
+        const folderName = folderPath.split('/').pop() || '';
+        const folderNotePath = `${folderPath}/${folderName}`;
+        const folderNote = noteMap.get(folderNotePath);
 
-        let parent = itemMap.get(parentKey);
-
-        if (!parent) {
-            // If the parent doesn't exist in our map, it means there's no corresponding .md file.
-            // We must create a placeholder item for this folder.
-            const folderName = parentKey.split('/').pop() || parentKey;
-            parent = {
-                id: parentKey,
-                type: 'Ax', // Default type for a placeholder folder.
+        if (folderNote) {
+            // Fusion: This folder has a dedicated note. Use it.
+            hierarchyMap.set(folderPath, folderNote);
+        } else {
+            // No folder note. Create a placeholder.
+            const placeholder: HierarchicalItem = {
+                id: folderPath,
+                type: 'Ax', // Default type
                 name: `[FALTA] ${folderName}`,
                 children: [],
                 tasks: [],
                 ownTaskCount: 0,
                 descendantTaskCount: 0,
                 frontmatter: {},
-                isNoteMissing: true, // Mark this item as a placeholder.
+                isNoteMissing: true,
             };
-            itemMap.set(parentKey, parent);
+            hierarchyMap.set(folderPath, placeholder);
         }
-
-        // Establish the parent-child relationship.
-        parent.children.push(item);
-        item.parent = parent;
     }
 
-    // 3. Identify the true root items (those without a parent).
-    const roots = [...itemMap.values()].filter(item => !item.parent);
+    // 3. Add all remaining non-folder-notes to the hierarchyMap.
+    for (const [path, note] of noteMap.entries()) {
+        // Check if the note is already in the hierarchyMap as a value (it would be a folder note).
+        // A simple way is to check if its path is a key in the hierarchyMap. If it is, it's a folder note.
+        if (!hierarchyMap.has(path)) {
+             // It's a regular note, not a folder note that has been used for a folder path key
+            const isFolderNote = (hierarchyMap.get(note.file.path.split('/').slice(0, -1).join('/')) === note);
+            if (!isFolderNote) {
+                hierarchyMap.set(path, note);
+            }
+        }
+    }
 
-    // 4. Create a virtual root to contain all top-level items and perform final processing.
+    // 4. Link items to their parents.
+    for (const [key, item] of hierarchyMap.entries()) {
+        const pathParts = key.split('/');
+        if (pathParts.length <= 1) continue; // Root level entity
+
+        pathParts.pop();
+        const parentKey = pathParts.join('/');
+        const parent = hierarchyMap.get(parentKey);
+
+        if (parent && parent !== item) {
+            parent.children.push(item);
+            item.parent = parent;
+        }
+    }
+
+    // 5. Identify the true root items.
+    const roots = [...hierarchyMap.values()].filter(item => !item.parent);
+
+    // 6. Create a virtual root to contain all top-level items.
     const virtualRoot: HierarchicalItem = {
         id: 'root',
         type: 'Root',
@@ -118,7 +143,7 @@ export function buildHierarchy(items: HierarchicalItem[]): HierarchicalItem[] {
         root.parent = virtualRoot;
     }
 
-    // Perform recursive calculations and sorting from the top down.
+    // 7. Perform final calculations and sorting.
     calculateTaskCountsRecursive(virtualRoot);
     sortChildrenRecursive(virtualRoot);
 

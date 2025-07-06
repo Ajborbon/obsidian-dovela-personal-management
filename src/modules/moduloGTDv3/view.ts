@@ -174,6 +174,16 @@ export class GtdView extends ItemView {
                     }
                 } else if (button.classList.contains('gtd-refresh-button')) {
                     this.drawView();
+                } else if (button.classList.contains('gtd-hierarchy-control-button')) {
+                    const action = button.getAttribute('data-action');
+                    const detailsElements = container.querySelectorAll('.gtd-card-container') as NodeListOf<HTMLDetailsElement>;
+                    detailsElements.forEach(detail => {
+                        if (action === 'expand-all') {
+                            detail.open = true;
+                        } else if (action === 'collapse-all') {
+                            detail.open = false;
+                        }
+                    });
                 }
                 return;
             }

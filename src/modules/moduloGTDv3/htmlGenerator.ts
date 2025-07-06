@@ -1,4 +1,3 @@
-
 import type { HierarchicalItem, Task, ProcessedVaultData } from './model.js';
 import { GtdList } from './gtdProcessor.js';
 import { isDatePast } from './dateUtils.js';
@@ -119,7 +118,9 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
                 grouped[key].push(task);
             }
 
-            for (const groupName in grouped) {
+            const sortedGroupNames = Object.keys(grouped).sort();
+
+            for (const groupName of sortedGroupNames) {
                 const groupTasks = grouped[groupName];
                 if (groupTasks) {
                     html += `
@@ -147,7 +148,9 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
                 grouped[key].push(task);
             }
 
-            for (const groupName in grouped) {
+            const sortedGroupNames = Object.keys(grouped).sort();
+
+            for (const groupName of sortedGroupNames) {
                 const groupTasks = grouped[groupName];
                 if (groupTasks) {
                     html += `
@@ -176,41 +179,47 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
 }
 
 /**
- * Recursively renders the hierarchical view into an HTML string.
+ * Recursively renders the hierarchical view into an HTML string using a nested card design.
  * @param item The current hierarchical item to render.
+ * @param level The current depth level of the recursion.
  * @returns An HTML string for the item and its children.
  */
-function renderHierarchyViewRecursive(item: HierarchicalItem): string {
-    const hasChildren = item.children.length > 0;
-    const itemPath = item.file ? `data-item-path="${item.file.path}"` : '';
+function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0): string {
+    const hasChildren = item.children && item.children.length > 0;
+    // Clicks should open the note, so the path is on the header.
+    const itemPathAttr = item.file ? `data-item-path="${item.file.path}"` : '';
     const totalTasks = item.ownTaskCount + item.descendantTaskCount;
 
-    const estado = item.frontmatter?.['estado'] ? `<span class="gtd-hierarchy-estado">${item.frontmatter['estado']}</span>` : '';
-    
-    // Añadir una clase si la nota principal falta
+    const estado = item.frontmatter?.['estado'] ? `<span class="gtd-card-estado">${item.frontmatter['estado']}</span>` : '';
     const missingClass = item.isNoteMissing ? 'is-missing' : '';
 
-    const summaryContent = `
-        <span class="gtd-hierarchy-type">[${item.type}]</span>
-        ${estado}
-        <span class="gtd-hierarchy-name">${item.name}</span>
-        <span class="gtd-hierarchy-count">(${item.ownTaskCount}) - &lt;${totalTasks}&gt;</span>
+    // The header contains all the main info and is clickable.
+    const cardHeader = `
+        <div class="gtd-card-header" ${itemPathAttr}>
+            <span class="gtd-card-type-icon" data-type="${item.type}"></span>
+            <span class="gtd-card-name">${item.name.replace(/\[FALTA\]\s*/, '')}</span>
+            ${estado}
+            <div class="gtd-card-counts">
+                <span class="gtd-card-own-tasks" title="Tareas en esta nota">${item.ownTaskCount}</span>
+                <span class="gtd-card-total-tasks" title="Tareas totales en la jerarquía">${totalTasks}</span>
+            </div>
+        </div>
     `;
 
     if (!hasChildren) {
-        return `
-            <div class="gtd-hierarchy-item ${missingClass}" ${itemPath}>
-                ${summaryContent}
-            </div>
-        `;
+        // Leaf node: just a simple container with the header.
+        return `<div class="gtd-card-leaf ${missingClass}">${cardHeader}</div>`;
     }
 
-    // Usar <details> para todos los elementos con hijos
+    // Node with children: use <details> for collapsibility.
+    // Only expand the first two levels by default to keep the view clean.
+    const openAttr = level < 2 ? 'open' : '';
+
     return `
-        <details class="gtd-hierarchy-item ${missingClass}" open>
-            <summary ${itemPath}>${summaryContent}</summary>
-            <div class="gtd-hierarchy-children">
-                ${item.children.map(renderHierarchyViewRecursive).join('')}
+        <details class="gtd-card-container ${missingClass}" ${openAttr}>
+            <summary>${cardHeader}</summary>
+            <div class="gtd-card-children">
+                ${item.children.map(child => renderHierarchyViewRecursive(child, level + 1)).join('')}
             </div>
         </details>
     `;
@@ -230,8 +239,14 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
     const gtdActiveClass = activeView === 'gtd' ? 'active' : '';
 
     let viewContent = '';
+    let hierarchyControls = '';
+
     if (activeView === 'hierarchy') {
-        viewContent = data.hierarchicalData.map(renderHierarchyViewRecursive).join('');
+        viewContent = data.hierarchicalData.map(root => renderHierarchyViewRecursive(root, 0)).join('');
+        hierarchyControls = `
+            <button class="gtd-hierarchy-control-button" data-action="expand-all">Expandir Todo</button>
+            <button class="gtd-hierarchy-control-button" data-action="collapse-all">Colapsar Todo</button>
+        `;
     } else {
         viewContent = renderGtdListsView(data, taskBreadcrumbMap);
     }
@@ -242,11 +257,12 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
                 <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">Vista Jerárquica</button>
                 <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
                 <button class="gtd-refresh-button">Refrescar</button>
+                ${hierarchyControls}
             </div>
             <div class="gtd-total-tasks">
                 <span>Total de Tareas Abiertas: ${totalOpenTasks}</span>
             </div>
-            <div class="gtd-view-content">
+            <div class="gtd-view-content" data-active-view="${activeView}">
                 ${viewContent}
             </div>
         </div>
