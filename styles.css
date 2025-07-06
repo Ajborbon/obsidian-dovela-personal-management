@@ -1,5 +1,117 @@
-/* src/styles/main.scss */
-.dovela-personal-management.obsidian-dev-utils {
+/* styles.css */
+
+/* --- General View Container --- */
+.gtd-view-container {
+    padding: 15px;
+    height: 100%;
+    overflow-y: auto;
 }
-/*# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImFwcDovL29ic2lkaWFuLm1kL3BsdWdpbjpvYnNpZGlhbi1kb3ZlbGEtcGVyc29uYWwtbWFuYWdlbWVudC9hcHA6Ly9vYnNpZGlhbi5tZC9wbHVnaW46b2JzaWRpYW4tZG92ZWxhLXBlcnNvbmFsLW1hbmFnZW1lbnQvYXBwOi8vb2JzaWRpYW4ubWQvcGx1Z2luOm9ic2lkaWFuLWRvdmVsYS1wZXJzb25hbC1tYW5hZ2VtZW50L3NyYy9tYWluLnNjc3MiXSwic291cmNlc0NvbnRlbnQiOlsiLyoqXG4gKiBZb3UgY2FuIHJlbW92ZSB0aGlzIGZpbGUgaWYgeW91IGRvbid0IG5lZWQgYW55IHN0eWxlc1xuICogU2VlIGRlZmF1bHQgbGlicmFyeSBzdHlsZXM6IGh0dHBzOi8vZ2l0aHViLmNvbS9tbmFvdW1vdi9vYnNpZGlhbi1kZXYtdXRpbHMvYmxvYi9tYWluL3NyYy9zdHlsZXMvbWFpbi5zY3NzXG4gKiBTZWUgYXZhaWxhYmxlIGxpYnJhcnkgY3NzIGNsYXNzZXM6IGh0dHBzOi8vZ2l0aHViLmNvbS9tbmFvdW1vdi9vYnNpZGlhbi1kZXYtdXRpbHMvYmxvYi9tYWluL3NyYy9Dc3NDbGFzcy50c1xuICovXG5cbi5kb3ZlbGEtcGVyc29uYWwtbWFuYWdlbWVudC5vYnNpZGlhbi1kZXYtdXRpbHMge1xuICAvKiBPdmVycmlkZSBsaWJyYXJ5IHN0eWxlcyAqL1xufVxuIl0sIm1hcHBpbmdzIjoiO0FBTUEsQ0FBQSwwQkFBQSxDQUFBOzsiLCJuYW1lcyI6W119
-/* nosourcemap */
+
+/* --- Controls, Filters, and Navigation --- */
+.gtd-view-controls,
+.gtd-filters,
+.gtd-quick-nav {
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Sticky header for controls and filters */
+.gtd-view-controls, .gtd-filters, .gtd-quick-nav {
+    position: sticky;
+    top: 0;
+    background-color: var(--background-primary);
+    z-index: 10;
+}
+
+.gtd-filters {
+    top: 40px; /* Adjust based on the height of gtd-view-controls */
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.gtd-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gtd-quick-nav {
+    top: 80px; /* Adjust based on the height of controls + filters */
+    padding-top: 10px;
+}
+
+.gtd-nav-link {
+    cursor: pointer;
+    margin: 0 5px;
+    color: var(--text-accent);
+}
+.gtd-nav-link:hover {
+    text-decoration: underline;
+}
+
+/* --- Task Lists --- */
+.gtd-lists-container {
+    padding-top: 10px; /* Space below sticky nav */
+}
+
+.gtd-list {
+    margin-bottom: 15px;
+}
+
+.gtd-list > summary {
+    font-weight: bold;
+    font-size: 1.2em;
+    cursor: pointer;
+}
+
+.gtd-task-list {
+    list-style: none;
+    padding-left: 20px;
+}
+
+/* --- Individual Tasks --- */
+.gtd-task {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.gtd-task-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gtd-task-priority {
+    font-size: 1.1em;
+}
+
+.gtd-task-metadata {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    display: flex;
+    gap: 10px;
+}
+
+.gtd-task-metadata .is-overdue {
+    color: var(--text-error);
+    font-weight: bold;
+}
+
+/* --- Hierarchy View --- */
+.gtd-hierarchy-item {
+    padding: 5px;
+}
+
+.gtd-hierarchy-item > summary {
+    cursor: pointer;
+}
+
+.gtd-hierarchy-children {
+    padding-left: 20px;
+    border-left: 1px solid var(--background-modifier-border);
+}

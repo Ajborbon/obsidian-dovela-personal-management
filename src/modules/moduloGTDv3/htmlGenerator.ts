@@ -26,8 +26,11 @@ function renderTask(task: Task): string {
         '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
     );
 
+    const contextsData = JSON.stringify(task.contexts);
+    const peopleData = JSON.stringify(task.assignedPeople);
+
     return `
-        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}">
+        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
             <div class="gtd-task-content">
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
                 ${linkedContent}
@@ -39,31 +42,56 @@ function renderTask(task: Task): string {
 
 /**
  * Renders the GTD Lists view into an HTML string.
- * @param gtdLists The classified GTD lists.
+ * @param data The processed data from the vault.
  * @returns An HTML string for the GTD lists view.
  */
-function renderGtdListsView(gtdLists: Record<GtdList, Task[]>): string {
+function renderGtdListsView(data: ProcessedVaultData): string {
+    const { gtdLists, uniqueContexts, uniquePeople } = data;
     let html = '<div class="gtd-lists-container">';
 
+    // --- Render Filters ---
+    html += `
+        <div class="gtd-filters">
+            <div class="gtd-filter-group">
+                <label for="context-filter">Filtrar por Contexto:</label>
+                <select id="context-filter">
+                    <option value="all">Todos</option>
+                    ${uniqueContexts.map(context => `<option value="${context}">${context}</option>`).join('')}
+                </select>
+            </div>
+            <div class="gtd-filter-group">
+                <label for="person-filter">Filtrar por Persona:</label>
+                <select id="person-filter">
+                    <option value="all">Todos</option>
+                    ${uniquePeople.map(person => `<option value="${person}">${person}</option>`).join('')}
+                </select>
+            </div>
+        </div>
+    `;
+
     const listOrder: GtdList[] = [
-        GtdList.Inbox,
-        GtdList.NextActions,
-        GtdList.Calendar,
-        GtdList.HopeToday,
-        GtdList.Overdue,
-        GtdList.Assigned,
-        GtdList.Projects,
-        GtdList.Paused,
-        GtdList.ThisWeekNot,
-        GtdList.SomedayMaybe,
+        GtdList.Inbox, GtdList.NextActions, GtdList.Calendar, GtdList.HopeToday,
+        GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
+        GtdList.ThisWeekNot, GtdList.SomedayMaybe,
     ];
 
+    // --- Render Quick Navigation ---
+    const navLinks = listOrder
+        .filter(listName => gtdLists[listName] && gtdLists[listName].length > 0)
+        .map(listName => `
+            <a href="#gtd-list-${listName.replace(/\s+/g, '-')}" class="gtd-nav-link">${listName}</a>
+        `).join(' | ');
+    
+    html += `<nav class="gtd-quick-nav">${navLinks}</nav>`;
+
+    // --- Render Task Lists ---
     for (const listName of listOrder) {
         const tasks = gtdLists[listName];
         if (!tasks || tasks.length === 0) continue;
 
+        const listId = `gtd-list-${listName.replace(/\s+/g, '-')}`;
         html += `
-            <details class="gtd-list" open>
+            <details class="gtd-list" open id="${listId}">
                 <summary>${listName} <span class="gtd-list-count">(${tasks.length})</span></summary>
         `;
 
@@ -186,8 +214,6 @@ function renderHierarchyViewRecursive(item: HierarchicalItem): string {
  * @returns The complete HTML string for the view.
  */
 export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd'): string {
-    const hierarchyData = data.hierarchicalData;
-    const gtdLists = data.gtdLists;
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
     const hierarchyActiveClass = activeView === 'hierarchy' ? 'active' : '';
@@ -195,9 +221,9 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
 
     let viewContent = '';
     if (activeView === 'hierarchy') {
-        viewContent = hierarchyData.map(renderHierarchyViewRecursive).join('');
+        viewContent = data.hierarchicalData.map(renderHierarchyViewRecursive).join('');
     } else {
-        viewContent = renderGtdListsView(gtdLists);
+        viewContent = renderGtdListsView(data);
     }
 
     return `

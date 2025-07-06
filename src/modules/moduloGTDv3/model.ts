@@ -82,4 +82,6 @@ export interface ProcessedVaultData {
     hierarchicalData: HierarchicalItem[];
     gtdLists: Record<string, Task[]>;
     allTasks: Task[];
+    uniqueContexts: string[];
+    uniquePeople: string[];
 }

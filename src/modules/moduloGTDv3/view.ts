@@ -48,12 +48,14 @@ export class GtdView extends ItemView {
 
             // Create a map of all tasks by ID for dependency checking
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
-            const gtdLists = processGtdLists(parsedData.allTasks, allTaskMap);
+            const { gtdLists, uniqueContexts, uniquePeople } = processGtdLists(parsedData.allTasks, allTaskMap);
 
             const finalData: ProcessedVaultData = {
                 hierarchicalData: hierarchicalData,
                 gtdLists: gtdLists,
-                allTasks: parsedData.allTasks
+                allTasks: parsedData.allTasks,
+                uniqueContexts: uniqueContexts,
+                uniquePeople: uniquePeople,
             };
 
             // 2. Generate HTML
@@ -73,10 +75,55 @@ export class GtdView extends ItemView {
     private addEventListeners(): void {
         const container = this.contentEl;
 
+        // --- Filter Logic ---
+        const contextFilter = container.querySelector('#context-filter') as HTMLSelectElement;
+        const personFilter = container.querySelector('#person-filter') as HTMLSelectElement;
+
+        const applyFilters = () => {
+            const selectedContext = contextFilter.value;
+            const selectedPerson = personFilter.value;
+
+            container.querySelectorAll('.gtd-task').forEach((taskEl: HTMLElement) => {
+                const taskContexts: string[] = JSON.parse(taskEl.dataset.contexts || '[]');
+                const taskPeople: string[] = JSON.parse(taskEl.dataset.people || '[]');
+
+                const contextMatch = selectedContext === 'all' || taskContexts.includes(selectedContext);
+                const personMatch = selectedPerson === 'all' || taskPeople.includes(selectedPerson);
+
+                taskEl.style.display = (contextMatch && personMatch) ? '' : 'none';
+            });
+
+            // --- Update List and Nav Visibility ---
+            container.querySelectorAll('.gtd-list').forEach((listEl: HTMLElement) => {
+                const visibleTasks = listEl.querySelectorAll('.gtd-task[style*="display: none;"]');
+                const totalTasks = listEl.querySelectorAll('.gtd-task').length;
+                const allTasksHidden = visibleTasks.length === totalTasks;
+                
+                listEl.style.display = allTasksHidden ? 'none' : '';
+
+                const listId = listEl.id;
+                const navLink = container.querySelector(`.gtd-quick-nav a[href="#${listId}"]`) as HTMLElement;
+                if (navLink) {
+                    navLink.style.display = allTasksHidden ? 'none' : '';
+                }
+            });
+        };
+
+        if (contextFilter) contextFilter.addEventListener('change', () => {
+            if (personFilter) personFilter.value = 'all'; // Reset other filter
+            applyFilters();
+        });
+        if (personFilter) personFilter.addEventListener('change', () => {
+            if (contextFilter) contextFilter.value = 'all'; // Reset other filter
+            applyFilters();
+        });
+
+
+        // --- Event Delegation for all other clicks ---
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
 
-            // Use event delegation to handle all clicks
+            // Handle view switcher and refresh buttons
             const button = target.closest('button');
             if (button) {
                 if (button.classList.contains('gtd-view-button')) {
@@ -87,6 +134,19 @@ export class GtdView extends ItemView {
                     }
                 } else if (button.classList.contains('gtd-refresh-button')) {
                     this.drawView();
+                }
+                return;
+            }
+
+            // Handle quick navigation links
+            const navLink = target.closest('.gtd-nav-link');
+            if (navLink) {
+                event.preventDefault();
+                const targetId = navLink.getAttribute('href');
+                const targetElement = container.querySelector(targetId) as HTMLElement;
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                    (targetElement as HTMLDetailsElement).open = true;
                 }
                 return;
             }

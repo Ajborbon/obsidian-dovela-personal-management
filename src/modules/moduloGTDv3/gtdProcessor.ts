@@ -1,5 +1,5 @@
 
-import type { Task } from './model.js';
+import type { Task, ProcessedVaultData } from './model.js';
 import { isDatePast, isDateToday, isDateFuture, isWeekPast, isWeekToday, isWeekFuture } from './dateUtils.js';
 
 export enum GtdList {
@@ -15,7 +15,7 @@ export enum GtdList {
     Overdue = 'Vencidas',
 }
 
-export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>): Record<GtdList, Task[]> {
+export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>): Omit<ProcessedVaultData, 'hierarchicalData' | 'allTasks'> {
     const gtdLists: Record<GtdList, Task[]> = {
         [GtdList.Inbox]: [],
         [GtdList.NextActions]: [],
@@ -29,8 +29,15 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
         [GtdList.Overdue]: [],
     };
 
+    const uniqueContexts = new Set<string>();
+    const uniquePeople = new Set<string>();
+
     for (const task of allTasks) {
         if (task.completed) continue;
+
+        // Collect contexts and people only from open tasks
+        task.contexts.forEach(context => uniqueContexts.add(context));
+        task.assignedPeople.forEach(person => uniquePeople.add(person));
 
         const isPausedByDependency = task.dependencies.some(depId => {
             const depTask = allTaskMap.get(depId.replace(/^\^/, '')); // Handle IDs with or without '^'
@@ -85,5 +92,9 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
         }
     }
 
-    return gtdLists;
+    return {
+        gtdLists,
+        uniqueContexts: Array.from(uniqueContexts).sort(),
+        uniquePeople: Array.from(uniquePeople).sort(),
+    };
 }
