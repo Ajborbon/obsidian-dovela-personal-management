@@ -200,6 +200,8 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
 export async function parseVault(vault: Vault, metadataCache: MetadataCache): Promise<ProcessedVaultData> {
     const processedItems: HierarchicalItem[] = [];
     let allTasks: Task[] = [];
+    const uniqueContexts = new Set<string>();
+    const uniquePeople = new Set<string>();
 
     for (const file of vault.getMarkdownFiles()) {
         if (shouldBeExcluded(file)) continue;
@@ -209,6 +211,12 @@ export async function parseVault(vault: Vault, metadataCache: MetadataCache): Pr
         const itemType = determineItemType(file, metadataCache);
         const tasks = parseTasks(content, file);
         allTasks = allTasks.concat(tasks);
+
+        // Collect unique contexts and people
+        tasks.forEach(task => {
+            task.contexts.forEach(context => uniqueContexts.add(context));
+            task.assignedPeople.forEach(person => uniquePeople.add(person));
+        });
 
         processedItems.push({
             id: file.path, type: itemType, name: file.basename, file: file,
@@ -220,5 +228,7 @@ export async function parseVault(vault: Vault, metadataCache: MetadataCache): Pr
         hierarchicalData: processedItems,
         gtdLists: {},
         allTasks: allTasks,
+        uniqueContexts: Array.from(uniqueContexts),
+        uniquePeople: Array.from(uniquePeople),
     };
 }

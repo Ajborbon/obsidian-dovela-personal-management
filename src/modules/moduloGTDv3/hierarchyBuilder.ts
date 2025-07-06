@@ -8,10 +8,16 @@ const TYPE_ORDER: Record<HierarchicalItemType, number> = {
     'H': 21, 'Y': 22
 };
 
-function sortChildrenRecursive(item: HierarchicalItem): void {
+function sortChildrenRecursive(item: HierarchicalItem, level: number = 0): void {
     if (!item.children || item.children.length === 0) return;
 
     item.children.sort((a: HierarchicalItem, b: HierarchicalItem) => {
+        // Lógica de ordenamiento específica para el primer nivel (Grupos de Áreas de Vida)
+        if (level === 0) {
+            return a.name.localeCompare(b.name);
+        }
+
+        // Lógica de ordenamiento existente para niveles más profundos
         const typeOrderA = TYPE_ORDER[a.type] ?? 99;
         const typeOrderB = TYPE_ORDER[b.type] ?? 99;
         if (typeOrderA !== typeOrderB) return typeOrderA - typeOrderB;
@@ -20,13 +26,14 @@ function sortChildrenRecursive(item: HierarchicalItem): void {
         const estadoB = b.frontmatter?.['estado'];
         if (estadoA && estadoB && estadoA !== estadoB) return (estadoA as string).localeCompare(estadoB as string);
 
+        // Si los nombres son iguales, usar la fecha de creación como desempate final
         if (a.file && b.file) return b.file.stat.ctime - a.file.stat.ctime;
 
-        return a.name.localeCompare(b.name);
+        return a.name.localeCompare(b.name); // Desempate final por nombre
     });
 
     for (const child of item.children) {
-        sortChildrenRecursive(child);
+        sortChildrenRecursive(child, level + 1); // Pasar el nivel incrementado
     }
 }
 
@@ -102,7 +109,7 @@ export function buildHierarchy(items: HierarchicalItem[]): HierarchicalItem[] {
         // A simple way is to check if its path is a key in the hierarchyMap. If it is, it's a folder note.
         if (!hierarchyMap.has(path)) {
              // It's a regular note, not a folder note that has been used for a folder path key
-            const isFolderNote = (hierarchyMap.get(note.file.path.split('/').slice(0, -1).join('/')) === note);
+            const isFolderNote = (note.file && hierarchyMap.get(note.file.path.split('/').slice(0, -1).join('/')) === note);
             if (!isFolderNote) {
                 hierarchyMap.set(path, note);
             }
@@ -145,7 +152,7 @@ export function buildHierarchy(items: HierarchicalItem[]): HierarchicalItem[] {
 
     // 7. Perform final calculations and sorting.
     calculateTaskCountsRecursive(virtualRoot);
-    sortChildrenRecursive(virtualRoot);
+    sortChildrenRecursive(virtualRoot, 0);
 
     return [virtualRoot];
 }

@@ -6,7 +6,7 @@ import { parseVault } from './parser.js';
 import { buildHierarchy } from './hierarchyBuilder.js';
 import { processGtdLists } from './gtdProcessor.js';
 import { generateGtdViewHtml } from './htmlGenerator.js';
-import type { ProcessedVaultData, HierarchicalItem, Task } from './model.js';
+import type { ProcessedVaultData, HierarchicalItem } from './model.js';
 
 export const GTD_VIEW_TYPE = 'gtd-view';
 export const GTD_VIEW_DISPLAY_TEXT = 'GTD Dashboard';
@@ -14,7 +14,7 @@ export const GTD_VIEW_ICON = 'list-checks';
 
 export class GtdView extends ItemView {
     private activeView: 'hierarchy' | 'gtd' = 'hierarchy';
-    private eventAbortController: AbortController;
+    private eventAbortController: AbortController = new AbortController();
 
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
@@ -116,25 +116,26 @@ export class GtdView extends ItemView {
             const selectedContext = contextFilter.value;
             const selectedPerson = personFilter.value;
 
-            container.querySelectorAll('.gtd-task').forEach((taskEl: HTMLElement) => {
-                const taskContexts: string[] = JSON.parse(taskEl.dataset.contexts || '[]');
-                const taskPeople: string[] = JSON.parse(taskEl.dataset.people || '[]');
+            container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
+                const htmlTaskEl = taskEl as HTMLElement;
+                const taskContexts: string[] = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
+                const taskPeople: string[] = JSON.parse(htmlTaskEl.dataset['people'] || '[]');
 
                 const contextMatch = selectedContext === 'all' || taskContexts.includes(selectedContext);
                 const personMatch = selectedPerson === 'all' || taskPeople.includes(selectedPerson);
 
-                taskEl.style.display = (contextMatch && personMatch) ? '' : 'none';
+                htmlTaskEl.style.display = (contextMatch && personMatch) ? '' : 'none';
             });
 
             // --- Update List and Nav Visibility ---
-            container.querySelectorAll('.gtd-list').forEach((listEl: HTMLElement) => {
-                const visibleTasks = listEl.querySelectorAll('.gtd-task[style*="display: none;"]');
-                const totalTasks = listEl.querySelectorAll('.gtd-task').length;
-                const allTasksHidden = visibleTasks.length === totalTasks;
+            container.querySelectorAll('.gtd-list').forEach((listEl: Element) => {
+                const htmlListEl = listEl as HTMLElement;
+                const visibleTasks = htmlListEl.querySelectorAll('.gtd-task:not([style*="display: none;"])');
+                const allTasksHidden = visibleTasks.length === 0;
                 
-                listEl.style.display = allTasksHidden ? 'none' : '';
+                htmlListEl.style.display = allTasksHidden ? 'none' : '';
 
-                const listId = listEl.id;
+                const listId = htmlListEl.id;
                 const navLink = container.querySelector(`.gtd-quick-nav a[href="#${listId}"]`) as HTMLElement;
                 if (navLink) {
                     navLink.style.display = allTasksHidden ? 'none' : '';
@@ -193,10 +194,12 @@ export class GtdView extends ItemView {
             if (navLink) {
                 event.preventDefault();
                 const targetId = navLink.getAttribute('href');
-                const targetElement = container.querySelector(targetId) as HTMLElement;
-                if (targetElement) {
-                    targetElement.scrollIntoView({ behavior: 'smooth' });
-                    (targetElement as HTMLDetailsElement).open = true;
+                if (targetId) {
+                    const targetElement = container.querySelector(targetId) as HTMLElement;
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth' });
+                        (targetElement as HTMLDetailsElement).open = true;
+                    }
                 }
                 return;
             }
@@ -205,12 +208,17 @@ export class GtdView extends ItemView {
             const link = target.closest('[data-item-path], [data-task-path], .internal-link') as HTMLElement;
             if (link) {
                 event.preventDefault();
-                const path = link.dataset['itemPath'] || link.dataset['taskPath'] || link.getAttribute('href');
+                const itemPath = link.dataset['itemPath'];
+                const taskPath = link.dataset['taskPath'];
+                const hrefPath = link.getAttribute('href');
+
+                const path: string = (itemPath || taskPath || hrefPath || ''); // Ensure path is always a string
+
                 const lineAttr = link.dataset['taskLine'];
                 const line = lineAttr ? parseInt(lineAttr) : 0;
 
-                if (path) {
-                    this.app.workspace.openLinkText(path, '', false, {
+                if (path.length > 0) { // Check if path is not empty
+                    this.app.workspace.openLinkText(path!, '', false, {
                         eState: { line: line }
                     });
                 }
