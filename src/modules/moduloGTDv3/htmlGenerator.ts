@@ -95,6 +95,13 @@ function renderGtdListsView(gtdLists: Record<GtdList, Task[]>): string {
                     `;
                 }
             }
+        } else if (listName === GtdList.Overdue) {
+            tasks.sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
+            html += `
+                <ul class="gtd-task-list">
+                    ${tasks.map(renderTask).join('')}
+                </ul>
+            `;
         } else if (listName === GtdList.Assigned) {
             const grouped: Record<string, Task[]> = {};
             for (const task of tasks) {
