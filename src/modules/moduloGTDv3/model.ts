@@ -38,6 +38,8 @@ export type HierarchicalItemType =
     | 'Y'    // Anual
     ;
 
+export type DateSymbol = '🛫' | '⏳' | '📅';
+
 // Representa una tarea extraída de una nota de Obsidian.
 export interface Task {
     id: string;
@@ -45,8 +47,8 @@ export interface Task {
     completed: boolean;
     priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'None';
     creationDate?: string; // Fecha de creación (formato YYYY-MM-DD)
-    startDate?: string;    // Fecha de inicio/programada (📅 YYYY-MM-DD)
-    dueDate?: string;      // Fecha de vencimiento/deseada (⏳ YYYY-MM-DD)
+    date?: string;         // Fecha asociada a la tarea (YYYY-MM-DD)
+    dateSymbol?: DateSymbol; // Símbolo que precede a la fecha
     startTime?: string;    // Hora de inicio ([hI:: HH:mm])
     endTime?: string;      // Hora de finalización ([hF:: HH:mm])
     duration?: string;     // Duración ([Xmin] o [Xh])

@@ -1,5 +1,5 @@
 import { TFile, Vault, MetadataCache } from 'obsidian';
-import type { HierarchicalItem, Task, ProcessedVaultData, HierarchicalItemType } from './model.js';
+import type { HierarchicalItem, Task, ProcessedVaultData, HierarchicalItemType, DateSymbol } from './model.js';
 
 // --- Configuración de Exclusiones ---
 
@@ -112,15 +112,24 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
             }
             return [];
         };
+        
+        const dateRegex = /(🛫|⏳|📅)\s*(\d{4}-\d{2}-\d{2})/;
+        const dateMatch = currentTaskContent.match(dateRegex);
+        let date: string | undefined;
+        let dateSymbol: DateSymbol | undefined;
 
-        const id = extractAndClean(/\s+\^([a-zA-Z0-9]+)/) || crypto.randomUUID();
-        const startDate = extractAndClean(/📅\s*(\d{4}-\d{2}-\d{2})/);
-        const dueDate = extractAndClean(/⏳\s*(\d{4}-\d{2}-\d{2})/);
-        const startTime = extractAndClean(/\[hI::\s*([^\]]+)\]/);
-        const endTime = extractAndClean(/\[hF::\s*([^\]]+)\]/);
-        const duration = extractAndClean(/\[(\d+h|\d+min)\]/);
-        const week = extractAndClean(/\[w::\s*(\[\[\d{4}-W\d{2}\]\])\]/);
-        const dependencies = extractAndCleanAll(/⛔\s*([a-zA-Z0-9]+)/g);
+        if (dateMatch) {
+            dateSymbol = dateMatch[1] as DateSymbol;
+            date = dateMatch[2];
+            currentTaskContent = currentTaskContent.replace(dateRegex, '').trim();
+        }
+
+        const id = extractAndClean(/\s*(?:\^|🆔)\s*([a-zA-Z0-9]+)/) || crypto.randomUUID();
+        const startTime = extractAndClean(/ \[hI::\s*([^\]]+)\]/);
+        const endTime = extractAndClean(/ \[hF::\s*([^\]]+)\]/);
+        const duration = extractAndClean(/ \[([0-9]+h|[0-9]+min)\]/);
+        const week = extractAndClean(/ \[w::\s*(\[\[\d{4}-W\d{2}\]\])\]/);
+        const dependencies = extractAndCleanAll(/⛔\s*(\^?[a-zA-Z0-9]+)/g);
         const contexts = extractAndCleanAll(/#cx-([\w-]+)/g);
         const assignedPeople = extractAndCleanAll(/#px-([\w-]+)/g);
         const tags = extractAndCleanAll(/#(GTD-AlgunDia|GTD-EstaSemanaNo|inbox)/g);
@@ -176,8 +185,8 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
             hasConflict,
         };
 
-        if (startDate) task.startDate = startDate;
-        if (dueDate) task.dueDate = dueDate;
+        if (date) task.date = date;
+        if (dateSymbol) task.dateSymbol = dateSymbol;
         if (startTime) task.startTime = startTime;
         if (endTime) task.endTime = endTime;
         if (duration) task.duration = duration;

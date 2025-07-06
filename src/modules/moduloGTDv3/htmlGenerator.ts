@@ -1,6 +1,7 @@
 
 import type { HierarchicalItem, Task, ProcessedVaultData } from './model.js';
 import { GtdList } from './gtdProcessor.js';
+import { isDatePast } from './dateUtils.js';
 
 /**
  * Renders a single task item into an HTML string.
@@ -13,7 +14,10 @@ function renderTask(task: Task): string {
     };
 
     let metadataHtml = '';
-    if (task.dueDate) metadataHtml += `<span>📅 ${task.dueDate}</span>`;
+    if (task.date) {
+        const dateClass = isDatePast(task.date) ? 'is-overdue' : '';
+        metadataHtml += `<span class="${dateClass}">${task.dateSymbol} ${task.date}</span>`;
+    }
     if (task.contexts.length > 0) metadataHtml += `<span>${task.contexts.join(' ')}</span>`;
     if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
 
@@ -64,30 +68,26 @@ function renderGtdListsView(gtdLists: Record<GtdList, Task[]>): string {
         `;
 
         if (listName === GtdList.HopeToday) {
-            // Sort tasks for Hope Today: 📅 first, then by priority
             tasks.sort((a, b) => {
-                const aHasStartDate = a.startDate ? 1 : 0;
-                const bHasStartDate = b.startDate ? 1 : 0;
-                if (aHasStartDate !== bHasStartDate) return bHasStartDate - aHasStartDate; // 📅 (startDate) has priority
+                const aIsCalendar = a.dateSymbol === '📅' ? 0 : 1;
+                const bIsCalendar = b.dateSymbol === '📅' ? 0 : 1;
+                if (aIsCalendar !== bIsCalendar) return aIsCalendar - bIsCalendar;
                 return a.priority.localeCompare(b.priority);
             });
 
-            // Group by context
-            const groupedByContext: Record<string, Task[]> = {};
+            const grouped: Record<string, Task[]> = {};
             for (const task of tasks) {
-                const key = task.contexts.length > 0 ? task.contexts.join(', ') : 'Sin Contexto';
-                if (!groupedByContext[key]) {
-                    groupedByContext[key] = [];
-                }
-                groupedByContext[key].push(task);
+                const key = task.contexts[0] || task.assignedPeople[0] || 'Sin Contexto';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(task);
             }
 
-            for (const context in groupedByContext) {
-                const groupTasks = groupedByContext[context];
+            for (const groupName in grouped) {
+                const groupTasks = grouped[groupName];
                 if (groupTasks) {
                     html += `
                         <div class="gtd-group">
-                            <div class="gtd-group-title">${context}</div>
+                            <div class="gtd-group-title">${groupName}</div>
                             <ul class="gtd-task-list">
                                 ${groupTasks.map(renderTask).join('')}
                             </ul>
@@ -95,7 +95,27 @@ function renderGtdListsView(gtdLists: Record<GtdList, Task[]>): string {
                     `;
                 }
             }
+        } else if (listName === GtdList.Assigned) {
+            const grouped: Record<string, Task[]> = {};
+            for (const task of tasks) {
+                const key = task.assignedPeople[0] || 'Sin Asignar';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(task);
+            }
 
+            for (const groupName in grouped) {
+                const groupTasks = grouped[groupName];
+                if (groupTasks) {
+                    html += `
+                        <div class="gtd-group">
+                            <div class="gtd-group-title">${groupName}</div>
+                            <ul class="gtd-task-list">
+                                ${groupTasks.map(renderTask).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
         } else {
             html += `
                 <ul class="gtd-task-list">
