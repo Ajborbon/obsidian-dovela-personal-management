@@ -40,19 +40,73 @@ function renderTask(task: Task): string {
  */
 function renderGtdListsView(gtdLists: Record<GtdList, Task[]>): string {
     let html = '<div class="gtd-lists-container">';
-    for (const listName in gtdLists) {
-        const tasks = gtdLists[listName as GtdList];
+
+    const listOrder: GtdList[] = [
+        GtdList.Inbox,
+        GtdList.NextActions,
+        GtdList.Calendar,
+        GtdList.HopeToday,
+        GtdList.Overdue,
+        GtdList.Assigned,
+        GtdList.Projects,
+        GtdList.Paused,
+        GtdList.ThisWeekNot,
+        GtdList.SomedayMaybe,
+    ];
+
+    for (const listName of listOrder) {
+        const tasks = gtdLists[listName];
         if (!tasks || tasks.length === 0) continue;
 
         html += `
             <details class="gtd-list" open>
                 <summary>${listName} <span class="gtd-list-count">(${tasks.length})</span></summary>
+        `;
+
+        if (listName === GtdList.HopeToday) {
+            // Sort tasks for Hope Today: 📅 first, then by priority
+            tasks.sort((a, b) => {
+                const aHasStartDate = a.startDate ? 1 : 0;
+                const bHasStartDate = b.startDate ? 1 : 0;
+                if (aHasStartDate !== bHasStartDate) return bHasStartDate - aHasStartDate; // 📅 (startDate) has priority
+                return a.priority.localeCompare(b.priority);
+            });
+
+            // Group by context
+            const groupedByContext: Record<string, Task[]> = {};
+            for (const task of tasks) {
+                const key = task.contexts.length > 0 ? task.contexts.join(', ') : 'Sin Contexto';
+                if (!groupedByContext[key]) {
+                    groupedByContext[key] = [];
+                }
+                groupedByContext[key].push(task);
+            }
+
+            for (const context in groupedByContext) {
+                const groupTasks = groupedByContext[context];
+                if (groupTasks) {
+                    html += `
+                        <div class="gtd-group">
+                            <div class="gtd-group-title">${context}</div>
+                            <ul class="gtd-task-list">
+                                ${groupTasks.map(renderTask).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
+
+        } else {
+            html += `
                 <ul class="gtd-task-list">
                     ${tasks.map(renderTask).join('')}
                 </ul>
-            </details>
-        `;
+            `;
+        }
+
+        html += `</details>`;
     }
+
     html += '</div>';
     return html;
 }

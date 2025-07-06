@@ -1,5 +1,3 @@
-
-
 import { TFile, Vault, MetadataCache } from 'obsidian';
 import type { HierarchicalItem, Task, ProcessedVaultData, HierarchicalItemType } from './model.js';
 
@@ -50,6 +48,35 @@ function shouldBeExcluded(file: TFile): boolean {
     return false;
 }
 
+// Helper function to parse time strings (HH:mm or hham/pm) into minutes from midnight
+function parseTimeToMinutes(timeStr: string | undefined): number | null {
+    if (!timeStr) return null;
+
+    const ampmMatch = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+    if (ampmMatch) {
+        let hours = parseInt(ampmMatch[1] || "0", 10);
+        const minutes = ampmMatch[2] ? parseInt(ampmMatch[2], 10) : 0;
+        const period = (ampmMatch[3] || "").toLowerCase();
+
+        if (hours === 12) {
+            hours = period === 'am' ? 0 : 12;
+        } else if (period === 'pm' && hours < 12) {
+            hours += 12;
+        }
+        
+        return hours * 60 + minutes;
+    }
+
+    const militaryMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (militaryMatch) {
+        const hours = parseInt(militaryMatch[1] || "0", 10);
+        const minutes = parseInt(militaryMatch[2] || "0", 10);
+        return hours * 60 + minutes;
+    }
+
+    return null; // Invalid format
+}
+
 function parseTasks(content: string, sourceFile: TFile): Task[] {
     const tasks: Task[] = [];
     const lines = content.split('\n');
@@ -59,29 +86,28 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
         const line = lines[i];
         if (!line) continue;
         const match = line.match(taskRegex);
-        if (!match) continue;
+        if (!match || !match[2]) continue;
 
-        let taskContent: string | undefined = match[2];
-        if (taskContent === undefined) continue;
+        let currentTaskContent: string = match[2];
 
         const completed = match[1]?.toLowerCase() === 'x';
 
         const extractAndClean = (regex: RegExp): string | undefined => {
-            const match = taskContent?.match(regex);
-            if (match && taskContent) {
-                taskContent = taskContent.replace(regex, '').trim();
-                return match[1];
+            const matchResult = currentTaskContent.match(regex);
+            if (matchResult && matchResult[1] !== undefined) {
+                currentTaskContent = currentTaskContent.replace(regex, '').trim();
+                return matchResult[1];
             }
             return undefined;
         };
 
         const extractAndCleanAll = (regex: RegExp): string[] => {
-            const allMatches = taskContent?.match(regex);
-            if (allMatches && taskContent) {
-                taskContent = taskContent.replace(regex, '').trim();
+            const allMatches = currentTaskContent.match(regex);
+            if (allMatches) {
+                currentTaskContent = currentTaskContent.replace(regex, '').trim();
                 return allMatches.map(match => {
                     const captureGroup = new RegExp(regex.source.replace(/\\g$/, '')).exec(match);
-                    return captureGroup ? captureGroup[1] : null;
+                    return captureGroup && captureGroup[1] !== undefined ? captureGroup[1] : null;
                 }).filter((value): value is string => value !== null);
             }
             return [];
@@ -99,20 +125,46 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
         const assignedPeople = extractAndCleanAll(/#px-([\w-]+)/g);
         const tags = extractAndCleanAll(/#(GTD-AlgunDia|GTD-EstaSemanaNo|inbox)/g);
 
-        const priorityMatch = taskContent?.match(/(⏫|🔼|🔽|⏬)/);
+        let hasConflict = false;
+
+        // Conflict detection logic
+        if (startTime && endTime) {
+            const startMinutes = parseTimeToMinutes(startTime);
+            const endMinutes = parseTimeToMinutes(endTime);
+
+            if (startMinutes === null || endMinutes === null) {
+                hasConflict = true; // Invalid time format
+            } else if (endMinutes <= startMinutes) {
+                hasConflict = true; // End time is before or same as start time
+            }
+
+            if (duration && !hasConflict && startMinutes !== null && endMinutes !== null) {
+                const durationMatch = duration.match(/(\d+)(h|min)/);
+                if (durationMatch) {
+                    const value = parseInt(durationMatch[1] || '0', 10);
+                    const unit = durationMatch[2] || '';
+                    const durationMinutes = unit === 'h' ? value * 60 : value;
+                    if (endMinutes - startMinutes !== durationMinutes) {
+                        hasConflict = true; // Duration does not match start/end times
+                    }
+                }
+            }
+        }
+
+        const priorityMatch = currentTaskContent.match(/(⏫|🔼|🔽|⏬)/);
         let priority: Task['priority'] = 'None';
-        if (priorityMatch && taskContent) {
+        if (priorityMatch) {
             const prioritySymbol = priorityMatch[0];
             if (prioritySymbol === '⏫') priority = 'Highest';
             else if (prioritySymbol === '🔼') priority = 'High';
             else if (prioritySymbol === '🔽') priority = 'Medium';
             else if (prioritySymbol === '⏬') priority = 'Low';
-            taskContent = taskContent.replace(prioritySymbol, '').trim();
+            currentTaskContent = currentTaskContent.replace(prioritySymbol, '').trim();
         }
 
         const task: Task = {
             id,
-            content: taskContent || '',
+            content: currentTaskContent,
             completed,
             priority,
             dependencies,
@@ -121,6 +173,7 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
             tags,
             sourceFile,
             lineNumber: i,
+            hasConflict,
         };
 
         if (startDate) task.startDate = startDate;

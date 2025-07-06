@@ -57,6 +57,7 @@ export interface Task {
     tags: string[];         // Otros tags como #inbox, #GTD-AlgunDia
     sourceFile: TFile;
     lineNumber: number;
+    hasConflict?: boolean; // True si la tarea tiene metadatos inconsistentes.
 }
 
 // Representa un elemento en la jerarquía del vault (una nota o un grupo de notas).
