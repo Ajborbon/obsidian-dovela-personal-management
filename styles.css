@@ -58,6 +58,7 @@
 
 .gtd-list {
     margin-bottom: 15px;
+    scroll-margin-top: 160px; /* Offset for sticky header */
 }
 
 .gtd-list > summary {
