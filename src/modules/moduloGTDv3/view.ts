@@ -15,6 +15,8 @@ export const GTD_VIEW_ICON = 'list-checks';
 
 export class GtdView extends ItemView {
     private activeView: 'hierarchy' | 'gtd' | 'inProgress' = 'hierarchy';
+    private activeGrouping: 'none' | 'context' | 'person' | 'project' = 'none';
+    private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
 
     constructor(leaf: WorkspaceLeaf) {
@@ -83,7 +85,7 @@ export class GtdView extends ItemView {
             // Create a map of all tasks by ID for dependency checking
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
             const { gtdLists, uniqueContexts, uniquePeople } = processGtdLists(parsedData.allTasks, allTaskMap);
-            const inProgressData = processInProgressTasks(parsedData.allTasks);
+            const inProgressData = processInProgressTasks(parsedData.allTasks, this.activeGrouping, this.activeSorting);
 
             const finalData: ProcessedVaultData = {
                 hierarchicalData: hierarchicalData,
@@ -95,7 +97,7 @@ export class GtdView extends ItemView {
             };
 
             // 3. Generate HTML
-            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap);
+            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting);
 
             // 4. Render and add interactivity
             this.contentEl.empty();
@@ -176,6 +178,22 @@ export class GtdView extends ItemView {
                         this.activeView = view;
                         this.drawView();
                     }
+                } else if (button.classList.contains('gtd-grouping-button')) {
+                    const grouping = button.getAttribute('data-grouping') as 'none' | 'context' | 'person' | 'project';
+                    if (grouping && grouping !== this.activeGrouping) {
+                        this.activeGrouping = grouping;
+                        this.drawView();
+                    }
+                } else if (button.classList.contains('gtd-sorting-button')) {
+                    const currentSort = this.activeSorting;
+                    if (currentSort === 'priority') {
+                        this.activeSorting = 'duration-asc';
+                    } else if (currentSort === 'duration-asc') {
+                        this.activeSorting = 'duration-desc';
+                    } else {
+                        this.activeSorting = 'priority';
+                    }
+                    this.drawView();
                 } else if (button.classList.contains('gtd-refresh-button')) {
                     this.drawView();
                 } else if (button.classList.contains('gtd-hierarchy-control-button')) {

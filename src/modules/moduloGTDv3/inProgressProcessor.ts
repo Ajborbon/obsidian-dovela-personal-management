@@ -1,6 +1,9 @@
 import type { Task, InProgressData } from './model.js';
 import { isDatePast } from './dateUtils.js';
 
+type Grouping = 'none' | 'context' | 'person' | 'project';
+type Sorting = 'priority' | 'duration-asc' | 'duration-desc';
+
 function parseDuration(duration: string | undefined): number {
     if (!duration) return 0;
     const match = duration.match(/(\d+\.?\d*)\s*(h|min|m)/);
@@ -12,50 +15,132 @@ function parseDuration(duration: string | undefined): number {
     if (unit === 'h') {
         return value * 60;
     }
-    // Handles 'min' and 'm'
     return value;
 }
 
-export function processInProgressTasks(tasks: Task[]): InProgressData {
-    const inProgressTasks = tasks.filter(task => task.status === 'in-progress');
+function getProjectGroupForTask(task: Task): string {
+    const pathParts = task.sourceFile.path.split('/').slice(0, -1); // Directorios padre
 
-    const overdueTasks: Task[] = [];
-    const todayTasks: Task[] = [];
-    const otherTasks: Task[] = [];
+    // 1. Buscar PGTD
+    const pgtd = pathParts.find(part => part.startsWith('PGTD - '));
+    if (pgtd) return `📂 ${pgtd}`;
 
-    let totalDurationMinutes = 0;
+    // 2. Buscar AI más profundo
+    const ais = pathParts.filter(part => part.startsWith('AI - '));
+    if (ais.length > 0) return `🧠 ${ais[ais.length - 1]}`;
 
-    for (const task of inProgressTasks) {
-        totalDurationMinutes += parseDuration(task.duration);
-
-        if (task.date && isDatePast(task.date)) {
-            overdueTasks.push(task);
-        } else if (task.date) { // Assuming tasks with a date are for today or future
-            todayTasks.push(task);
-        } else {
-            otherTasks.push(task);
+    // 3. Buscar Contenedor Estructural
+    const structuralPrefixes = ['AV -', 'PQ -', 'RR -'];
+    for (let i = pathParts.length - 1; i >= 0; i--) {
+        const part = pathParts[i];
+        if (structuralPrefixes.some(prefix => part.startsWith(prefix))) {
+            return `🏠 ${part}`;
         }
     }
 
-    // Sorting logic
-    const sortByPriority = (a: Task, b: Task) => {
+    // 4. Usar Carpeta Padre Inmediata
+    if (pathParts.length > 0) {
+        return `📁 ${pathParts[pathParts.length - 1]}`;
+    }
+
+    // 5. Grupo por Defecto
+    return 'Tareas Generales';
+}
+
+function sortTasks(tasks: Task[], sorting: Sorting) {
+    tasks.sort((a, b) => {
+        if (sorting === 'duration-asc') {
+            return (parseDuration(a.duration) || 9999) - (parseDuration(b.duration) || 9999);
+        }
+        if (sorting === 'duration-desc') {
+            return (parseDuration(b.duration) || 0) - (parseDuration(a.duration) || 0);
+        }
+        // Default: priority
         const priorityOrder = { 'Highest': 0, 'High': 1, 'Medium': 2, 'Low': 3, 'None': 4 };
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
+        if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        }
+        if (a.date && b.date) {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+        }
+        return 0;
+    });
+}
+
+export function processInProgressTasks(
+    tasks: Task[],
+    grouping: Grouping,
+    sorting: Sorting
+): InProgressData {
+    const inProgressTasks = tasks.filter(task => task.status === 'in-progress');
+
+    let definedTimeMinutes = 0;
+    let estimatedTimeMinutes = 0;
+
+    for (const task of inProgressTasks) {
+        const duration = parseDuration(task.duration);
+        if (duration > 0) {
+            definedTimeMinutes += duration;
+            estimatedTimeMinutes += duration;
+        } else {
+            estimatedTimeMinutes += 20; // Default duration
+        }
+    }
+
+    const stats = {
+        total: inProgressTasks.length,
+        overdue: inProgressTasks.filter(t => t.date && isDatePast(t.date)).length,
+        definedTimeMinutes,
+        estimatedTimeMinutes,
     };
 
-    overdueTasks.sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
-    todayTasks.sort(sortByPriority);
-    otherTasks.sort(sortByPriority);
+    const groups: { [groupName: string]: Task[] } = {};
+
+    if (grouping === 'none') {
+        const overdue: Task[] = [];
+        const today: Task[] = [];
+        const other: Task[] = [];
+        for (const task of inProgressTasks) {
+            if (task.date && isDatePast(task.date)) {
+                overdue.push(task);
+            } else if (task.date) {
+                today.push(task);
+            } else {
+                other.push(task);
+            }
+        }
+        sortTasks(overdue, 'priority');
+        sortTasks(today, sorting);
+        sortTasks(other, sorting);
+        if(overdue.length > 0) groups['🔴 Vencidas'] = overdue;
+        if(today.length > 0) groups['⭐ Prioridades de Hoy'] = today;
+        if(other.length > 0) groups['Otras Tareas'] = other;
+
+    } else {
+        for (const task of inProgressTasks) {
+            let groupNames: string[] = [];
+            if (grouping === 'context') {
+                groupNames = task.contexts.length > 0 ? task.contexts.map(c => `@${c}`) : ['Sin Contexto'];
+            } else if (grouping === 'person') {
+                groupNames = task.assignedPeople.length > 0 ? task.assignedPeople.map(p => `@${p}`) : ['Sin Asignar'];
+            } else if (grouping === 'project') {
+                groupNames = [getProjectGroupForTask(task)];
+            }
+
+            for (const groupName of groupNames) {
+                if (!groups[groupName]) {
+                    groups[groupName] = [];
+                }
+                groups[groupName].push(task);
+            }
+        }
+        for (const groupName in groups) {
+            sortTasks(groups[groupName], sorting);
+        }
+    }
 
     return {
-        inProgressTasks,
-        overdueTasks,
-        todayTasks,
-        otherTasks,
-        stats: {
-            total: inProgressTasks.length,
-            overdue: overdueTasks.length,
-            totalDurationMinutes,
-        },
+        groups,
+        stats,
     };
 }

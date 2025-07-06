@@ -90,13 +90,11 @@ export interface ProcessedVaultData {
 }
 
 export interface InProgressData {
-    inProgressTasks: Task[];
-    overdueTasks: Task[];
-    todayTasks: Task[];
-    otherTasks: Task[];
+    groups: { [groupName: string]: Task[] };
     stats: {
         total: number;
         overdue: number;
-        totalDurationMinutes: number;
+        definedTimeMinutes: number;
+        estimatedTimeMinutes: number;
     };
 }

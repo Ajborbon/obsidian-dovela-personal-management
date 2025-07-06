@@ -2,6 +2,9 @@ import type { HierarchicalItem, Task, ProcessedVaultData, InProgressData } from 
 import { GtdList } from './gtdProcessor.js';
 import { isDatePast } from './dateUtils.js';
 
+type Grouping = 'none' | 'context' | 'person' | 'project';
+type Sorting = 'priority' | 'duration-asc' | 'duration-desc';
+
 function renderInProgressTask(task: Task, breadcrumb: string): string {
     const prioritySymbols: Record<Task['priority'], string> = {
         Highest: '⏫', High: '🔼', Medium: '🔽', Low: '⏬', None: ''
@@ -17,7 +20,7 @@ function renderInProgressTask(task: Task, breadcrumb: string): string {
     }
     if (task.contexts.length > 0) metadataHtml += `<span>${task.contexts.join(' ')}</span>`;
     if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
-    metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>'; // Add toggle icon
+    metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>';
 
     const linkedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
         '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
@@ -42,53 +45,73 @@ function renderInProgressTask(task: Task, breadcrumb: string): string {
     `;
 }
 
-function renderInProgressView(data: InProgressData, taskBreadcrumbMap: Map<string, string>): string {
-    const { stats, overdueTasks, todayTasks, otherTasks } = data;
-    const hours = Math.floor(stats.totalDurationMinutes / 60);
-    const minutes = stats.totalDurationMinutes % 60;
-    const durationString = `${hours}h ${minutes}min`;
+function renderInProgressView(
+    data: InProgressData, 
+    taskBreadcrumbMap: Map<string, string>,
+    activeGrouping: Grouping,
+    activeSorting: Sorting
+): string {
+    const { stats, groups } = data;
+    
+    const formatDuration = (minutes: number) => {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return `${hours}h ${mins}min`;
+    };
+
+    const definedTimeString = formatDuration(stats.definedTimeMinutes);
+    const estimatedTimeString = formatDuration(stats.estimatedTimeMinutes);
+
+    const sortButtonText = {
+        'priority': 'Ordenar por Duración',
+        'duration-asc': 'Duración (menor a mayor) 🔼',
+        'duration-desc': 'Duración (mayor a menor) 🔽'
+    };
 
     let html = `
-        <div class="in-progress-header">
-            <span>Tareas Activas: <strong>${stats.total}</strong></span>
-            <span>Tiempo Estimado: <strong>${durationString}</strong></span>
-            ${stats.overdue > 0 ? `<span>Vencidas: <strong class="is-overdue">${stats.overdue}</strong></span>` : ''}
+        <div class="gtd-control-panel">
+            <div class="gtd-stats-header">
+                <div class="gtd-stat">
+                    <span class="gtd-stat-label">Tareas Activas</span>
+                    <span class="gtd-stat-value">${stats.total}</span>
+                </div>
+                <div class="gtd-stat">
+                    <span class="gtd-stat-label">Tiempo Definido</span>
+                    <span class="gtd-stat-value">${definedTimeString}</span>
+                </div>
+                <div class="gtd-stat">
+                    <span class="gtd-stat-label">Tiempo Estimado</span>
+                    <span class="gtd-stat-value">${estimatedTimeString}</span>
+                </div>
+                ${stats.overdue > 0 ? `
+                <div class="gtd-stat">
+                    <span class="gtd-stat-label">Vencidas</span>
+                    <span class="gtd-stat-value is-overdue">${stats.overdue}</span>
+                </div>` : ''}
+            </div>
+            <div class="gtd-focus-controls">
+                <span>Agrupar por:</span>
+                <button class="gtd-grouping-button ${activeGrouping === 'none' ? 'active' : ''}" data-grouping="none">Ninguno</button>
+                <button class="gtd-grouping-button ${activeGrouping === 'context' ? 'active' : ''}" data-grouping="context">Contexto</button>
+                <button class="gtd-grouping-button ${activeGrouping === 'person' ? 'active' : ''}" data-grouping="person">Persona</button>
+                <button class="gtd-grouping-button ${activeGrouping === 'project' ? 'active' : ''}" data-grouping="project">Proyecto</button>
+                <button class="gtd-sorting-button">${sortButtonText[activeSorting]}</button>
+            </div>
         </div>
         <div class="in-progress-container">
     `;
 
     const renderTaskWithBreadcrumb = (task: Task) => renderInProgressTask(task, taskBreadcrumbMap.get(task.id) || '');
 
-    if (overdueTasks.length > 0) {
+    for (const groupName in groups) {
+        const groupTasks = groups[groupName];
         html += `
-            <div class="gtd-group">
-                <div class="gtd-group-title">🔴 Vencidas</div>
+            <details class="gtd-group" open>
+                <summary>${groupName} <span class="gtd-list-count">(${groupTasks.length})</span></summary>
                 <ul class="gtd-task-list">
-                    ${overdueTasks.map(renderTaskWithBreadcrumb).join('')}
+                    ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
                 </ul>
-            </div>
-        `;
-    }
-
-    if (todayTasks.length > 0) {
-        html += `
-            <div class="gtd-group">
-                <div class="gtd-group-title">⭐ Prioridades de Hoy</div>
-                <ul class="gtd-task-list">
-                    ${todayTasks.map(renderTaskWithBreadcrumb).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    if (otherTasks.length > 0) {
-        html += `
-            <div class="gtd-group">
-                <div class="gtd-group-title">Otras Tareas</div>
-                <ul class="gtd-task-list">
-                    ${otherTasks.map(renderTaskWithBreadcrumb).join('')}
-                </ul>
-            </div>
+            </details>
         `;
     }
 
@@ -96,12 +119,6 @@ function renderInProgressView(data: InProgressData, taskBreadcrumbMap: Map<strin
     return html;
 }
 
-/**
- * Renders a single task item into an HTML string.
- * @param task The task to render.
- * @param breadcrumb The hierarchical path of the task's source note.
- * @returns An HTML string for the task.
- */
 function renderTask(task: Task, breadcrumb: string): string {
     const prioritySymbols: Record<Task['priority'], string> = {
         Highest: '⏫', High: '🔼', Medium: '🔽', Low: '⏬', None: ''
@@ -114,9 +131,8 @@ function renderTask(task: Task, breadcrumb: string): string {
     }
     if (task.contexts.length > 0) metadataHtml += `<span>${task.contexts.join(' ')}</span>`;
     if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
-    metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>'; // Add toggle icon
+    metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>';
 
-    // Convert wikilinks to clickable data-attributes
     const linkedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
         '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
     );
@@ -139,17 +155,10 @@ function renderTask(task: Task, breadcrumb: string): string {
     `;
 }
 
-/**
- * Renders the GTD Lists view into an HTML string.
- * @param data The processed data from the vault.
- * @param taskBreadcrumbMap A map from task ID to its breadcrumb path.
- * @returns An HTML string for the GTD lists view.
- */
 function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
     const { gtdLists, uniqueContexts, uniquePeople } = data;
     let html = '<div class="gtd-lists-container">';
 
-    // --- Render Filters ---
     html += `
         <div class="gtd-filters">
             <div class="gtd-filter-group">
@@ -175,7 +184,6 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         GtdList.ThisWeekNot, GtdList.SomedayMaybe,
     ];
 
-    // --- Render Quick Navigation ---
     const navLinks = listOrder
         .filter(listName => gtdLists[listName] && gtdLists[listName].length > 0)
         .map(listName => `
@@ -184,7 +192,6 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
     
     html += `<nav class="gtd-quick-nav">${navLinks}</nav>`;
 
-    // --- Render Task Lists ---
     for (const listName of listOrder) {
         const tasks = gtdLists[listName];
         if (!tasks || tasks.length === 0) continue;
@@ -272,22 +279,14 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
     return html;
 }
 
-/**
- * Recursively renders the hierarchical view into an HTML string using a nested card design.
- * @param item The current hierarchical item to render.
- * @param level The current depth level of the recursion.
- * @returns An HTML string for the item and its children.
- */
 function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0): string {
     const hasChildren = item.children && item.children.length > 0;
-    // Clicks should open the note, so the path is on the header.
     const itemPathAttr = item.file ? `data-item-path="${item.file.path}"` : '';
     const totalTasks = item.ownTaskCount + item.descendantTaskCount;
 
     const estado = item.frontmatter?.['estado'] ? `<span class="gtd-card-estado">${item.frontmatter['estado']}</span>` : '';
     const missingClass = item.isNoteMissing ? 'is-missing' : '';
 
-    // The header contains all the main info and is clickable.
     const cardHeader = `
         <div class="gtd-card-header" ${itemPathAttr}>
             <span class="gtd-card-type-icon" data-type="${item.type}"></span>
@@ -301,12 +300,9 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
     `;
 
     if (!hasChildren) {
-        // Leaf node: just a simple container with the header.
         return `<div class="gtd-card-leaf ${missingClass}">${cardHeader}</div>`;
     }
 
-    // Node with children: use <details> for collapsibility.
-    // Only expand the first two levels by default to keep the view clean.
     const openAttr = level < 2 ? 'open' : '';
 
     return `
@@ -319,14 +315,13 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
     `;
 }
 
-/**
- * Generates the complete HTML for the GTD view, including view-switcher controls.
- * @param data The processed data from the vault.
- * @param activeView The view to display ('hierarchy' or 'gtd').
- * @param taskBreadcrumbMap A map from task ID to its breadcrumb path.
- * @returns The complete HTML string for the view.
- */
-export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hierarchy' | 'gtd' | 'inProgress', taskBreadcrumbMap: Map<string, string>): string {
+export function generateGtdViewHtml(
+    data: ProcessedVaultData, 
+    activeView: 'hierarchy' | 'gtd' | 'inProgress', 
+    taskBreadcrumbMap: Map<string, string>,
+    activeGrouping: Grouping,
+    activeSorting: Sorting
+): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
     const hierarchyActiveClass = activeView === 'hierarchy' ? 'active' : '';
@@ -345,7 +340,7 @@ export function generateGtdViewHtml(data: ProcessedVaultData, activeView: 'hiera
     } else if (activeView === 'gtd') {
         viewContent = renderGtdListsView(data, taskBreadcrumbMap);
     } else if (activeView === 'inProgress') {
-        viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap);
+        viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap, activeGrouping, activeSorting);
     }
 
     return `

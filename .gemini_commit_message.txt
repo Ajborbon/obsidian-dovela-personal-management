@@ -1,20 +1,20 @@
-feat(gtd): Implementa la vista "En Progreso" para tareas activas
+feat(gtd): Añade controles dinámicos y mejora la UX de la vista "En Progreso"
 
-Se ha añadido una nueva vista al dashboard de GTD llamada "En Progreso", diseñada para proporcionar un centro de mando enfocado en las tareas que el usuario ha marcado como activas (`- [/]`).
+Se ha mejorado significativamente la vista "En Progreso" para convertirla en un panel de control dinámico, añadiendo nuevas capacidades de agrupación y ordenamiento, y refinando la interfaz de usuario para una mejor experiencia.
 
 **Cambios Principales:**
 
-1.  **Reconocimiento del Estado `[/]`:**
-    *   Se ha modificado el `parser.ts` para que reconozca el estado `[/]` como 'in-progress'.
-    *   Se ha actualizado el modelo de datos en `model.ts`, añadiendo un campo `status` a la interfaz `Task` para manejar los estados ('incomplete', 'completed', 'in-progress').
+1.  **Controles de Foco Dinámicos:**
+    *   Se ha implementado una nueva sección de "Controles de Foco" que permite a los usuarios **agrupar** las tareas activas por `Contexto`, `Persona` o `Proyecto`.
+    *   Se ha añadido un botón de **ordenamiento** cíclico para organizar las tareas por `Duración` (ascendente/descendente) o volver al orden por `Prioridad` por defecto.
+    *   La lógica de agrupación por `Proyecto` sigue un algoritmo refinado (PGTD > AI > Prefijo Estructural > Carpeta) para una clasificación más inteligente.
 
-2.  **Nueva Lógica de Procesamiento:**
-    *   Se ha creado un nuevo módulo `inProgressProcessor.ts` que aísla la lógica para esta vista.
-    *   Este procesador filtra las tareas "en progreso", calcula estadísticas (total de tareas, vencidas, tiempo estimado total) y las agrupa en secciones lógicas: "Vencidas", "Prioridades de Hoy" y "Otras Tareas".
+2.  **Mejoras en la Interfaz de Usuario (UX):**
+    *   Se ha rediseñado la cabecera de la vista, encapsulando las estadísticas y los controles en un "Panel de Control" cohesivo con mejor espaciado y agrupación visual.
+    *   Las estadísticas ahora se presentan de forma más clara y profesional.
+    *   Se ha añadido una nueva estadística, "Tiempo Definido", para comparar el tiempo explícitamente planificado con el "Tiempo Estimado" total.
 
-3.  **Implementación de la Interfaz de Usuario:**
-    *   Se ha añadido un nuevo botón "En Progreso" a los controles de la vista en `htmlGenerator.ts`.
-    *   Se ha creado la función `renderInProgressView` para generar el HTML de la nueva vista, incluyendo la cabecera de resumen y las listas de tareas agrupadas.
-    *   Se ha actualizado el componente `view.ts` para manejar el estado de la nueva vista y renderizarla cuando está activa.
-
-Este desarrollo proporciona una herramienta potente para que el usuario gestione su foco diario, visualizando rápidamente la carga de trabajo comprometida y priorizando de manera efectiva.
+3.  **Refactorización del Código:**
+    *   El módulo `inProgressProcessor.ts` ha sido actualizado para manejar la lógica de agrupación y ordenamiento dinámico.
+    *   El modelo de datos (`model.ts`) y el generador de HTML (`htmlGenerator.ts`) han sido adaptados para soportar la nueva estructura de grupos y estadísticas.
+    *   El componente de la vista (`view.ts`) ahora gestiona el estado de los nuevos controles.

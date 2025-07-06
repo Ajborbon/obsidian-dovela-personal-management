@@ -276,7 +276,60 @@ details.gtd-card-container[open] > summary::before {
     border-bottom: none; /* Remove border from header inside summary */
 }
 
-.gtd-card-container[open] > summary .gtd-card-header {
+details.gtd-card-container[open] > summary .gtd-card-header {
     border-bottom: 1px solid var(--background-modifier-border); /* Add border back when open */
 }
+
+/* --- In-Progress View Specific Styles --- */
+.gtd-control-panel {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.gtd-stats-header {
+    display: flex;
+    justify-content: space-around;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.gtd-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.gtd-stat-label {
+    font-size: 0.9em;
+    color: var(--text-muted);
+}
+
+.gtd-stat-value {
+    font-size: 1.4em;
+    font-weight: bold;
+}
+
+.gtd-focus-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+.gtd-focus-controls > span {
+    font-weight: bold;
+    color: var(--text-muted);
+}
+
+.gtd-grouping-button.active,
+.gtd-sorting-button.active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
 
