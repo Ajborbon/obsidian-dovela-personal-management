@@ -92,9 +92,10 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
         }
     }
 
-    return {
-        gtdLists,
-        uniqueContexts: Array.from(uniqueContexts).sort(),
-        uniquePeople: Array.from(uniquePeople).sort(),
+    return { 
+        gtdLists, 
+        uniqueContexts: Array.from(uniqueContexts), 
+        uniquePeople: Array.from(uniquePeople), 
+        inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } } 
     };
 }

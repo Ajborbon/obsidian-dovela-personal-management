@@ -1,5 +1,8 @@
 
 import { ItemView, WorkspaceLeaf } from 'obsidian';
+import type DovelaPersonalManagementPlugin from '../../main.js';
+import { TimeTrackerService } from './timeTrackerService.js';
+import { TimeTrackerView } from './timeTrackerView.js';
 
 // Import our custom modules
 import { parseVault } from './parser.js';
@@ -14,13 +17,19 @@ export const GTD_VIEW_DISPLAY_TEXT = 'GTD Dashboard';
 export const GTD_VIEW_ICON = 'list-checks';
 
 export class GtdView extends ItemView {
-    private activeView: 'hierarchy' | 'gtd' | 'inProgress' = 'hierarchy';
+    private plugin: DovelaPersonalManagementPlugin;
+    private timeTrackerService: TimeTrackerService;
+    private timeTrackerView: TimeTrackerView | null = null;
+
+    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' = 'hierarchy';
     private activeGrouping: 'none' | 'context' | 'person' | 'project' = 'none';
     private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
 
-    constructor(leaf: WorkspaceLeaf) {
+    constructor(leaf: WorkspaceLeaf, plugin: DovelaPersonalManagementPlugin) {
         super(leaf);
+        this.plugin = plugin;
+        this.timeTrackerService = new TimeTrackerService(this.plugin);
     }
 
     getViewType(): string {
@@ -49,16 +58,13 @@ export class GtdView extends ItemView {
         const breadcrumbMap = new Map<string, string>();
 
         function traverse(item: HierarchicalItem, path: string[]) {
-            // Clean the name for the breadcrumb view, removing the [FALTA] tag.
             const cleanName = item.name.replace(/\s*\[FALTA\]\s*/g, '');
             const currentPath = [...path, cleanName];
             
-            // For each task in the current item, store its breadcrumb
             for (const task of item.tasks) {
                 breadcrumbMap.set(task.id, currentPath.join(' > '));
             }
 
-            // Recurse into children
             for (const child of item.children) {
                 traverse(child, currentPath);
             }
@@ -72,17 +78,15 @@ export class GtdView extends ItemView {
     }
 
     private async drawView(): Promise<void> {
-        // --- 1. Abort previous event listeners to prevent duplicates ---
         this.eventAbortController?.abort();
         this.eventAbortController = new AbortController();
 
         try {
-            // 2. Parse and process all data
+            // Common data parsing for all views
             const parsedData = await parseVault(this.app.vault, this.app.metadataCache);
             const hierarchicalData = buildHierarchy(parsedData.hierarchicalData);
             const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
 
-            // Create a map of all tasks by ID for dependency checking
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
             const { gtdLists, uniqueContexts, uniquePeople } = processGtdLists(parsedData.allTasks, allTaskMap);
             const inProgressData = processInProgressTasks(parsedData.allTasks, this.activeGrouping, this.activeSorting);
@@ -96,12 +100,24 @@ export class GtdView extends ItemView {
                 uniquePeople: uniquePeople,
             };
 
-            // 3. Generate HTML
+            // Generate the main HTML structure including headers and an empty content area
             const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting);
 
-            // 4. Render and add interactivity
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
+
+            // If the active view is the time tracker, render its specific content
+            if (this.activeView === 'time-tracker') {
+                const timeTrackerContainer = this.contentEl.querySelector('#time-tracker-container');
+                if (timeTrackerContainer) {
+                    if (!this.timeTrackerView) {
+                        this.timeTrackerView = new TimeTrackerView(timeTrackerContainer as HTMLElement, this.plugin, this.timeTrackerService);
+                    } else {
+                        this.timeTrackerView.updateContainer(timeTrackerContainer as HTMLElement);
+                    }
+                }
+            }
+            
             this.addEventListeners();
 
         } catch (error) {
@@ -113,7 +129,6 @@ export class GtdView extends ItemView {
     private addEventListeners(): void {
         const container = this.contentEl;
 
-        // --- Filter Logic ---
         const contextFilter = container.querySelector('#context-filter') as HTMLSelectElement;
         const personFilter = container.querySelector('#person-filter') as HTMLSelectElement;
 
@@ -132,12 +147,11 @@ export class GtdView extends ItemView {
                 htmlTaskEl.style.display = (contextMatch && personMatch) ? '' : 'none';
             });
 
-            // --- Update List and Nav Visibility ---
             container.querySelectorAll('.gtd-list').forEach((listEl: Element) => {
                 const htmlListEl = listEl as HTMLElement;
                 const visibleTasks = htmlListEl.querySelectorAll('.gtd-task:not([style*="display: none;"])');
                 const allTasksHidden = visibleTasks.length === 0;
-                
+
                 htmlListEl.style.display = allTasksHidden ? 'none' : '';
 
                 const listId = htmlListEl.id;
@@ -148,36 +162,38 @@ export class GtdView extends ItemView {
             });
         };
 
-        if (contextFilter) contextFilter.addEventListener('change', () => {
-            if (personFilter) personFilter.value = 'all'; // Reset other filter
-            applyFilters();
-        });
-        if (personFilter) personFilter.addEventListener('change', () => {
-            if (contextFilter) contextFilter.value = 'all'; // Reset other filter
-            applyFilters();
-        });
+        if (contextFilter) contextFilter.addEventListener('change', applyFilters);
+        if (personFilter) personFilter.addEventListener('change', applyFilters);
 
-
-        // --- Event Delegation for all other clicks ---
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
 
-            // Handle breadcrumb toggle
             if (target.classList.contains('gtd-breadcrumb-toggle')) {
                 const taskEl = target.closest('.gtd-task');
                 taskEl?.classList.toggle('breadcrumb-is-open');
                 return;
             }
 
-            // Handle view switcher and refresh buttons
             const button = target.closest('button');
             if (button) {
                 if (button.classList.contains('gtd-view-button')) {
-                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress';
+                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker';
                     if (view && view !== this.activeView) {
                         this.activeView = view;
                         this.drawView();
                     }
+                } else if (button.classList.contains('gtd-refresh-button')) {
+                    this.drawView();
+                } else if (button.classList.contains('gtd-hierarchy-control-button')) {
+                    const action = button.getAttribute('data-action');
+                    const detailsElements = container.querySelectorAll('.gtd-card-container') as NodeListOf<HTMLDetailsElement>;
+                    detailsElements.forEach(detail => {
+                        if (action === 'expand-all') {
+                            detail.open = true;
+                        } else if (action === 'collapse-all') {
+                            detail.open = false;
+                        }
+                    });
                 } else if (button.classList.contains('gtd-grouping-button')) {
                     const grouping = button.getAttribute('data-grouping') as 'none' | 'context' | 'person' | 'project';
                     if (grouping && grouping !== this.activeGrouping) {
@@ -194,38 +210,10 @@ export class GtdView extends ItemView {
                         this.activeSorting = 'priority';
                     }
                     this.drawView();
-                } else if (button.classList.contains('gtd-refresh-button')) {
-                    this.drawView();
-                } else if (button.classList.contains('gtd-hierarchy-control-button')) {
-                    const action = button.getAttribute('data-action');
-                    const detailsElements = container.querySelectorAll('.gtd-card-container') as NodeListOf<HTMLDetailsElement>;
-                    detailsElements.forEach(detail => {
-                        if (action === 'expand-all') {
-                            detail.open = true;
-                        } else if (action === 'collapse-all') {
-                            detail.open = false;
-                        }
-                    });
                 }
                 return;
             }
 
-            // Handle quick navigation links
-            const navLink = target.closest('.gtd-nav-link');
-            if (navLink) {
-                event.preventDefault();
-                const targetId = navLink.getAttribute('href');
-                if (targetId) {
-                    const targetElement = container.querySelector(targetId) as HTMLElement;
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth' });
-                        (targetElement as HTMLDetailsElement).open = true;
-                    }
-                }
-                return;
-            }
-
-            // Handle clicks on items to open files
             const link = target.closest('[data-item-path], [data-task-path], .internal-link') as HTMLElement;
             if (link) {
                 event.preventDefault();
@@ -233,13 +221,13 @@ export class GtdView extends ItemView {
                 const taskPath = link.dataset['taskPath'];
                 const hrefPath = link.getAttribute('href');
 
-                const path: string = (itemPath || taskPath || hrefPath || ''); // Ensure path is always a string
+                const path: string = (itemPath || taskPath || hrefPath || '');
 
                 const lineAttr = link.dataset['taskLine'];
                 const line = lineAttr ? parseInt(lineAttr) : 0;
 
-                if (path.length > 0) { // Check if path is not empty
-                    this.app.workspace.openLinkText(path!, '', false, {
+                if (path.length > 0) {
+                    this.app.workspace.openLinkText(path, '', false, {
                         eState: { line: line }
                     });
                 }

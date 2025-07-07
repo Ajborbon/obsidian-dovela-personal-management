@@ -98,3 +98,23 @@ export interface InProgressData {
         estimatedTimeMinutes: number;
     };
 }
+
+// --- Time Tracking ---
+
+// Representa una única sesión de tiempo registrada.
+export interface TimeLogEntry {
+    id: string; // ID único, p.ej., timestamp en ms.
+    taskNotePath: string; // Ruta a la nota de la tarea.
+    startTime: string; // Fecha y hora de inicio en formato ISO 8601.
+    endTime: string; // Fecha y hora de finalización en formato ISO 8601.
+    durationMinutes: number; // Duración total en minutos.
+    notes: string; // Notas opcionales sobre la sesión.
+    taskDescription?: string; // Descripción de la tarea en ese momento.
+}
+
+// Representa el estado de un temporizador activo que fue interrumpido.
+export interface ActiveTimerState {
+    taskNotePath: string; // Ruta a la nota de la tarea.
+    startTime: string; // Fecha y hora de inicio en formato ISO 8601.
+    taskDescription?: string; // Descripción de la tarea que se estaba cronometrando.
+}

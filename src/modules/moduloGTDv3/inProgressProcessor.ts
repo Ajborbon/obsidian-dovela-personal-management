@@ -9,7 +9,7 @@ function parseDuration(duration: string | undefined): number {
     const match = duration.match(/(\d+\.?\d*)\s*(h|min|m)/);
     if (!match) return 0;
 
-    const value = parseFloat(match[1]);
+    const value = parseFloat(match[1] || '0');
     const unit = match[2];
 
     if (unit === 'h') {
@@ -19,31 +19,28 @@ function parseDuration(duration: string | undefined): number {
 }
 
 function getProjectGroupForTask(task: Task): string {
-    const pathParts = task.sourceFile.path.split('/').slice(0, -1); // Directorios padre
+    if (!task.sourceFile || !task.sourceFile.path) return 'Tareas Generales';
+    const pathParts = task.sourceFile.path.split('/').slice(0, -1);
 
-    // 1. Buscar PGTD
     const pgtd = pathParts.find(part => part.startsWith('PGTD - '));
     if (pgtd) return `📂 ${pgtd}`;
 
-    // 2. Buscar AI más profundo
     const ais = pathParts.filter(part => part.startsWith('AI - '));
     if (ais.length > 0) return `🧠 ${ais[ais.length - 1]}`;
 
-    // 3. Buscar Contenedor Estructural
     const structuralPrefixes = ['AV -', 'PQ -', 'RR -'];
     for (let i = pathParts.length - 1; i >= 0; i--) {
         const part = pathParts[i];
-        if (structuralPrefixes.some(prefix => part.startsWith(prefix))) {
+        if (part && structuralPrefixes.some(prefix => part.startsWith(prefix))) {
             return `🏠 ${part}`;
         }
     }
 
-    // 4. Usar Carpeta Padre Inmediata
     if (pathParts.length > 0) {
-        return `📁 ${pathParts[pathParts.length - 1]}`;
+        const lastPart = pathParts[pathParts.length - 1];
+        return `📁 ${lastPart}`;
     }
 
-    // 5. Grupo por Defecto
     return 'Tareas Generales';
 }
 
@@ -55,7 +52,7 @@ function sortTasks(tasks: Task[], sorting: Sorting) {
         if (sorting === 'duration-desc') {
             return (parseDuration(b.duration) || 0) - (parseDuration(a.duration) || 0);
         }
-        // Default: priority
+        
         const priorityOrder = { 'Highest': 0, 'High': 1, 'Medium': 2, 'Low': 3, 'None': 4 };
         if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
             return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -131,11 +128,17 @@ export function processInProgressTasks(
                 if (!groups[groupName]) {
                     groups[groupName] = [];
                 }
-                groups[groupName].push(task);
+                const group = groups[groupName];
+                if(group) {
+                    group.push(task);
+                }
             }
         }
         for (const groupName in groups) {
-            sortTasks(groups[groupName], sorting);
+            const group = groups[groupName];
+            if (group) {
+                sortTasks(group, sorting);
+            }
         }
     }
 

@@ -105,14 +105,15 @@ function renderInProgressView(
 
     for (const groupName in groups) {
         const groupTasks = groups[groupName];
-        html += `
-            <details class="gtd-group" open>
-                <summary>${groupName} <span class="gtd-list-count">(${groupTasks.length})</span></summary>
-                <ul class="gtd-task-list">
-                    ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
-                </ul>
-            </details>
-        `;
+        if (groupTasks && groupTasks.length > 0) {
+            const tasksHtml = groupTasks.map(renderTaskWithBreadcrumb).join('');
+            html += `
+                <details class="gtd-in-progress-group" open>
+                    <summary>${groupName} (${groupTasks.length})</summary>
+                    <ul>${tasksHtml}</ul>
+                </details>
+            `;
+        }
     }
 
     html += '</div>';
@@ -317,7 +318,7 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
 
 export function generateGtdViewHtml(
     data: ProcessedVaultData, 
-    activeView: 'hierarchy' | 'gtd' | 'inProgress', 
+    activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker', 
     taskBreadcrumbMap: Map<string, string>,
     activeGrouping: Grouping,
     activeSorting: Sorting
@@ -327,6 +328,7 @@ export function generateGtdViewHtml(
     const hierarchyActiveClass = activeView === 'hierarchy' ? 'active' : '';
     const gtdActiveClass = activeView === 'gtd' ? 'active' : '';
     const inProgressActiveClass = activeView === 'inProgress' ? 'active' : '';
+    const timeTrackerActiveClass = activeView === 'time-tracker' ? 'active' : '';
 
     let viewContent = '';
     let hierarchyControls = '';
@@ -341,6 +343,8 @@ export function generateGtdViewHtml(
         viewContent = renderGtdListsView(data, taskBreadcrumbMap);
     } else if (activeView === 'inProgress') {
         viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap, activeGrouping, activeSorting);
+    } else if (activeView === 'time-tracker') {
+        viewContent = '<div id="time-tracker-container"></div>';
     }
 
     return `
@@ -349,6 +353,7 @@ export function generateGtdViewHtml(
                 <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">Vista Jerárquica</button>
                 <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
                 <button class="gtd-view-button ${inProgressActiveClass}" data-view="inProgress">En Progreso</button>
+                <button class="gtd-view-button ${timeTrackerActiveClass}" data-view="time-tracker">Time Tracker</button>
                 <button class="gtd-refresh-button">Refrescar</button>
                 ${hierarchyControls}
             </div>
