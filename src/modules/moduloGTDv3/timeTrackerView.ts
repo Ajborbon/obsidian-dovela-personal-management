@@ -21,8 +21,8 @@ export class TimeTrackerView {
     private plugin: DovelaPersonalManagementPlugin;
     private service: TimeTrackerService;
     
-    private activeTimerInterval: number | null = null;
-    private availableTasks: (TFile | Task)[] = [];
+    private activeTimerInterval: number | null = null; // Reintroduced
+    
     private statsContainer!: HTMLElement;
     private taskSelectorDropdown!: HTMLSelectElement;
     private selectedTask: { path: string, description: string } | null = null;
@@ -44,13 +44,23 @@ export class TimeTrackerView {
 
     private async render() {
         this.container.empty();
-        const mainDiv = this.container.createEl('div', { cls: 'time-tracker-main' });
+        const dashboard = this.container.createEl('div', { cls: 'time-tracker-dashboard' });
 
-        const controlPanel = mainDiv.createEl('div', { cls: 'time-tracker-control-panel' });
-        await this.renderTaskSelector(controlPanel);
-        this.renderTimerControls(controlPanel);
+        // Columna Izquierda: Panel de Control
+        const controlPanel = dashboard.createEl('div', { cls: 'time-tracker-control-panel' });
+        
+        const timerCard = controlPanel.createEl('div', { cls: 'control-card' });
+        timerCard.createEl('h4', { text: 'Control de Tiempo' });
 
-        this.statsContainer = mainDiv.createEl('div', { cls: 'time-tracker-stats-panel' });
+        const selectorCard = controlPanel.createEl('div', { cls: 'control-card' });
+        selectorCard.createEl('h4', { text: 'Seleccionar Tarea' });
+
+        // Columna Derecha: Panel de Estadísticas
+        this.statsContainer = dashboard.createEl('div', { cls: 'time-tracker-stats-panel' });
+
+        // Populate elements in the correct order to avoid dependency errors
+        await this.renderTaskSelector(selectorCard);
+        this.renderTimerControls(timerCard);
         await this.renderStatistics();
     }
 
@@ -98,7 +108,7 @@ export class TimeTrackerView {
 
         this.searchInputEl.addEventListener('input', () => {
             const searchTerm = this.searchInputEl.value.toLowerCase();
-            const filteredTasks = this.availableTasks.filter(taskOrFile => {
+            const filteredTasks = this.plugin.availableTasks.filter(taskOrFile => {
                 if (taskOrFile instanceof TFile) {
                     return taskOrFile.path.toLowerCase().includes(searchTerm);
                 } else {
@@ -111,8 +121,8 @@ export class TimeTrackerView {
         const createSourceButton = (source: TaskSource, name: string) => {
             const button = sourceContainer.createEl('button', { text: name });
             button.onClickEvent(async () => {
-                this.availableTasks = await this.getTasks(source);
-                renderResults(this.availableTasks);
+                await this.plugin.loadAvailableTasks(source);
+                renderResults(this.plugin.availableTasks);
                 this.searchInputEl.focus();
             });
         };
@@ -147,9 +157,11 @@ export class TimeTrackerView {
         manualButton.onClickEvent(() => {
             this.openManualEntryModal();
         });
+
+        this.syncTimerUI(timerDisplay, startButton, stopButton);
     }
 
-    private async renderStatistics(filter: string = 'all') {
+    public async renderStatistics(filter: string = 'all') {
         this.activeDateFilter = filter;
         this.statsContainer.empty();
         
@@ -179,10 +191,29 @@ export class TimeTrackerView {
 
         this.statsContainer.createEl('h3', { text: titleText });
 
-        this.renderFilterControls(this.statsContainer);
+        // --- Contenedor de Controles de la Vista de Estadísticas ---
+        const statsControls = this.statsContainer.createDiv({ cls: 'stats-view-controls' });
 
-        const customFilterContainer = this.statsContainer.createDiv({ cls: 'custom-filter-container is-hidden' });
+        // Controles de Filtro de Fecha
+        this.renderFilterControls(statsControls);
+        const customFilterContainer = statsControls.createDiv({ cls: 'custom-filter-container is-hidden' });
         this.renderCustomFilterControls(customFilterContainer);
+
+        // Controles de Expansión/Colapso del Árbol
+        const treeControls = statsControls.createDiv({ cls: 'tree-controls' });
+        const expandButton = treeControls.createEl('button', { text: 'Expandir Todo' });
+        const collapseButton = treeControls.createEl('button', { text: 'Colapsar Parcialmente' });
+
+        expandButton.onClickEvent(() => {
+            this.statsContainer.querySelectorAll('details').forEach(d => d.open = true);
+        });
+
+        collapseButton.onClickEvent(() => {
+            this.statsContainer.querySelectorAll('details').forEach(d => {
+                const level = parseInt(d.dataset.level || '99', 10);
+                d.open = level < 2;
+            });
+        });
 
         const { startDate, endDate } = this.getDateRange(filter);
         
@@ -194,13 +225,21 @@ export class TimeTrackerView {
             return true;
         });
 
+        // Indicador de Tiempo Total
+        const totalDurationForPeriod = filteredLogs.reduce((sum, log) => sum + log.durationMinutes, 0);
+        const hours = Math.floor(totalDurationForPeriod / 60);
+        const minutes = totalDurationForPeriod % 60;
+        const totalDisplay = this.statsContainer.createDiv({ cls: 'total-duration-display' });
+        totalDisplay.createEl('span', { text: 'Total Registrado en Período:', cls: 'total-duration-label' });
+        totalDisplay.createEl('span', { text: `${hours}h ${minutes}m`, cls: 'total-duration-value' });
+
         if (filteredLogs.length === 0) {
             this.statsContainer.createEl('p', { text: 'No hay registros de tiempo para el período seleccionado.' });
             return;
         }
 
         const tree = this.buildTree(filteredLogs);
-        this.renderTree(tree, this.statsContainer, 0);
+        this.renderTree(tree, this.statsContainer, 0, totalDurationForPeriod);
     }
 
     private renderFilterControls(parent: HTMLElement) {
@@ -225,8 +264,8 @@ export class TimeTrackerView {
                     customContainer?.classList.remove('is-hidden');
                 } else {
                     customContainer?.classList.add('is-hidden');
+                    this.renderStatistics(key);
                 }
-                this.renderStatistics(key)
             });
         }
     }
@@ -384,117 +423,138 @@ export class TimeTrackerView {
         return finalRootNodes;
     }
 
-    private renderTree(nodes: TreeNode[], parent: HTMLElement, level: number) {
-        const ul = parent.createEl('ul', { cls: `tree-level-${level}` });
+    private renderTree(nodes: TreeNode[], parent: HTMLElement, level: number, totalDurationForPeriod: number) {
+        // Create header only at the top level
+        if (level === 0) {
+            const tableBody = parent.createEl('div', { cls: 'stats-table-body' });
+            this.renderTree(nodes, tableBody, level + 1, totalDurationForPeriod); // Recurse into a body
+            return;
+        }
+
         for (const node of nodes) {
-            const li = ul.createEl('li');
-            const container = li.createEl('div', { cls: 'tree-node-container' });
-            
+            const isExpandable = node.children.length > 0 || (node.logs && node.logs.length > 0);
+
+            const rowContainer = parent.createEl('details', {
+                cls: 'stats-table-row',
+                attr: { 'data-level': level, open: level < 2 } // Open first two levels by default
+            });
+
+            const summary = rowContainer.createEl('summary', { cls: 'stats-table-row-summary' });
+            summary.style.paddingLeft = `${(level - 1) * 20}px`;
+
+            const nameCell = summary.createEl('div', { cls: 'row-name' });
+            const icon = node.children.length > 0 ? '📁' : '📄';
+            nameCell.createEl('span', { text: `${icon} ${node.name}`, cls: 'node-name-text' });
+
+            const statsCell = summary.createEl('div', { cls: 'row-stats' });
             const hours = Math.floor(node.duration / 60);
             const minutes = node.duration % 60;
-            const text = `${node.name} (${hours}h ${minutes}m)`;
+            const percentage = totalDurationForPeriod > 0 ? (node.duration / totalDurationForPeriod) * 100 : 0;
 
-            if (node.children.length > 0) { // Only expand if it has children (is a folder)
-                const details = container.createEl('details', { attr: { open: true } });
-                details.createEl('summary', { text });
-                this.renderTree(node.children, details, level + 1);
-            } else { // This is a leaf node (a file)
-                container.createEl('div', { text, cls: 'tree-leaf-node' });
-                
-                // If this leaf node has logs, display them
-                if (node.logs && node.logs.length > 0) {
-                    const logsUl = container.createEl('ul', { cls: 'time-log-entries' }); // Attach logs to the leaf node container
-                    for (const log of node.logs) {
-                        const logLi = logsUl.createEl('li', { cls: 'time-log-entry' });
-                        const logDetails = logLi.createEl('details', { cls: 'time-log-details-expandable' });
-                        const logSummary = logDetails.createEl('summary');
+            statsCell.createEl('span', { text: `${hours}h ${minutes}m`, cls: 'stat-duration' });
+            
+            const percentageContainer = statsCell.createEl('div', { cls: 'stat-percentage' });
+            percentageContainer.createEl('span', { text: `${percentage.toFixed(2)}%` });
+            const progressBar = percentageContainer.createEl('div', { cls: 'progress-bar-container' });
+            progressBar.createEl('div', { cls: 'progress-bar' }).style.width = `${percentage}%`;
 
-                        const startTime = moment(log.startTime).format('YYYY-MM-DD HH:mm');
-                        const endTime = moment(log.endTime).format('HH:mm');
-                        const summaryText = `${startTime} - ${endTime} (${log.durationMinutes}m): ${log.notes || log.taskDescription || ''}`;
-                        logSummary.setText(summaryText);
+            // Render children or logs
+            if (node.children.length > 0) {
+                this.renderTree(node.children, rowContainer, level + 1, totalDurationForPeriod);
+            } else if (node.logs && node.logs.length > 0) {
+                const logsContainer = rowContainer.createEl('div', { cls: 'log-details-container' });
+                for (const log of node.logs) {
+                    const logEntryEl = logsContainer.createEl('div', { cls: 'log-entry' });
+                    
+                    const date = moment(log.startTime);
+                    const dayOfWeek = date.locale('es').format('dddd');
+                    const formattedDate = date.format('YYYY-MM-DD');
+                    const startTime = date.format('HH:mm');
+                    const endTime = moment(log.endTime).format('HH:mm');
 
-                        const breadcrumbPath = log.taskNotePath.replace(/\.md$/, '').split('/').join(' > ');
-                        logDetails.createEl('div', { text: `Ruta: ${breadcrumbPath}`, cls: 'time-log-breadcrumb' });
+                    logEntryEl.createEl('div', { cls: 'log-entry-line' })
+                        .setText(`🗓️ ${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}, ${formattedDate}`);
+                    
+                    logEntryEl.createEl('div', { cls: 'log-entry-line' })
+                        .setText(`🕒 Inicio: ${startTime} - Fin: ${endTime} (${log.durationMinutes}m)`);
+                    
+                    const notes = log.notes || log.taskDescription;
+                    if (notes) {
+                        logEntryEl.createEl('div', { cls: 'log-entry-line' })
+                            .setText(`📝 Nota: ${notes}`);
                     }
                 }
             }
         }
     }
 
+    public clearTimerInterval() {
+        if (this.activeTimerInterval) {
+            clearInterval(this.activeTimerInterval);
+            this.activeTimerInterval = null;
+        }
+    }
+
+    private syncTimerUI(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
+        // Clear any existing interval to prevent multiple timers running
+        if (this.activeTimerInterval) {
+            clearInterval(this.activeTimerInterval);
+            this.activeTimerInterval = null;
+        }
+
+        if (this.plugin.activeTimer) {
+            const { taskNotePath, taskDescription, startTime } = this.plugin.activeTimer;
+            
+            // Restore selected task
+            this.selectedTask = { path: taskNotePath, description: taskDescription || '' };
+            this.searchInputEl.value = taskDescription || taskNotePath;
+            this.searchInputEl.disabled = true;
+
+            // Update UI to reflect running timer
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+
+            const startTimeMoment = moment(startTime);
+            
+            // Start local UI update interval
+            this.activeTimerInterval = window.setInterval(() => {
+                const now = moment().local();
+                const diff = now.diff(startTimeMoment);
+                const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                const timeString = `${hours}:${minutes}:${seconds}`;
+                timerDisplay.setText(timeString);
+            }, 1000);
+
+        } else {
+            // Ensure timer is reset if no active session
+            timerDisplay.setText('00:00:00');
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            this.searchInputEl.disabled = false;
+        }
+    }
+
     private startTimer(taskPath: string, taskDescription: string | undefined, timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
         if (this.plugin.activeTimer) return;
 
-        this.plugin.activeTimer = {
-            taskNotePath: taskPath,
-            startTime: moment().local().toISOString(true),
-            taskDescription: taskDescription || ''
-        };
-        const taskName = taskPath.split('/').pop()?.replace('.md', '') || 'Tarea';
-        this.plugin.updateStatusBar(`${taskName}...`);
-
-        startBtn.style.display = 'none';
-        stopBtn.style.display = 'inline-block';
-        this.searchInputEl.disabled = true;
-
-        const startTime = moment(this.plugin.activeTimer.startTime);
-        this.activeTimerInterval = window.setInterval(() => {
-            const now = moment().local();
-            const diff = now.diff(startTime);
-            const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
-            const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-            const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-            const timeString = `${hours}:${minutes}:${seconds}`;
-            timerDisplay.setText(timeString);
-            this.plugin.updateStatusBar(`${taskName}... ${timeString}`);
-        }, 1000);
+        this.plugin.startTracking(taskPath, taskDescription || '');
+        this.syncTimerUI(timerDisplay, startBtn, stopBtn);
     }
 
     private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
-        if (!this.plugin.activeTimer || this.activeTimerInterval === null) return;
+        if (!this.plugin.activeTimer) return;
 
-        clearInterval(this.activeTimerInterval);
-        this.activeTimerInterval = null;
-
-        const endTime = moment().local();
-        const startTime = moment(this.plugin.activeTimer.startTime);
-
-        new TimeLogModal(this.plugin.app, this.service, this.availableTasks, async () => {
-            await this.renderStatistics();
-        }, {
-            taskNotePath: this.plugin.activeTimer.taskNotePath,
-            startTime: startTime,
-            endTime: endTime,
-            notes: this.plugin.activeTimer.taskDescription || '',
-            taskDescription: this.plugin.activeTimer.taskDescription || ''
-        }).open();
-
-        this.plugin.activeTimer = null;
-        this.plugin.updateStatusBar('');
-        timerDisplay.setText('00:00:00');
-        startBtn.style.display = 'inline-block';
-        stopBtn.style.display = 'none';
-        this.searchInputEl.disabled = false;
+        this.plugin.stopTracking(this.availableTasks);
+        this.syncTimerUI(timerDisplay, startBtn, stopBtn);
     }
 
     private async openManualEntryModal() {
-        new TimeLogModal(this.plugin.app, this.service, this.availableTasks, async () => {
+        new TimeLogModal(this.plugin.app, this.service, this.plugin.availableTasks, async () => {
             await this.renderStatistics();
         }).open();
     }
 
-    private async getTasks(source: TaskSource): Promise<(TFile | Task)[]> {
-        const allTasks = (await parseVault(this.plugin.app.vault, this.plugin.app.metadataCache)).allTasks;
-
-        switch (source) {
-            case 'open-notes':
-                return this.plugin.app.workspace.getLeavesOfType('markdown').map(leaf => (leaf.view as any).file as TFile).filter(f => f);
-            case 'in-progress':
-                return allTasks.filter((t: Task) => t.status === 'in-progress');
-            case 'all-tasks':
-                 return allTasks.filter((t: Task) => t.status !== 'completed');
-            default:
-                return [];
-        }
-    }
+    
 }

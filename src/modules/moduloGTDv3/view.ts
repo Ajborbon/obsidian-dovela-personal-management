@@ -51,7 +51,21 @@ export class GtdView extends ItemView {
 
     override async onClose() {
         this.eventAbortController?.abort();
+        this.timeTrackerView?.clearTimerInterval(); // Clear interval when view closes
         this.contentEl.empty();
+    }
+
+    public switchToTimeTrackerView(): void {
+        if (this.activeView !== 'time-tracker') {
+            this.activeView = 'time-tracker';
+            this.drawView();
+        }
+    }
+
+    public async refreshStatistics(): Promise<void> {
+        if (this.timeTrackerView) {
+            await this.timeTrackerView.renderStatistics();
+        }
     }
 
     private createTaskBreadcrumbMap(hierarchicalData: HierarchicalItem[]): Map<string, string> {

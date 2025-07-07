@@ -332,4 +332,229 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     color: var(--text-on-accent);
 }
 
+/* --- Time Tracker View --- */
+.time-tracker-dashboard {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+}
 
+.time-tracker-control-panel {
+    flex: 0 0 35%; /* Ocupa el 35% del ancho y no crece/decrece */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.time-tracker-stats-panel {
+    flex: 1 1 65%; /* Ocupa el espacio restante */
+    display: flex;
+    flex-direction: column;
+}
+
+.control-card {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.control-card h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 10px;
+}
+
+.timer-controls .timer-display {
+    font-size: 2.5em;
+    font-weight: bold;
+    display: block;
+    text-align: center;
+    margin-bottom: 15px;
+    color: var(--text-normal);
+}
+
+.timer-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.timer-controls .buttons-container {
+    display: flex;
+    gap: 10px;
+}
+
+.time-tracker-task-selector .search-input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.stats-view-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.time-stats-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.time-stats-filters button.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.custom-filter-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.custom-filter-container.is-hidden {
+    display: none;
+}
+
+.tree-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.total-duration-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 8px;
+    margin-bottom: 10px;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+}
+
+.total-duration-label {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--text-muted);
+}
+
+.total-duration-value {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--text-accent);
+}
+
+/* --- Time Tracker Statistics Table --- */
+.stats-table-body {
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.stats-table-row {
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.stats-table-row[open] > .stats-table-row-summary {
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.stats-table-row-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 8px 4px;
+    cursor: pointer;
+    list-style: none; /* Remove default marker */
+}
+.stats-table-row-summary::-webkit-details-marker {
+    display: none;
+}
+
+.stats-table-row-summary:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.row-name {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.node-name-text {
+    white-space: normal; /* Allow text to wrap */
+    word-break: break-word;
+}
+
+.row-stats {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 220px; /* Fixed width for alignment */
+}
+
+.stat-duration {
+    width: 80px;
+    text-align: right;
+    color: var(--text-muted);
+}
+
+.stat-percentage {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stat-percentage span {
+    width: 50px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.progress-bar-container {
+    flex-grow: 1;
+    background-color: var(--background-modifier-hover);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background-color: var(--interactive-accent);
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease-in-out;
+}
+
+/* --- Expandable Log Details --- */
+.log-details-container {
+    padding: 10px 15px 10px 40px; /* Indent past the icon */
+    background-color: var(--background-secondary-alt);
+}
+
+.log-entry {
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+.log-entry:last-child {
+    margin-bottom: 0;
+}
+
+.log-entry-line {
+    margin-bottom: 4px;
+    color: var(--text-muted);
+}
+.log-entry-line:last-child {
+    margin-bottom: 0;
+}

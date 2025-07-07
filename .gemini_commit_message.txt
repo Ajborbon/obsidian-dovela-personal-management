@@ -1,18 +1,29 @@
-feat(time-tracker): Mejora la gestión de tiempo con Moment.js y vista jerárquica
+feat(time-tracker): Mejoras significativas en la vista y gestión del Time Tracker
 
-Se ha refactorizado el módulo de seguimiento de tiempo para utilizar la librería Moment.js, mejorando la manipulación y consistencia de fechas y horas. Además, se ha enriquecido la vista de estadísticas con una representación jerárquica de los registros de tiempo y filtros de fecha más robustos.
+Este commit introduce una serie de mejoras importantes en la funcionalidad y la experiencia de usuario del módulo de seguimiento de tiempo (Time Tracker).
 
-Cambios detallados:
+Cambios clave:
 
-- **Migración a Moment.js:**
-  - `timeLogModal.ts`: Actualización de tipos de fecha/hora a `moment.Moment`, inicialización, formateo, parseo y cálculo de duración utilizando Moment.js.
-  - `timeTrackerService.ts`: Adaptación de la lógica de filtrado de estadísticas para trabajar con objetos `moment`.
-  - `timeTrackerView.ts`: Conversión completa de la gestión de fechas y rangos de tiempo a Moment.js, incluyendo `customStartDate`, `customEndDate` y `getDateRange`.
+1.  **Rediseño de la Interfaz de Usuario (UX):**
+    *   La vista del Time Tracker ha sido completamente rediseñada a un formato de dashboard de dos columnas, mejorando la legibilidad y organización de los controles y las estadísticas.
+    *   Se han introducido "tarjetas" (`control-card`) para agrupar lógicamente los elementos de control (temporizador, selección de tarea).
+    *   Se ha mejorado la presentación de los filtros de fecha y los controles de expansión/colapso del árbol.
 
-- **Mejoras en la Vista de Estadísticas (`timeTrackerView.ts`):**
-  - **Vista Jerárquica:** La función `buildTree` ahora procesa directamente los `TimeLogEntry` para construir una estructura de árbol que representa la jerarquía de las notas (carpetas y archivos).
-  - **Detalle de Registros:** Los nodos hoja (archivos) en la vista jerárquica ahora muestran los registros de tiempo individuales asociados, incluyendo la duración, notas y una ruta de navegación (breadcrumb).
-  - **Filtros de Fecha Mejorados:** Se han implementado filtros de fecha más precisos y dinámicos para las estadísticas, permitiendo rangos como "Hoy", "Esta Semana", "Este Mes", "Este Año" y rangos personalizados.
-  - **Visualización de Título Dinámico:** El título de las estadísticas ahora refleja el filtro de fecha activo.
+2.  **Vista de Estadísticas Mejorada:**
+    *   La tabla de estadísticas ahora presenta una estructura jerárquica expandible/contraíble, permitiendo una mejor navegación a través de las carpetas y archivos.
+    *   Las columnas de duración y porcentaje se muestran de forma más flexible junto al nombre de la tarea/carpeta, permitiendo que los nombres largos se ajusten en múltiples líneas.
+    *   Se ha añadido una barra de progreso visual junto al porcentaje para una comprensión rápida del peso de cada elemento.
+    *   Se ha incluido un indicador claro del tiempo total registrado para el período seleccionado.
+    *   Las filas de tareas son ahora expandibles para mostrar los detalles de cada registro de tiempo individual (fecha, día de la semana, horas de inicio/fin, duración y notas).
 
-- **Actualización de `timelogs.json`:** Se han ajustado los formatos de fecha/hora en los registros de tiempo existentes para ser compatibles con el nuevo esquema de Moment.js.
+3.  **Centralización y Sincronización del Estado del Temporizador:**
+    *   La lógica de inicio, detención y actualización del temporizador se ha centralizado en el plugin principal (`main.ts`). Esto asegura que el estado del temporizador y su visualización en la barra de estado se mantengan sincronizados, incluso si la pestaña del GTD Dashboard se cierra y se vuelve a abrir.
+    *   La lista de tareas disponibles (`availableTasks`) para el selector del temporizador también se ha movido a `main.ts`, garantizando que el modal de registro de tiempo siempre tenga acceso a la lista completa de tareas, evitando que el selector aparezca vacío.
+
+4.  **Mejoras de Usabilidad y Correcciones:**
+    *   Al hacer clic en el indicador del temporizador en la barra de estado, se abre o enfoca directamente la vista del Time Tracker en el GTD Dashboard.
+    *   Se han añadido botones globales para "Expandir Todo" y "Colapsar Parcialmente" el árbol de estadísticas, con la opción de dejar los dos primeros niveles abiertos al colapsar.
+    *   Se corrigió un error donde los inputs de fecha del filtro "Personalizado" no se mostraban correctamente.
+    *   Se corrigió un error donde el indicador de control de tiempo en el GTD Dashboard no se actualizaba en tiempo real al iniciar un registro manual.
+
+Estos cambios mejoran significativamente la robustez, la estética y la experiencia de usuario del módulo de seguimiento de tiempo.
