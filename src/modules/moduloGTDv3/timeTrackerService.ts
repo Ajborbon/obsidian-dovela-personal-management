@@ -1,6 +1,7 @@
 import { App } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import type { TimeLogEntry, ActiveTimerState } from './model.js';
+import moment from 'moment';
 
 const TIME_LOGS_FILE = '.obsidian/plugins/obsidian-dovela-personal-management/timelogs.json';
 const INTERRUPTED_SESSION_KEY = 'dovela-interrupted-timer';
@@ -48,13 +49,14 @@ export class TimeTrackerService {
         await this.saveTimeLogs(logs);
     }
 
-    getStatistics(logs: TimeLogEntry[], filters: { startDate?: Date, endDate?: Date }): Map<string, number> {
+    getStatistics(logs: TimeLogEntry[], filters: { startDate?: moment.Moment, endDate?: moment.Moment }): Map<string, number> {
         const stats = new Map<string, number>();
         
         const filteredLogs = logs.filter(log => {
-            const logDate = new Date(log.startTime);
-            if (filters.startDate && logDate < filters.startDate) return false;
-            if (filters.endDate && logDate > filters.endDate) return false;
+            const logTime = moment(log.startTime);
+
+            if (filters.startDate && logTime.isBefore(filters.startDate)) return false;
+            if (filters.endDate && logTime.isAfter(filters.endDate)) return false;
             return true;
         });
 

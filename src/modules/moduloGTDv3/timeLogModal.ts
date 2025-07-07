@@ -1,11 +1,12 @@
 import { App, Modal, Setting, TFile } from 'obsidian';
 import { TimeTrackerService } from './timeTrackerService.js';
 import type { Task } from './model.js';
+import moment from 'moment';
 
 type TimeLogModalEntry = {
     taskNotePath: string;
-    startTime: Date;
-    endTime: Date;
+    startTime: moment.Moment;
+    endTime: moment.Moment;
     notes: string;
     taskDescription?: string;
 };
@@ -22,11 +23,11 @@ export class TimeLogModal extends Modal {
         this.onSave = onSave;
         this.availableTasks = availableTasks;
         
-        const now = new Date();
+        const now = moment().local();
         this.entry = {
             taskNotePath: entryData?.taskNotePath || '',
-            startTime: entryData?.startTime || now,
-            endTime: entryData?.endTime || now,
+            startTime: entryData?.startTime ? moment(entryData.startTime).local() : now,
+            endTime: entryData?.endTime ? moment(entryData.endTime).local() : now,
             notes: entryData?.notes || '',
             taskDescription: entryData?.taskDescription || ''
         };
@@ -56,14 +57,11 @@ export class TimeLogModal extends Modal {
             .setName('Fecha')
             .addText(text => {
                 text.inputEl.type = 'date';
-                text.setValue(this.entry.startTime.toISOString().split('T')[0]);
+                text.setValue(this.entry.startTime.format('YYYY-MM-DD'));
                 text.onChange(value => {
-                    const newDate = new Date(value);
-                    const oldStartTime = this.entry.startTime;
-                    const oldEndTime = this.entry.endTime;
-
-                    this.entry.startTime = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), oldStartTime.getHours(), oldStartTime.getMinutes());
-                    this.entry.endTime = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate(), oldEndTime.getHours(), oldEndTime.getMinutes());
+                    const newDate = moment(value, 'YYYY-MM-DD');
+                    this.entry.startTime.year(newDate.year()).month(newDate.month()).date(newDate.date());
+                    this.entry.endTime.year(newDate.year()).month(newDate.month()).date(newDate.date());
                 });
             });
 
@@ -102,16 +100,14 @@ export class TimeLogModal extends Modal {
                 .onClick(() => this.save()));
     }
 
-    private formatTime(date: Date): string {
-        return date.toTimeString().slice(0, 5);
+    private formatTime(date: moment.Moment): string {
+        return date.format('HH:mm');
     }
 
-    private parseTime(time: string, originalDate: Date): Date | null {
-        const newDate = new Date(originalDate);
+    private parseTime(time: string, originalMoment: moment.Moment): moment.Moment | null {
         const [hours, minutes] = time.split(':').map(Number);
         if (hours !== undefined && minutes !== undefined && !isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
-            newDate.setHours(hours, minutes);
-            return newDate;
+            return originalMoment.clone().hours(hours).minutes(minutes).seconds(0).milliseconds(0);
         }
         return null;
     }
@@ -122,7 +118,7 @@ export class TimeLogModal extends Modal {
             return;
         }
 
-        const durationMinutes = Math.round((this.entry.endTime.getTime() - this.entry.startTime.getTime()) / 60000);
+        const durationMinutes = this.entry.endTime.diff(this.entry.startTime, 'minutes');
         if (durationMinutes < 0) {
             // TODO: Show error
             return;
@@ -130,8 +126,8 @@ export class TimeLogModal extends Modal {
 
         await this.service.addLogEntry({
             taskNotePath: this.entry.taskNotePath,
-            startTime: this.entry.startTime.toISOString(),
-            endTime: this.entry.endTime.toISOString(),
+            startTime: this.entry.startTime.toISOString(true),
+            endTime: this.entry.endTime.toISOString(true),
             durationMinutes: durationMinutes,
             notes: this.entry.notes,
             taskDescription: this.entry.taskDescription || ''

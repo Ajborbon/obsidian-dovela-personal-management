@@ -2,8 +2,9 @@ import { TFile, Notice } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
 import { TimeLogModal } from './timeLogModal.js';
-import type { Task } from './model.js';
+import type { Task, TimeLogEntry } from './model.js';
 import { parseVault } from './parser.js';
+import moment from 'moment';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
@@ -12,6 +13,7 @@ interface TreeNode {
     path: string;
     duration: number;
     children: TreeNode[];
+    logs?: TimeLogEntry[]; // Add logs property
 }
 
 export class TimeTrackerView {
@@ -150,7 +152,32 @@ export class TimeTrackerView {
     private async renderStatistics(filter: string = 'all') {
         this.activeDateFilter = filter;
         this.statsContainer.empty();
-        this.statsContainer.createEl('h3', { text: 'Estadísticas de Tiempo' });
+        
+        let titleText = 'Estadísticas de Tiempo';
+        const filters = {
+            'today': 'Hoy',
+            'week': 'Esta Semana',
+            'month': 'Este Mes',
+            'year': 'Este Año',
+            'all': 'Siempre',
+            'custom': 'Personalizado'
+        };
+
+        if (this.activeDateFilter === 'custom') {
+            const start = this.customStartDate ? this.customStartDate.format('YYYY-MM-DD') : '';
+            const end = this.customEndDate ? this.customEndDate.format('YYYY-MM-DD') : '';
+            if (start && end) {
+                titleText = `Estadísticas de Tiempo: ${start} - ${end}`;
+            } else if (start) {
+                titleText = `Estadísticas de Tiempo: Desde ${start}`;
+            } else if (end) {
+                titleText = `Estadísticas de Tiempo: Hasta ${end}`;
+            }
+        } else {
+            titleText = `Estadísticas de Tiempo: ${filters[this.activeDateFilter]}`;
+        }
+
+        this.statsContainer.createEl('h3', { text: titleText });
 
         this.renderFilterControls(this.statsContainer);
 
@@ -160,14 +187,19 @@ export class TimeTrackerView {
         const { startDate, endDate } = this.getDateRange(filter);
         
         const logs = await this.service.loadTimeLogs();
-        const stats = this.service.getStatistics(logs, { startDate, endDate });
+        const filteredLogs = logs.filter(log => {
+            const logTime = moment(log.startTime);
+            if (startDate && logTime.isBefore(startDate)) return false;
+            if (endDate && logTime.isAfter(endDate)) return false;
+            return true;
+        });
 
-        if (stats.size === 0) {
+        if (filteredLogs.length === 0) {
             this.statsContainer.createEl('p', { text: 'No hay registros de tiempo para el período seleccionado.' });
             return;
         }
 
-        const tree = this.buildTree(stats);
+        const tree = this.buildTree(filteredLogs);
         this.renderTree(tree, this.statsContainer, 0);
     }
 
@@ -204,71 +236,152 @@ export class TimeTrackerView {
         const endDateInput = parent.createEl('input', { type: 'date' });
         const applyButton = parent.createEl('button', { text: 'Aplicar' });
 
+        // Set initial values if custom dates are already set
+        if (this.customStartDate) {
+            startDateInput.value = this.customStartDate.format('YYYY-MM-DD');
+        }
+        if (this.customEndDate) {
+            endDateInput.value = this.customEndDate.format('YYYY-MM-DD');
+        }
+
         applyButton.onClickEvent(() => {
-            this.customStartDate = startDateInput.value ? new Date(startDateInput.value) : undefined;
-            this.customEndDate = endDateInput.value ? new Date(endDateInput.value) : undefined;
+            this.customStartDate = startDateInput.value ? moment(startDateInput.value).startOf('day') : undefined;
+            this.customEndDate = endDateInput.value ? moment(endDateInput.value).endOf('day') : undefined;
             this.renderStatistics('custom');
         });
     }
 
-    private getDateRange(filter: string): { startDate?: Date, endDate?: Date } {
-        const now = new Date();
-        let startDate: Date | undefined;
-        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    private getDateRange(filter: string): { startDate?: moment.Moment, endDate?: moment.Moment } {
+        const now = moment().local();
+        let startDate: moment.Moment | undefined;
+        let endDate: moment.Moment | undefined;
 
         switch (filter) {
             case 'today':
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                startDate = now.clone().startOf('day');
+                endDate = now.clone().endOf('day');
                 break;
             case 'week':
-                const dayOfWeek = now.getDay();
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Monday as first day
+                startDate = now.clone().startOf('isoWeek');
+                endDate = now.clone().endOf('day'); // End of current day
                 break;
             case 'month':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                startDate = now.clone().startOf('month');
+                endDate = now.clone().endOf('month');
                 break;
             case 'year':
-                startDate = new Date(now.getFullYear(), 0, 1);
+                startDate = now.clone().startOf('year');
+                endDate = now.clone().endOf('year');
                 break;
             case 'all':
                 return {}; // No filter
             case 'custom':
-                return { startDate: this.customStartDate, endDate: this.customEndDate };
+                if (this.customStartDate) {
+                    startDate = this.customStartDate.clone().startOf('day');
+                }
+                if (this.customEndDate) {
+                    endDate = this.customEndDate.clone().endOf('day');
+                }
+                return { startDate, endDate };
             default:
                 return {}; // Fallback
         }
-        startDate.setHours(0, 0, 0, 0);
         return { startDate, endDate };
     }
 
-    private customStartDate: Date | undefined;
-    private customEndDate: Date | undefined;
+    private customStartDate: moment.Moment | undefined;
+    private customEndDate: moment.Moment | undefined;
 
-    private buildTree(stats: Map<string, number>): TreeNode[] {
-        const nodes: { [key: string]: TreeNode } = {};
+    private buildTree(logs: TimeLogEntry[]): TreeNode[] {
+        const finalTreeNodes: { [key: string]: TreeNode } = {}; // Map to hold all nodes, including intermediate directories
 
-        // Create all nodes
-        for (const path of Array.from(stats.keys()).sort()) {
-            nodes[path] = {
-                name: path.split('/').pop() || path,
-                path: path,
-                duration: stats.get(path)!,
-                children: []
-            };
-        }
+        // Create all nodes (directories and files) and assign logs to files
+        for (const log of logs) {
+            if (!log.taskNotePath) continue;
+            const pathParts = log.taskNotePath.split('/');
+            let currentPathAccumulator = '';
 
-        const tree: TreeNode[] = [];
-        // Link children to parents
-        for (const path in nodes) {
-            const parentPath = path.substring(0, path.lastIndexOf('/'));
-            if (nodes[parentPath]) {
-                nodes[parentPath].children.push(nodes[path]);
-            } else {
-                tree.push(nodes[path]);
+            for (let i = 0; i < pathParts.length; i++) {
+                const part = pathParts[i];
+                const isFile = i === pathParts.length - 1 && part.endsWith('.md');
+                
+                if (currentPathAccumulator === '') {
+                    currentPathAccumulator = part;
+                } else {
+                    currentPathAccumulator += '/' + part;
+                }
+
+                if (!finalTreeNodes[currentPathAccumulator]) {
+                    finalTreeNodes[currentPathAccumulator] = {
+                        name: isFile ? part.replace('.md', '') : part, // Remove .md for display
+                        path: currentPathAccumulator,
+                        duration: 0,
+                        children: [],
+                        logs: isFile ? [] : undefined // Only files get logs
+                    };
+                }
+
+                // If it's the file itself, add the log
+                if (isFile) {
+                    finalTreeNodes[currentPathAccumulator].logs?.push(log);
+                }
             }
         }
 
-        return tree;
+        // Link children to parents and sum durations for leaf nodes
+        const sortedKeys = Object.keys(finalTreeNodes).sort((a, b) => a.length - b.length); // Process shorter paths (parents) first
+
+        for (const path of sortedKeys) {
+            const node = finalTreeNodes[path];
+            
+            // Sum duration from its own logs if it's a file (leaf node)
+            if (node.logs) {
+                node.duration = node.logs.reduce((sum, log) => sum + log.durationMinutes, 0);
+                node.logs.sort((a, b) => moment(a.startTime).valueOf() - moment(b.startTime).valueOf());
+            }
+
+            const parentPath = path.substring(0, path.lastIndexOf('/'));
+            if (parentPath && finalTreeNodes[parentPath]) {
+                finalTreeNodes[parentPath].children.push(node);
+            }
+        }
+
+        // Final pass to sum up durations for parent nodes from their children (from leaves up to roots)
+        const reverseSortedKeys = Object.keys(finalTreeNodes).sort((a, b) => b.length - a.length); // Process longer paths (leaves) first
+
+        for (const path of reverseSortedKeys) {
+            const node = finalTreeNodes[path];
+            if (node.children.length > 0) {
+                // Sum children's duration to its own (if it's a file, it already has its own duration from logs)
+                node.duration = node.children.reduce((sum, child) => sum + child.duration, node.duration);
+            }
+        }
+
+        // Collect root nodes
+        const finalRootNodes: TreeNode[] = [];
+        for (const path in finalTreeNodes) {
+            const node = finalTreeNodes[path];
+            const parentPath = path.substring(0, path.lastIndexOf('/'));
+            if (!parentPath || !finalTreeNodes[parentPath]) { // If no parent or parent doesn't exist in our map, it's a root
+                finalRootNodes.push(node);
+            }
+        }
+
+        // Sort children within each node and root nodes
+        function sortNodes(nodes: TreeNode[]) {
+            nodes.sort((a, b) => {
+                // Directories first, then files
+                const aIsFile = a.path.endsWith('.md');
+                const bIsFile = b.path.endsWith('.md');
+                if (aIsFile && !bIsFile) return 1;
+                if (!aIsFile && bIsFile) return -1;
+                return a.name.localeCompare(b.name);
+            });
+            nodes.forEach(node => sortNodes(node.children));
+        }
+        sortNodes(finalRootNodes);
+
+        return finalRootNodes;
     }
 
     private renderTree(nodes: TreeNode[], parent: HTMLElement, level: number) {
@@ -281,12 +394,30 @@ export class TimeTrackerView {
             const minutes = node.duration % 60;
             const text = `${node.name} (${hours}h ${minutes}m)`;
 
-            if (node.children.length > 0) {
+            if (node.children.length > 0) { // Only expand if it has children (is a folder)
                 const details = container.createEl('details', { attr: { open: true } });
                 details.createEl('summary', { text });
                 this.renderTree(node.children, details, level + 1);
-            } else {
+            } else { // This is a leaf node (a file)
                 container.createEl('div', { text, cls: 'tree-leaf-node' });
+                
+                // If this leaf node has logs, display them
+                if (node.logs && node.logs.length > 0) {
+                    const logsUl = container.createEl('ul', { cls: 'time-log-entries' }); // Attach logs to the leaf node container
+                    for (const log of node.logs) {
+                        const logLi = logsUl.createEl('li', { cls: 'time-log-entry' });
+                        const logDetails = logLi.createEl('details', { cls: 'time-log-details-expandable' });
+                        const logSummary = logDetails.createEl('summary');
+
+                        const startTime = moment(log.startTime).format('YYYY-MM-DD HH:mm');
+                        const endTime = moment(log.endTime).format('HH:mm');
+                        const summaryText = `${startTime} - ${endTime} (${log.durationMinutes}m): ${log.notes || log.taskDescription || ''}`;
+                        logSummary.setText(summaryText);
+
+                        const breadcrumbPath = log.taskNotePath.replace(/\.md$/, '').split('/').join(' > ');
+                        logDetails.createEl('div', { text: `Ruta: ${breadcrumbPath}`, cls: 'time-log-breadcrumb' });
+                    }
+                }
             }
         }
     }
@@ -296,7 +427,7 @@ export class TimeTrackerView {
 
         this.plugin.activeTimer = {
             taskNotePath: taskPath,
-            startTime: new Date().toISOString(),
+            startTime: moment().local().toISOString(true),
             taskDescription: taskDescription || ''
         };
         const taskName = taskPath.split('/').pop()?.replace('.md', '') || 'Tarea';
@@ -306,10 +437,10 @@ export class TimeTrackerView {
         stopBtn.style.display = 'inline-block';
         this.searchInputEl.disabled = true;
 
-        const startTime = new Date(this.plugin.activeTimer.startTime).getTime();
+        const startTime = moment(this.plugin.activeTimer.startTime);
         this.activeTimerInterval = window.setInterval(() => {
-            const now = Date.now();
-            const diff = now - startTime;
+            const now = moment().local();
+            const diff = now.diff(startTime);
             const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
             const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
             const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
@@ -325,8 +456,8 @@ export class TimeTrackerView {
         clearInterval(this.activeTimerInterval);
         this.activeTimerInterval = null;
 
-        const endTime = new Date();
-        const startTime = new Date(this.plugin.activeTimer.startTime);
+        const endTime = moment().local();
+        const startTime = moment(this.plugin.activeTimer.startTime);
 
         new TimeLogModal(this.plugin.app, this.service, this.availableTasks, async () => {
             await this.renderStatistics();

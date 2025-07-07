@@ -1,20 +1,18 @@
-feat(gtd): Añade controles dinámicos y mejora la UX de la vista "En Progreso"
+feat(time-tracker): Mejora la gestión de tiempo con Moment.js y vista jerárquica
 
-Se ha mejorado significativamente la vista "En Progreso" para convertirla en un panel de control dinámico, añadiendo nuevas capacidades de agrupación y ordenamiento, y refinando la interfaz de usuario para una mejor experiencia.
+Se ha refactorizado el módulo de seguimiento de tiempo para utilizar la librería Moment.js, mejorando la manipulación y consistencia de fechas y horas. Además, se ha enriquecido la vista de estadísticas con una representación jerárquica de los registros de tiempo y filtros de fecha más robustos.
 
-**Cambios Principales:**
+Cambios detallados:
 
-1.  **Controles de Foco Dinámicos:**
-    *   Se ha implementado una nueva sección de "Controles de Foco" que permite a los usuarios **agrupar** las tareas activas por `Contexto`, `Persona` o `Proyecto`.
-    *   Se ha añadido un botón de **ordenamiento** cíclico para organizar las tareas por `Duración` (ascendente/descendente) o volver al orden por `Prioridad` por defecto.
-    *   La lógica de agrupación por `Proyecto` sigue un algoritmo refinado (PGTD > AI > Prefijo Estructural > Carpeta) para una clasificación más inteligente.
+- **Migración a Moment.js:**
+  - `timeLogModal.ts`: Actualización de tipos de fecha/hora a `moment.Moment`, inicialización, formateo, parseo y cálculo de duración utilizando Moment.js.
+  - `timeTrackerService.ts`: Adaptación de la lógica de filtrado de estadísticas para trabajar con objetos `moment`.
+  - `timeTrackerView.ts`: Conversión completa de la gestión de fechas y rangos de tiempo a Moment.js, incluyendo `customStartDate`, `customEndDate` y `getDateRange`.
 
-2.  **Mejoras en la Interfaz de Usuario (UX):**
-    *   Se ha rediseñado la cabecera de la vista, encapsulando las estadísticas y los controles en un "Panel de Control" cohesivo con mejor espaciado y agrupación visual.
-    *   Las estadísticas ahora se presentan de forma más clara y profesional.
-    *   Se ha añadido una nueva estadística, "Tiempo Definido", para comparar el tiempo explícitamente planificado con el "Tiempo Estimado" total.
+- **Mejoras en la Vista de Estadísticas (`timeTrackerView.ts`):**
+  - **Vista Jerárquica:** La función `buildTree` ahora procesa directamente los `TimeLogEntry` para construir una estructura de árbol que representa la jerarquía de las notas (carpetas y archivos).
+  - **Detalle de Registros:** Los nodos hoja (archivos) en la vista jerárquica ahora muestran los registros de tiempo individuales asociados, incluyendo la duración, notas y una ruta de navegación (breadcrumb).
+  - **Filtros de Fecha Mejorados:** Se han implementado filtros de fecha más precisos y dinámicos para las estadísticas, permitiendo rangos como "Hoy", "Esta Semana", "Este Mes", "Este Año" y rangos personalizados.
+  - **Visualización de Título Dinámico:** El título de las estadísticas ahora refleja el filtro de fecha activo.
 
-3.  **Refactorización del Código:**
-    *   El módulo `inProgressProcessor.ts` ha sido actualizado para manejar la lógica de agrupación y ordenamiento dinámico.
-    *   El modelo de datos (`model.ts`) y el generador de HTML (`htmlGenerator.ts`) han sido adaptados para soportar la nueva estructura de grupos y estadísticas.
-    *   El componente de la vista (`view.ts`) ahora gestiona el estado de los nuevos controles.
+- **Actualización de `timelogs.json`:** Se han ajustado los formatos de fecha/hora en los registros de tiempo existentes para ser compatibles con el nuevo esquema de Moment.js.
