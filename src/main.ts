@@ -59,14 +59,19 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         if (leaves.length === 0) {
             // Si no hay ninguna vista abierta, crea una nueva.
-            leaf = this.app.workspace.getLeaf('tab');
+            const newLeaf = this.app.workspace.getLeaf('tab');
+            if (!newLeaf) {
+                new Notice('No se pudo crear una nueva pestaña');
+                return;
+            }
+            leaf = newLeaf;
             await leaf.setViewState({
                 type: GTD_VIEW_TYPE,
                 active: true,
             });
         } else {
             // Si ya hay una vista, usa la primera que encuentres.
-            leaf = leaves[0];
+            leaf = leaves[0]!; // We know leaves is not empty because of the condition above
         }
 
         this.app.workspace.revealLeaf(leaf);
@@ -150,7 +155,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }, 1000);
     }
 
-    public async stopTracking() { // Removed availableTasks parameter
+    public async stopTracking() {
         if (!this.activeTimer || this.activeTimerInterval === null) return;
 
         clearInterval(this.activeTimerInterval);
@@ -158,22 +163,23 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         const endTime = moment().local();
         const startTime = moment(this.activeTimer.startTime);
+        const currentTimer = this.activeTimer; // Store reference before setting to null
 
-        new TimeLogModal(this.app, this.timeTrackerService, this.availableTasks, async () => { // Use this.availableTasks
+        new TimeLogModal(this.app, this.timeTrackerService, this.availableTasks, async () => {
             // Callback after modal closes, to refresh stats
             const leaves = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
             if (leaves.length > 0) {
-                const view = leaves[0].view as GtdView;
-                if (view instanceof GtdView) {
-                    await view.refreshStatistics(); // Assuming GtdView has a method to refresh stats
+                const view = leaves[0]!.view as GtdView;
+                if (view instanceof GtdView && 'refreshStatistics' in view) {
+                    await view.refreshStatistics();
                 }
             }
         }, {
-            taskNotePath: this.activeTimer.taskNotePath,
+            taskNotePath: currentTimer.taskNotePath,
             startTime: startTime,
             endTime: endTime,
-            notes: this.activeTimer.taskDescription || '',
-            taskDescription: this.activeTimer.taskDescription || ''
+            notes: currentTimer.taskDescription || '',
+            taskDescription: currentTimer.taskDescription || ''
         }).open();
 
         this.activeTimer = null;

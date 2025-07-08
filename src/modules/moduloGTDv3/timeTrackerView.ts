@@ -3,7 +3,7 @@ import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
 import { TimeLogModal } from './timeLogModal.js';
 import type { Task, TimeLogEntry } from './model.js';
-import { parseVault } from './parser.js';
+// Removed unused import: parseVault
 import moment from 'moment';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
@@ -13,7 +13,7 @@ interface TreeNode {
     path: string;
     duration: number;
     children: TreeNode[];
-    logs?: TimeLogEntry[]; // Add logs property
+    logs?: TimeLogEntry[] | undefined; // Explicitly allow undefined
 }
 
 export class TimeTrackerView {
@@ -24,7 +24,6 @@ export class TimeTrackerView {
     private activeTimerInterval: number | null = null; // Reintroduced
     
     private statsContainer!: HTMLElement;
-    private taskSelectorDropdown!: HTMLSelectElement;
     private selectedTask: { path: string, description: string } | null = null;
     private searchInputEl!: HTMLInputElement;
 
@@ -186,7 +185,8 @@ export class TimeTrackerView {
                 titleText = `Estadísticas de Tiempo: Hasta ${end}`;
             }
         } else {
-            titleText = `Estadísticas de Tiempo: ${filters[this.activeDateFilter]}`;
+            const filterKey = this.activeDateFilter as keyof typeof filters;
+            titleText = `Estadísticas de Tiempo: ${filters[filterKey]}`;
         }
 
         this.statsContainer.createEl('h3', { text: titleText });
@@ -210,7 +210,7 @@ export class TimeTrackerView {
 
         collapseButton.onClickEvent(() => {
             this.statsContainer.querySelectorAll('details').forEach(d => {
-                const level = parseInt(d.dataset.level || '99', 10);
+                const level = parseInt(d.dataset['level'] || '99', 10);
                 d.open = level < 2;
             });
         });
@@ -244,7 +244,7 @@ export class TimeTrackerView {
 
     private renderFilterControls(parent: HTMLElement) {
         const filterContainer = parent.createDiv({ cls: 'time-stats-filters' });
-        const filters = {
+        const filters: Record<string, string> = {
             'today': 'Hoy',
             'week': 'Esta Semana',
             'month': 'Este Mes',
@@ -314,14 +314,12 @@ export class TimeTrackerView {
                 break;
             case 'all':
                 return {}; // No filter
-            case 'custom':
-                if (this.customStartDate) {
-                    startDate = this.customStartDate.clone().startOf('day');
-                }
-                if (this.customEndDate) {
-                    endDate = this.customEndDate.clone().endOf('day');
-                }
-                return { startDate, endDate };
+            case 'custom': {
+                const customRange: { startDate?: moment.Moment, endDate?: moment.Moment } = {};
+                if (this.customStartDate) customRange.startDate = this.customStartDate;
+                if (this.customEndDate) customRange.endDate = this.customEndDate;
+                return customRange;
+            }
             default:
                 return {}; // Fallback
         }
@@ -342,6 +340,8 @@ export class TimeTrackerView {
 
             for (let i = 0; i < pathParts.length; i++) {
                 const part = pathParts[i];
+                if (!part) continue; // Skip empty parts
+                
                 const isFile = i === pathParts.length - 1 && part.endsWith('.md');
                 
                 if (currentPathAccumulator === '') {
@@ -352,17 +352,20 @@ export class TimeTrackerView {
 
                 if (!finalTreeNodes[currentPathAccumulator]) {
                     finalTreeNodes[currentPathAccumulator] = {
-                        name: isFile ? part.replace('.md', '') : part, // Remove .md for display
+                        name: isFile ? part.replace('.md', '') : part,
                         path: currentPathAccumulator,
                         duration: 0,
                         children: [],
-                        logs: isFile ? [] : undefined // Only files get logs
+                        ...(isFile ? { logs: [] } : {}) // Only add logs property for files
                     };
                 }
 
                 // If it's the file itself, add the log
                 if (isFile) {
-                    finalTreeNodes[currentPathAccumulator].logs?.push(log);
+                    const targetNode = finalTreeNodes[currentPathAccumulator];
+                    if (targetNode && targetNode.logs) {
+                        targetNode.logs.push(log);
+                    }
                 }
             }
         }
@@ -372,6 +375,7 @@ export class TimeTrackerView {
 
         for (const path of sortedKeys) {
             const node = finalTreeNodes[path];
+            if (!node) continue; // Skip if node doesn't exist
             
             // Sum duration from its own logs if it's a file (leaf node)
             if (node.logs) {
@@ -380,8 +384,9 @@ export class TimeTrackerView {
             }
 
             const parentPath = path.substring(0, path.lastIndexOf('/'));
-            if (parentPath && finalTreeNodes[parentPath]) {
-                finalTreeNodes[parentPath].children.push(node);
+            const parentNode = finalTreeNodes[parentPath];
+            if (parentPath && parentNode) {
+                parentNode.children.push(node);
             }
         }
 
@@ -390,6 +395,8 @@ export class TimeTrackerView {
 
         for (const path of reverseSortedKeys) {
             const node = finalTreeNodes[path];
+            if (!node) continue; // Skip if node doesn't exist
+            
             if (node.children.length > 0) {
                 // Sum children's duration to its own (if it's a file, it already has its own duration from logs)
                 node.duration = node.children.reduce((sum, child) => sum + child.duration, node.duration);
@@ -400,8 +407,11 @@ export class TimeTrackerView {
         const finalRootNodes: TreeNode[] = [];
         for (const path in finalTreeNodes) {
             const node = finalTreeNodes[path];
+            if (!node) continue; // Skip if node doesn't exist
+            
             const parentPath = path.substring(0, path.lastIndexOf('/'));
-            if (!parentPath || !finalTreeNodes[parentPath]) { // If no parent or parent doesn't exist in our map, it's a root
+            const parentNode = finalTreeNodes[parentPath];
+            if (!parentPath || !parentNode) { // If no parent or parent doesn't exist in our map, it's a root
                 finalRootNodes.push(node);
             }
         }
@@ -432,11 +442,10 @@ export class TimeTrackerView {
         }
 
         for (const node of nodes) {
-            const isExpandable = node.children.length > 0 || (node.logs && node.logs.length > 0);
 
             const rowContainer = parent.createEl('details', {
                 cls: 'stats-table-row',
-                attr: { 'data-level': level, open: level < 2 } // Open first two levels by default
+                attr: { 'data-level': level.toString(), open: level < 2 } // Open first two levels by default
             });
 
             const summary = rowContainer.createEl('summary', { cls: 'stats-table-row-summary' });
@@ -546,7 +555,7 @@ export class TimeTrackerView {
     private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
         if (!this.plugin.activeTimer) return;
 
-        this.plugin.stopTracking(this.availableTasks);
+        this.plugin.stopTracking();
         this.syncTimerUI(timerDisplay, startBtn, stopBtn);
     }
 
