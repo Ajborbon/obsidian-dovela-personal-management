@@ -1,12 +1,13 @@
 
-import { Plugin, Notice, WorkspaceLeaf } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf, TFile } from 'obsidian';
 import { GtdView, GTD_VIEW_TYPE, GTD_VIEW_DISPLAY_TEXT, GTD_VIEW_ICON } from './modules/moduloGTDv3/view.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
-import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js'; // Import TimeLogModal
-import type { ActiveTimerState, Task } from './modules/moduloGTDv3/model.js'; // Import Task
-import { parseVault } from './modules/moduloGTDv3/parser.js'; // Import parseVault
-import moment from 'moment'; // Import moment
-import { TFile } from 'obsidian'; // Import TFile
+import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
+import type { ActiveTimerState, Task } from './modules/moduloGTDv3/model.js';
+import { parseVault } from './modules/moduloGTDv3/parser.js';
+import moment from 'moment';
+import { SmartInboxView } from './modules/moduloGTDv3/smartInboxView.js';
+import './styles/smartInbox.css';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
@@ -15,7 +16,14 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     public timeTrackerService!: TimeTrackerService;
     public statusBarItem!: HTMLElement;
     private activeTimerInterval: number | null = null;
-    public availableTasks: (TFile | Task)[] = []; // New property
+    public availableTasks: (TFile | Task)[] = [];
+
+    // Metadata cache
+    public gtdProjectsAndAreas: TFile[] = [];
+    public gtdContextTags: string[] = [];
+    public gtdPersonTags: string[] = [];
+
+    private smartInboxView: SmartInboxView | null = null;
 
     override async onload() {
         console.log('Loading Dovela Personal Management Plugin...');
@@ -24,8 +32,15 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.statusBarItem = this.addStatusBarItem();
         this.statusBarItem.style.display = 'none';
 
-        await this.loadAvailableTasks(); // Load tasks on plugin load
+        await this.loadAvailableTasks();
+        await this.collectMetadata();
         this.handleInterruptedSession();
+
+        // Re-scan for metadata on file changes
+        this.registerEvent(this.app.vault.on('modify', () => this.collectMetadata()));
+        this.registerEvent(this.app.vault.on('rename', () => this.collectMetadata()));
+        this.registerEvent(this.app.vault.on('delete', () => this.collectMetadata()));
+
 
         this.registerView(
             GTD_VIEW_TYPE,
@@ -40,6 +55,14 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'smart-inbox',
+            name: 'Smart Inbox',
+            callback: () => {
+                this.openSmartInbox();
+            }
+        });
+
         this.addRibbonIcon(GTD_VIEW_ICON, GTD_VIEW_DISPLAY_TEXT, () => {
             this.activateView();
         });
@@ -51,6 +74,35 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             this.timeTrackerService.saveInterruptedSession(this.activeTimer);
         }
         this.app.workspace.detachLeavesOfType(GTD_VIEW_TYPE);
+        this.smartInboxView?.remove();
+    }
+
+    private openSmartInbox(): void {
+        if (!this.smartInboxView) {
+            this.smartInboxView = new SmartInboxView(this);
+        }
+        this.smartInboxView.open();
+    }
+
+    public async collectMetadata(): Promise<void> {
+        const files = this.app.vault.getMarkdownFiles();
+        const projectAndAreaPrefixes = ['PGTD -', 'AV -', 'AI -'];
+        this.gtdProjectsAndAreas = files.filter(file => 
+            projectAndAreaPrefixes.some(prefix => file.basename.startsWith(prefix))
+        );
+
+        const allTagsObject: Record<string, number> = {};
+        this.app.vault.getMarkdownFiles().forEach(file => {
+            const fileCache = this.app.metadataCache.getFileCache(file);
+            fileCache?.tags?.forEach(tag => {
+                const tagName = tag.tag;
+                allTagsObject[tagName] = (allTagsObject[tagName] || 0) + 1;
+            });
+        });
+        const allTags = Object.keys(allTagsObject);
+
+        this.gtdContextTags = allTags.filter(tag => tag.startsWith('#cx-'));
+        this.gtdPersonTags = allTags.filter(tag => tag.startsWith('#px-'));
     }
 
     private async activateView(switchToTimeTracker: boolean = false): Promise<void> {
@@ -58,7 +110,6 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         let leaf: WorkspaceLeaf;
 
         if (leaves.length === 0) {
-            // Si no hay ninguna vista abierta, crea una nueva.
             const newLeaf = this.app.workspace.getLeaf('tab');
             if (!newLeaf) {
                 new Notice('No se pudo crear una nueva pestaña');
@@ -70,8 +121,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                 active: true,
             });
         } else {
-            // Si ya hay una vista, usa la primera que encuentres.
-            leaf = leaves[0]!; // We know leaves is not empty because of the condition above
+            leaf = leaves[0]!;
         }
 
         this.app.workspace.revealLeaf(leaf);
@@ -132,7 +182,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     }
 
     public startTracking(taskNotePath: string, taskDescription: string) {
-        if (this.activeTimer) return; // Already tracking
+        if (this.activeTimer) return;
 
         this.activeTimer = {
             taskNotePath: taskNotePath,
@@ -163,10 +213,9 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         const endTime = moment().local();
         const startTime = moment(this.activeTimer.startTime);
-        const currentTimer = this.activeTimer; // Store reference before setting to null
+        const currentTimer = this.activeTimer;
 
         new TimeLogModal(this.app, this.timeTrackerService, this.availableTasks, async () => {
-            // Callback after modal closes, to refresh stats
             const leaves = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
             if (leaves.length > 0) {
                 const view = leaves[0]!.view as GtdView;
@@ -183,7 +232,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }).open();
 
         this.activeTimer = null;
-        this.updateStatusBar(''); // Clear status bar
+        this.updateStatusBar('');
     }
 
     public async loadAvailableTasks(source: TaskSource = 'all-tasks'): Promise<void> {
