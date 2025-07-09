@@ -197,7 +197,7 @@ export class SmartInboxView {
             return;
         }
 
-        const projectMatch = text.match(/@([\w\s-]+)/);
+        const projectMatch = text.match(/@([^#!]+)/);
         const contextTags = text.match(/#cx-[\w-]+/g) || [];
         const personTags = text.match(/#px-[\w-]+/g) || [];
         const gtdStatusTags = text.match(/#GTD-(AlgunDia|EstaSemanaNo)/gi) || [];
