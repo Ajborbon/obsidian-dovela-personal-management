@@ -254,7 +254,7 @@ export class SmartInboxView {
                 try {
                     await this.app.vault.createFolder(inboxFolderPath);
                 } catch (e) {
-                    if (!e.message.includes('already exists')) {
+                    if (e instanceof Error && !e.message.includes('already exists')) {
                         new Notice('Error creating inbox folder.');
                         console.error('Error creating inbox folder:', e);
                         return;

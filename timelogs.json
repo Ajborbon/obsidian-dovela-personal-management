@@ -52,5 +52,23 @@
     "durationMinutes": 126,
     "notes": "AI - Experto Center",
     "taskDescription": "AI - Experto Center"
+  },
+  {
+    "id": "1752073413370",
+    "taskNotePath": "03 - Gestion Personal/AV - Gerente de Conocimiento/AI - Sistema Gestión Personal SGP Dovela/Indices/HomePage.md",
+    "startTime": "2025-07-09T10:03:28.104-05:00",
+    "endTime": "2025-07-09T10:03:31.839-05:00",
+    "durationMinutes": 0,
+    "notes": "HomePage",
+    "taskDescription": "HomePage"
+  },
+  {
+    "id": "1752074826147",
+    "taskNotePath": "01 - Productividad/AV - Negocios/AI - Experto Center/PGTD - Hemos renovado el contrato de arrendamiento de Experto Center Colina 2025/PGTD - Adecuaciones Julio 2025 Local Experto Center/PGTD - Adecuaciones Julio 2025 Local Experto Center.md",
+    "startTime": "2025-07-09T10:27:01.361-05:00",
+    "endTime": "2025-07-09T10:27:04.362-05:00",
+    "durationMinutes": 0,
+    "notes": "PGTD - Adecuaciones Julio 2025 Local Experto Center",
+    "taskDescription": "PGTD - Adecuaciones Julio 2025 Local Experto Center"
   }
 ]

@@ -7,7 +7,6 @@ import type { ActiveTimerState, Task } from './modules/moduloGTDv3/model.js';
 import { parseVault } from './modules/moduloGTDv3/parser.js';
 import moment from 'moment';
 import { SmartInboxView } from './modules/moduloGTDv3/smartInboxView.js';
-import './styles/smartInbox.css';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
