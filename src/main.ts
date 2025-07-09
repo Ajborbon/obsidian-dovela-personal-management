@@ -168,6 +168,8 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     }
 
     public updateStatusBar(text: string) {
+        if (!this.statusBarItem) return;
+
         if (text) {
             this.statusBarItem.setText(`⏱️ ${text}`);
             this.statusBarItem.style.display = 'block';
@@ -180,13 +182,14 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }
     }
 
-    public startTracking(taskNotePath: string, taskDescription: string) {
+    public startTracking(taskNotePath: string, taskDescription: string, lineNumber?: number) {
         if (this.activeTimer) return;
 
         this.activeTimer = {
             taskNotePath: taskNotePath,
             startTime: moment().local().toISOString(true),
-            taskDescription: taskDescription
+            taskDescription: taskDescription,
+            ...(lineNumber !== undefined && { lineNumber })
         };
 
         const taskName = taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
@@ -214,7 +217,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         const startTime = moment(this.activeTimer.startTime);
         const currentTimer = this.activeTimer;
 
-        new TimeLogModal(this.app, this.timeTrackerService, this.availableTasks, async () => {
+        new TimeLogModal(this.app, this.timeTrackerService, this, async () => {
             const leaves = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
             if (leaves.length > 0) {
                 const view = leaves[0]!.view as GtdView;

@@ -12,6 +12,7 @@ interface TreeNode {
     name: string;
     path: string;
     duration: number;
+    recordCount: number; // <-- Añadido
     children: TreeNode[];
     logs?: TimeLogEntry[] | undefined; // Explicitly allow undefined
 }
@@ -24,10 +25,11 @@ export class TimeTrackerView {
     private activeTimerInterval: number | null = null; // Reintroduced
     
     private statsContainer!: HTMLElement;
-    private selectedTask: { path: string, description: string } | null = null;
+    private selectedTask: { path: string, description: string, lineNumber: number } | null = null;
     private searchInputEl!: HTMLInputElement;
 
-    private activeDateFilter: string = 'all';
+    private activeDateFilter: string = 'today';
+    private activeTaskSource: TaskSource = 'all-tasks';
 
     constructor(container: HTMLElement, plugin: DovelaPersonalManagementPlugin, service: TimeTrackerService) {
         this.container = container;
@@ -60,7 +62,7 @@ export class TimeTrackerView {
         // Populate elements in the correct order to avoid dependency errors
         await this.renderTaskSelector(selectorCard);
         this.renderTimerControls(timerCard);
-        await this.renderStatistics();
+        await this.renderStatistics(this.activeDateFilter);
     }
 
     private async renderTaskSelector(parent: HTMLElement) {
@@ -78,27 +80,31 @@ export class TimeTrackerView {
             resultsContainer.empty();
             tasks.forEach(taskOrFile => {
                 const resultEl = resultsContainer.createDiv({ cls: 'result-item' });
-                let path: string, text: string, description: string;
+                let path: string, text: string, description: string, lineNumber: number;
 
                 if (taskOrFile instanceof TFile) {
                     path = taskOrFile.path;
                     text = taskOrFile.path;
                     description = taskOrFile.basename;
+                    lineNumber = 0; // Default for a whole note
                 } else {
                     const task = taskOrFile as Task;
                     path = task.sourceFile.path;
                     text = `${task.content.substring(0, 100)}... (${task.sourceFile.basename})`;
                     description = task.content;
+                    lineNumber = task.lineNumber;
                 }
                 resultEl.setText(text);
                 resultEl.dataset['path'] = path;
                 resultEl.dataset['description'] = description;
+                resultEl.dataset['linenumber'] = lineNumber.toString();
 
                 resultEl.onClickEvent(() => {
-                    this.selectedTask = { path, description };
+                    this.selectedTask = { path, description, lineNumber };
                     this.searchInputEl.value = text;
-                    resultsContainer.empty(); // Hide results after selection
-                    // Optionally, highlight the selected item
+                    resultsContainer.style.display = 'none'; // Ocultar en lugar de vaciar
+                    
+                    // Gestionar la clase 'is-selected'
                     resultsContainer.querySelectorAll('.result-item').forEach(el => el.classList.remove('is-selected'));
                     resultEl.classList.add('is-selected');
                 });
@@ -106,6 +112,7 @@ export class TimeTrackerView {
         };
 
         this.searchInputEl.addEventListener('input', () => {
+            resultsContainer.style.display = 'block'; // Mostrar al escribir
             const searchTerm = this.searchInputEl.value.toLowerCase();
             const filteredTasks = this.plugin.availableTasks.filter(taskOrFile => {
                 if (taskOrFile instanceof TFile) {
@@ -117,9 +124,22 @@ export class TimeTrackerView {
             renderResults(filteredTasks);
         });
 
+        const updateButtons = () => {
+            sourceContainer.querySelectorAll('button').forEach(btn => {
+                if (btn.dataset['source'] === this.activeTaskSource) {
+                    btn.classList.add('is-active');
+                } else {
+                    btn.classList.remove('is-active');
+                }
+            });
+        };
+
         const createSourceButton = (source: TaskSource, name: string) => {
             const button = sourceContainer.createEl('button', { text: name });
+            button.dataset['source'] = source;
             button.onClickEvent(async () => {
+                this.activeTaskSource = source;
+                updateButtons();
                 await this.plugin.loadAvailableTasks(source);
                 renderResults(this.plugin.availableTasks);
                 this.searchInputEl.focus();
@@ -129,24 +149,41 @@ export class TimeTrackerView {
         createSourceButton('open-notes', 'Notas Abiertas');
         createSourceButton('in-progress', 'En Progreso');
         createSourceButton('all-tasks', 'Todas');
+        
+        updateButtons(); // Set initial active button
+
+        // Load initial tasks
+        await this.plugin.loadAvailableTasks(this.activeTaskSource);
+        renderResults(this.plugin.availableTasks);
+        resultsContainer.style.display = 'none'; // Hide initially
     }
 
     private renderTimerControls(parent: HTMLElement) {
         const timerDiv = parent.createDiv('timer-controls');
-        const timerDisplay = timerDiv.createEl('span', { text: '00:00:00', cls: 'timer-display' });
         
-        const startButton = timerDiv.createEl('button', { text: '▶️ Iniciar', cls: 'start-button' });
-        const stopButton = timerDiv.createEl('button', { text: '⏹️ Detener', cls: 'stop-button', attr: { style: 'display: none;' } });
-        const manualButton = timerDiv.createEl('button', { text: '+ Manual', cls: 'manual-button' });
+        const timerDisplayContainer = timerDiv.createDiv({ cls: 'timer-display-container' });
+        const timerDisplay = timerDisplayContainer.createEl('span', { text: '00:00:00', cls: 'timer-display' });
+        const goToTaskButton = timerDisplayContainer.createEl('button', { 
+            text: '↗️', 
+            cls: 'goto-task-button is-hidden',
+            attr: { 'aria-label': 'Ir a la tarea' }
+        });
+
+        const activeTaskDisplay = timerDiv.createEl('div', { cls: 'active-task-display is-hidden' });
+
+        const buttonsContainer = timerDiv.createDiv({ cls: 'timer-buttons-container' });
+        const startButton = buttonsContainer.createEl('button', { text: '▶️ Iniciar', cls: 'start-button' });
+        const stopButton = buttonsContainer.createEl('button', { text: '⏹️ Detener', cls: 'stop-button', attr: { style: 'display: none;' } });
+        const manualButton = buttonsContainer.createEl('button', { text: '+ Manual', cls: 'manual-button' });
 
         startButton.onClickEvent(async () => {
             if (!this.selectedTask) {
                 new Notice("Por favor, seleccione una tarea para iniciar el temporizador.");
                 return;
             }
-            const { path, description } = this.selectedTask;
+            const { path, description, lineNumber } = this.selectedTask;
             
-            this.startTimer(path, description, timerDisplay, startButton, stopButton);
+            this.startTimer(path, description, lineNumber, timerDisplay, startButton, stopButton);
         });
 
         stopButton.onClickEvent(() => {
@@ -157,7 +194,7 @@ export class TimeTrackerView {
             this.openManualEntryModal();
         });
 
-        this.syncTimerUI(timerDisplay, startButton, stopButton);
+        this.syncTimerUI(timerDisplay, startButton, stopButton, goToTaskButton, activeTaskDisplay);
     }
 
     public async renderStatistics(filter: string = 'all') {
@@ -204,8 +241,14 @@ export class TimeTrackerView {
         const expandButton = treeControls.createEl('button', { text: 'Expandir Todo' });
         const collapseButton = treeControls.createEl('button', { text: 'Colapsar Parcialmente' });
 
+        const updateTreeControlButtons = (activeButton: 'expand' | 'collapse') => {
+            expandButton.classList.toggle('is-active', activeButton === 'expand');
+            collapseButton.classList.toggle('is-active', activeButton === 'collapse');
+        };
+
         expandButton.onClickEvent(() => {
             this.statsContainer.querySelectorAll('details').forEach(d => d.open = true);
+            updateTreeControlButtons('expand');
         });
 
         collapseButton.onClickEvent(() => {
@@ -213,7 +256,11 @@ export class TimeTrackerView {
                 const level = parseInt(d.dataset['level'] || '99', 10);
                 d.open = level < 2;
             });
+            updateTreeControlButtons('collapse');
         });
+
+        // Estado inicial por defecto
+        updateTreeControlButtons('collapse');
 
         const { startDate, endDate } = this.getDateRange(filter);
         
@@ -225,13 +272,23 @@ export class TimeTrackerView {
             return true;
         });
 
-        // Indicador de Tiempo Total
+        // Resumen de Estadísticas del Período
         const totalDurationForPeriod = filteredLogs.reduce((sum, log) => sum + log.durationMinutes, 0);
         const hours = Math.floor(totalDurationForPeriod / 60);
         const minutes = totalDurationForPeriod % 60;
-        const totalDisplay = this.statsContainer.createDiv({ cls: 'total-duration-display' });
-        totalDisplay.createEl('span', { text: 'Total Registrado en Período:', cls: 'total-duration-label' });
-        totalDisplay.createEl('span', { text: `${hours}h ${minutes}m`, cls: 'total-duration-value' });
+        const totalLogs = filteredLogs.length;
+
+        const summaryContainer = this.statsContainer.createDiv({ cls: 'stats-summary-container' });
+
+        // Bloque para Tiempo Total
+        const timeStatBlock = summaryContainer.createDiv({ cls: 'stat-block' });
+        timeStatBlock.createEl('div', { text: `${hours}h ${minutes}m`, cls: 'stat-value' });
+        timeStatBlock.createEl('div', { text: 'Tiempo Total', cls: 'stat-label' });
+
+        // Bloque para Total de Registros
+        const logsStatBlock = summaryContainer.createDiv({ cls: 'stat-block' });
+        logsStatBlock.createEl('div', { text: totalLogs.toString(), cls: 'stat-value' });
+        logsStatBlock.createEl('div', { text: 'Registros', cls: 'stat-label' });
 
         if (filteredLogs.length === 0) {
             this.statsContainer.createEl('p', { text: 'No hay registros de tiempo para el período seleccionado.' });
@@ -240,6 +297,13 @@ export class TimeTrackerView {
 
         const tree = this.buildTree(filteredLogs);
         this.renderTree(tree, this.statsContainer, 0, totalDurationForPeriod);
+
+        // Forzar el estado de colapso parcial inicial para que coincida con el botón.
+        this.statsContainer.querySelectorAll('details.stats-table-row').forEach(d => {
+            const detailElement = d as HTMLDetailsElement;
+            const level = parseInt(detailElement.dataset['level'] || '99', 10);
+            detailElement.open = level < 2;
+        });
     }
 
     private renderFilterControls(parent: HTMLElement) {
@@ -355,6 +419,7 @@ export class TimeTrackerView {
                         name: isFile ? part.replace('.md', '') : part,
                         path: currentPathAccumulator,
                         duration: 0,
+                        recordCount: 0, // <-- Añadido
                         children: [],
                         ...(isFile ? { logs: [] } : {}) // Only add logs property for files
                     };
@@ -377,9 +442,10 @@ export class TimeTrackerView {
             const node = finalTreeNodes[path];
             if (!node) continue; // Skip if node doesn't exist
             
-            // Sum duration from its own logs if it's a file (leaf node)
+            // Sum duration and count from its own logs if it's a file (leaf node)
             if (node.logs) {
                 node.duration = node.logs.reduce((sum, log) => sum + log.durationMinutes, 0);
+                node.recordCount = node.logs.length; // <-- Añadido
                 node.logs.sort((a, b) => moment(a.startTime).valueOf() - moment(b.startTime).valueOf());
             }
 
@@ -398,8 +464,9 @@ export class TimeTrackerView {
             if (!node) continue; // Skip if node doesn't exist
             
             if (node.children.length > 0) {
-                // Sum children's duration to its own (if it's a file, it already has its own duration from logs)
+                // Sum children's duration and record count to its own
                 node.duration = node.children.reduce((sum, child) => sum + child.duration, node.duration);
+                node.recordCount = node.children.reduce((sum, child) => sum + child.recordCount, node.recordCount); // <-- Añadido
             }
         }
 
@@ -460,6 +527,9 @@ export class TimeTrackerView {
             const minutes = node.duration % 60;
             const percentage = totalDurationForPeriod > 0 ? (node.duration / totalDurationForPeriod) * 100 : 0;
 
+            if (node.recordCount > 0) {
+                statsCell.createEl('span', { text: `[${node.recordCount}]`, cls: 'stat-log-count' });
+            }
             statsCell.createEl('span', { text: `${hours}h ${minutes}m`, cls: 'stat-duration' });
             
             const percentageContainer = statsCell.createEl('div', { cls: 'stat-percentage' });
@@ -504,7 +574,7 @@ export class TimeTrackerView {
         }
     }
 
-    private syncTimerUI(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
+    private syncTimerUI(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, goToTaskBtn: HTMLElement, activeTaskDisplay: HTMLElement) {
         // Clear any existing interval to prevent multiple timers running
         if (this.activeTimerInterval) {
             clearInterval(this.activeTimerInterval);
@@ -512,16 +582,26 @@ export class TimeTrackerView {
         }
 
         if (this.plugin.activeTimer) {
-            const { taskNotePath, taskDescription, startTime } = this.plugin.activeTimer;
+            const { taskNotePath, taskDescription, startTime, lineNumber } = this.plugin.activeTimer;
             
             // Restore selected task
-            this.selectedTask = { path: taskNotePath, description: taskDescription || '' };
+            this.selectedTask = { path: taskNotePath, description: taskDescription || '', lineNumber: lineNumber || 0 };
             this.searchInputEl.value = taskDescription || taskNotePath;
             this.searchInputEl.disabled = true;
 
             // Update UI to reflect running timer
             startBtn.style.display = 'none';
             stopBtn.style.display = 'inline-block';
+            
+            activeTaskDisplay.setText(taskDescription || 'Seguimiento de nota completa');
+            activeTaskDisplay.classList.remove('is-hidden');
+            goToTaskBtn.classList.remove('is-hidden');
+
+            goToTaskBtn.onclick = () => {
+                this.plugin.app.workspace.openLinkText(taskNotePath, '', false, {
+                    eState: { line: lineNumber }
+                });
+            };
 
             const startTimeMoment = moment(startTime);
             
@@ -542,25 +622,34 @@ export class TimeTrackerView {
             startBtn.style.display = 'inline-block';
             stopBtn.style.display = 'none';
             this.searchInputEl.disabled = false;
+            
+            activeTaskDisplay.classList.add('is-hidden');
+            goToTaskBtn.classList.add('is-hidden');
+            goToTaskBtn.onclick = null;
         }
     }
 
-    private startTimer(taskPath: string, taskDescription: string | undefined, timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
+    private startTimer(taskPath: string, taskDescription: string | undefined, lineNumber: number, timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
         if (this.plugin.activeTimer) return;
 
-        this.plugin.startTracking(taskPath, taskDescription || '');
-        this.syncTimerUI(timerDisplay, startBtn, stopBtn);
+        this.plugin.startTracking(taskPath, taskDescription || '', lineNumber);
+        // We need to pass the other UI elements to syncTimerUI
+        const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
+        const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
+        this.syncTimerUI(timerDisplay, startBtn, stopBtn, goToTaskButton, activeTaskDisplay);
     }
 
     private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
         if (!this.plugin.activeTimer) return;
 
         this.plugin.stopTracking();
-        this.syncTimerUI(timerDisplay, startBtn, stopBtn);
+        const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
+        const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
+        this.syncTimerUI(timerDisplay, startBtn, stopBtn, goToTaskButton, activeTaskDisplay);
     }
 
     private async openManualEntryModal() {
-        new TimeLogModal(this.plugin.app, this.service, this.plugin.availableTasks, async () => {
+        new TimeLogModal(this.plugin.app, this.service, this.plugin, async () => {
             await this.renderStatistics();
         }).open();
     }

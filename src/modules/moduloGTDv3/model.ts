@@ -117,4 +117,5 @@ export interface ActiveTimerState {
     taskNotePath: string; // Ruta a la nota de la tarea.
     startTime: string; // Fecha y hora de inicio en formato ISO 8601.
     taskDescription?: string; // Descripción de la tarea que se estaba cronometrando.
+    lineNumber?: number; // Línea de la tarea en la nota.
 }
