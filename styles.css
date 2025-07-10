@@ -841,7 +841,8 @@ details.gtd-card-container[open] > summary .gtd-card-header {
 .timeline-grid-container {
     display: flex;
     flex-grow: 1;
-    overflow-y: auto;
+    /* The container itself should not scroll, the inner grid will */
+    overflow: hidden; 
     margin-top: 10px;
 }
 
@@ -851,6 +852,12 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     flex-direction: column;
     padding-right: 10px;
     border-right: 1px solid var(--background-modifier-border);
+}
+
+.timeline-header-spacer {
+    height: 31px; /* Match the header height */
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .timeline-hour-label {
@@ -870,9 +877,23 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     border-bottom: 1px solid var(--background-modifier-border-hover);
 }
 
+.timeline-days-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.timeline-header-container {
+    display: grid;
+    flex-shrink: 0;
+}
+
 .timeline-days-container {
     flex-grow: 1;
     display: grid;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .timeline-day-column {
@@ -888,8 +909,7 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     font-weight: bold;
     padding: 5px;
     border-bottom: 1px solid var(--background-modifier-border);
-    position: sticky;
-    top: 0;
+    /* position: sticky; top: 0; is now handled by the container */
     background-color: var(--background-secondary);
     z-index: 5;
 }
@@ -943,7 +963,6 @@ details.gtd-card-container[open] > summary .gtd-card-header {
 
 .timeline-block-content strong {
     display: block;
-    margin-bottom: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -967,4 +986,32 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     border-radius: 4px;
     z-index: 2;
     pointer-events: none; /* No interferir con otros eventos de ratón */
+}
+
+/* --- Estilos para eventos de varios días --- */
+
+.timeline-block-continuation-start {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.timeline-block-continuation-end {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.timeline-block-continuation-middle {
+    border-radius: 0;
+}
+
+/* Efecto de hover unificado para todos los segmentos de un evento */
+.timeline-block.is-hovered {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 8px var(--interactive-accent-hover);
+    z-index: 4; /* Asegura que todos los segmentos se muestren por encima de otros bloques */
+}
+
+/* Cambia el cursor global cuando se está copiando un bloque */
+body.is-copying {
+    cursor: copy;
 }

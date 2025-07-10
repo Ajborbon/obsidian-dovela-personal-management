@@ -59,44 +59,70 @@ export class TimelineView {
 
         // Eje de Tiempo (columna de horas)
         const timeAxis = gridContainer.createEl('div', { cls: 'timeline-time-axis' });
+        // Add a blank space for the sticky header
+        timeAxis.createEl('div', { cls: 'timeline-header-spacer' });
         for (let hour = 0; hour < 24; hour++) {
             timeAxis.createEl('div', { cls: 'timeline-hour-label', text: `${hour}:00` });
         }
 
-        // Contenedor de Días
-        const daysContainer = gridContainer.createEl('div', { cls: 'timeline-days-container' });
+        // Wrapper for headers and scrollable grid
+        const daysWrapper = gridContainer.createEl('div', { cls: 'timeline-days-wrapper' });
         const days = this.getVisibleDays();
+
+        // Sticky Header Container
+        const headerContainer = daysWrapper.createEl('div', { cls: 'timeline-header-container' });
+        headerContainer.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
+        days.forEach(day => {
+            headerContainer.createEl('div', { cls: 'timeline-day-header', text: day.format('ddd D') });
+        });
+
+        // Scrollable Grid Container
+        const daysContainer = daysWrapper.createEl('div', { cls: 'timeline-days-container' });
         daysContainer.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
 
         days.forEach(day => {
             const dayColumn = daysContainer.createEl('div', { cls: 'timeline-day-column' });
-            dayColumn.createEl('div', { cls: 'timeline-day-header', text: day.format('ddd D') });
-
-            // Líneas de Hora
+            dayColumn.dataset.date = day.format('YYYY-MM-DD');
+            
+            // Hour lines for the grid
             for (let hour = 0; hour < 24; hour++) {
                 dayColumn.createEl('div', { cls: 'timeline-hour-line' });
             }
 
-            // Renderizar Bloques de Tiempo
+            // Render Time Blocks
             this.renderTimeBlocks(day, dayColumn);
 
-            // Añadir evento para creación rápida
+            // Add create event listener
             this.addCreateEvent(day, dayColumn);
         });
     }
 
     private renderTimeBlocks(day: moment.Moment, dayColumn: HTMLElement) {
-        const logsForDay = this.plugin.data.timeLogs.filter(log => moment(log.startTime).isSame(day, 'day'));
+        const dayStart = day.clone().startOf('day');
+        const dayEnd = day.clone().endOf('day');
+
+        // Find logs that INTERSECT with the current day
+        const logsForDay = this.plugin.data.timeLogs.filter(log => {
+            const start = moment(log.startTime);
+            const end = moment(log.endTime);
+            // Ensure the log has a duration before attempting to render
+            if (start.isSameOrAfter(end)) return false;
+            return start.isBefore(dayEnd) && end.isAfter(dayStart);
+        });
 
         logsForDay.forEach(log => {
             const startMoment = moment(log.startTime);
             const endMoment = moment(log.endTime);
 
-            const startOfDay = startMoment.clone().startOf('day');
-            const startMinute = startMoment.diff(startOfDay, 'minutes');
-            const durationMinutes = endMoment.diff(startMoment, 'minutes');
+            // Clamp the segment to the current day's bounds
+            const segmentStart = moment.max(startMoment, dayStart);
+            const segmentEnd = moment.min(endMoment, dayEnd);
 
-            if (durationMinutes <= 0) return; // No renderizar eventos sin duraci��n
+            const startOfDay = segmentStart.clone().startOf('day');
+            const startMinute = segmentStart.diff(startOfDay, 'minutes');
+            const durationMinutes = segmentEnd.diff(segmentStart, 'minutes');
+
+            if (durationMinutes <= 0) return;
 
             const top = (startMinute / MINUTES_IN_DAY) * 100;
             const height = (durationMinutes / MINUTES_IN_DAY) * 100;
@@ -105,16 +131,57 @@ export class TimelineView {
             block.style.top = `${top}%`;
             block.style.height = `${height}%`;
             block.style.backgroundColor = this.getBlockColor(log);
+            
+            // Add data-log-id for hover interaction
+            block.dataset.logId = log.id;
+
+            const isMultiDay = !startMoment.isSame(endMoment, 'day');
+            if (isMultiDay) {
+                const isFirstSegment = day.isSame(startMoment, 'day');
+                const isLastSegment = day.isSame(endMoment, 'day');
+                
+                if (isFirstSegment) {
+                    block.addClass('timeline-block-continuation-start');
+                } else if (isLastSegment) {
+                    block.addClass('timeline-block-continuation-end');
+                } else {
+                    block.addClass('timeline-block-continuation-middle');
+                }
+            }
+
+            const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
+            const fullStartTime = startMoment.format('MMM D, HH:mm');
+            const fullEndTime = endMoment.format('MMM D, HH:mm');
+
+            const tooltipParts = [
+                `Proyecto: ${projectName}`,
+                `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
+                `Periodo: ${fullStartTime} - ${fullEndTime}`,
+                `Notas: ${log.notes || '(Sin notas)'}`
+            ];
+            block.setAttribute('title', tooltipParts.join('\n'));
 
             const blockContent = block.createEl('div', { cls: 'timeline-block-content' });
-            const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
             blockContent.createEl('strong', { text: projectName });
-            blockContent.createEl('p', { text: log.taskDescription || log.notes });
 
-            // Añadir handle para redimensionar
-            const resizeHandle = block.createEl('div', { cls: 'timeline-block-resize-handle' });
+            // Add hover listeners for unified highlighting
+            block.addEventListener('mouseenter', () => {
+                document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"]`).forEach(el => el.addClass('is-hovered'));
+            });
+            block.addEventListener('mouseleave', () => {
+                document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"]`).forEach(el => el.removeClass('is-hovered'));
+            });
 
-            this.addBlockInteraction(block, resizeHandle, log, dayColumn);
+            // For multi-day events, disable complex interactions for now to prevent data corruption.
+            // A simple click will open the editor modal.
+            if (isMultiDay) {
+                block.addEventListener('click', () => {
+                    new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+                });
+            } else {
+                const resizeHandle = block.createEl('div', { cls: 'timeline-block-resize-handle' });
+                this.addBlockInteraction(block, resizeHandle, log, dayColumn);
+            }
         });
     }
 
@@ -123,9 +190,10 @@ export class TimelineView {
         let initialY: number, initialTop: number, initialHeight: number;
         let columnRect: DOMRect;
         let hasMoved = false;
+        let isCopying = false;
 
         const onResizeMouseDown = (e: MouseEvent) => {
-            e.stopPropagation(); // Prevenir que se active el evento de mover
+            e.stopPropagation();
             e.preventDefault();
             
             hasMoved = false;
@@ -138,14 +206,12 @@ export class TimelineView {
         };
 
         const onResizeMouseMove = (e: MouseEvent) => {
-            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) {
-                hasMoved = true;
-            }
+            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) hasMoved = true;
             const dy = e.clientY - initialY;
-            block.style.height = `${Math.max(10, initialHeight + dy)}px`; // Evitar altura negativa
+            block.style.height = `${Math.max(10, initialHeight + dy)}px`;
         };
 
-        const onResizeMouseUp = async (e: MouseEvent) => {
+        const onResizeMouseUp = async () => {
             document.removeEventListener('mousemove', onResizeMouseMove);
             document.removeEventListener('mouseup', onResizeMouseUp);
 
@@ -158,7 +224,7 @@ export class TimelineView {
                     durationMinutes: Math.round(durationMinutes)
                 });
                 this.render();
-            } else { // Fue un clic en el handle de redimensión
+            } else {
                 new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
             }
         };
@@ -166,39 +232,61 @@ export class TimelineView {
         const onMoveMouseDown = (e: MouseEvent) => {
             e.preventDefault();
             
+            isCopying = e.altKey;
             hasMoved = false;
             initialY = e.clientY;
             initialTop = block.offsetTop;
             columnRect = dayColumn.getBoundingClientRect();
+
+            if (isCopying) {
+                document.body.classList.add('is-copying');
+            }
 
             document.addEventListener('mousemove', onMoveMouseMove);
             document.addEventListener('mouseup', onMoveMouseUp);
         };
 
         const onMoveMouseMove = (e: MouseEvent) => {
-            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) {
-                hasMoved = true;
-            }
+            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) hasMoved = true;
             const dy = e.clientY - initialY;
             block.style.top = `${initialTop + dy}px`;
         };
 
-        const onMoveMouseUp = async (e: MouseEvent) => {
+        const onMoveMouseUp = async () => {
             document.removeEventListener('mousemove', onMoveMouseMove);
             document.removeEventListener('mouseup', onMoveMouseUp);
+            
+            if (isCopying) {
+                document.body.classList.remove('is-copying');
+            }
 
             if (hasMoved) {
                 const finalTop = block.offsetTop;
                 const startMinutes = (finalTop / columnRect.height) * MINUTES_IN_DAY;
                 const durationMinutes = moment(log.endTime).diff(moment(log.startTime), 'minutes');
-                const newStartTime = moment(log.startTime).startOf('day').add(startMinutes, 'minutes');
+                
+                // The new start time is relative to the day of the column it was dropped in
+                const dayOfColumn = moment(dayColumn.dataset.date);
+                const newStartTime = dayOfColumn.startOf('day').add(startMinutes, 'minutes');
                 const newEndTime = newStartTime.clone().add(durationMinutes, 'minutes');
-                await this.plugin.timeTrackerService.updateLogEntry(log.id, {
-                    startTime: newStartTime.toISOString(),
-                    endTime: newEndTime.toISOString()
-                });
+
+                if (isCopying) {
+                    await this.plugin.timeTrackerService.addLogEntry({
+                        taskNotePath: log.taskNotePath,
+                        taskDescription: log.taskDescription,
+                        notes: log.notes,
+                        startTime: newStartTime.toISOString(),
+                        endTime: newEndTime.toISOString(),
+                        durationMinutes: durationMinutes
+                    });
+                } else {
+                    await this.plugin.timeTrackerService.updateLogEntry(log.id, {
+                        startTime: newStartTime.toISOString(),
+                        endTime: newEndTime.toISOString()
+                    });
+                }
                 this.render();
-            } else { // Fue un clic en el cuerpo del bloque
+            } else if (!isCopying) {
                 new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
             }
         };
