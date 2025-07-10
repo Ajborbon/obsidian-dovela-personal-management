@@ -1,6 +1,7 @@
 
 import { Plugin, Notice, WorkspaceLeaf, TFile } from 'obsidian';
 import { GtdView, GTD_VIEW_TYPE, GTD_VIEW_DISPLAY_TEXT, GTD_VIEW_ICON } from './modules/moduloGTDv3/view.js';
+import { FocoView, FOCO_VIEW_TYPE, FOCO_VIEW_ICON } from './modules/moduloFoco/focoView.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
 import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
 import type { ActiveTimerState, Task, DovelaPluginData } from './modules/moduloGTDv3/model.js';
@@ -50,11 +51,31 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             (leaf) => new GtdView(leaf, this)
         );
 
+        this.registerView(
+            FOCO_VIEW_TYPE,
+            (leaf) => new FocoView(leaf, this, null) // Initially null, will be set on activation
+        );
+
         this.addCommand({
             id: 'open-gtd-dashboard',
             name: 'Open GTD Dashboard',
             callback: () => {
                 this.activateView();
+            }
+        });
+
+        this.addCommand({
+            id: 'open-focus-view',
+            name: 'Dovela: Mostrar Vista de Foco del Proyecto',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (activeFile) {
+                    if (!checking) {
+                        this.activateFocoView(activeFile);
+                    }
+                    return true;
+                }
+                return false;
             }
         });
 
@@ -68,6 +89,15 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         this.addRibbonIcon(GTD_VIEW_ICON, GTD_VIEW_DISPLAY_TEXT, () => {
             this.activateView();
+        });
+
+        this.addRibbonIcon(FOCO_VIEW_ICON, 'Abrir Vista de Foco', () => {
+            const activeFile = this.app.workspace.getActiveFile();
+            if (activeFile) {
+                this.activateFocoView(activeFile);
+            } else {
+                new Notice('Por favor, abra o seleccione una nota para usar la Vista de Foco.');
+            }
         });
     }
 
@@ -137,6 +167,28 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         this.gtdContextTags = allTags.filter(tag => tag.startsWith('#cx-'));
         this.gtdPersonTags = allTags.filter(tag => tag.startsWith('#px-'));
+    }
+
+    private async activateFocoView(activeFile: TFile): Promise<void> {
+        const leaves = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
+        let leaf: WorkspaceLeaf | undefined = leaves.find(l => (l.view as FocoView).getDisplayText().includes(activeFile.basename));
+
+        if (!leaf) {
+            leaf = this.app.workspace.getLeaf('tab');
+            if (!leaf) {
+                new Notice('No se pudo crear una nueva pestaña');
+                return;
+            }
+            await leaf.setViewState({
+                type: FOCO_VIEW_TYPE,
+                active: true,
+                state: { activeFile: activeFile.path } // Pass file path to the view state
+            });
+            (leaf.view as FocoView)['activeFile'] = activeFile; // Directly set the active file
+            await (leaf.view as FocoView).onOpen(); // Manually trigger onOpen to render with the file
+        }
+        
+        this.app.workspace.revealLeaf(leaf);
     }
 
     private async activateView(switchToTimeTracker: boolean = false): Promise<void> {
