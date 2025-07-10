@@ -7,6 +7,8 @@ import { TimeLogModal } from './timeLogModal.js';
 type TimelineViewType = 'day' | '3-day' | 'week';
 
 const MINUTES_IN_DAY = 24 * 60;
+const MIN_DURATION_FOR_BLOCK = 10; // En minutos
+
 
 export class TimelineView {
     private container: HTMLElement;
@@ -89,6 +91,9 @@ export class TimelineView {
                 dayColumn.createEl('div', { cls: 'timeline-hour-line' });
             }
 
+            // Add listeners for drag-and-drop functionality
+            this.addDropZoneInteraction(day, dayColumn);
+
             // Render Time Blocks
             this.renderTimeBlocks(day, dayColumn);
 
@@ -97,104 +102,288 @@ export class TimelineView {
         });
     }
 
+    private addDropZoneInteraction(day: moment.Moment, dayColumn: HTMLElement) {
+        dayColumn.addEventListener('dragover', (e: DragEvent) => {
+            e.preventDefault(); // Necessary to allow dropping
+            if (e.dataTransfer) {
+                // Provide visual feedback based on Alt/Option key state
+                e.dataTransfer.dropEffect = e.altKey ? 'copy' : 'move';
+            }
+        });
+
+        dayColumn.addEventListener('dragenter', (e: DragEvent) => {
+            // Check if the dragged item is one of our blocks
+            if (e.dataTransfer?.types.includes('text/plain')) {
+                dayColumn.classList.add('drop-target-hover');
+            }
+        });
+
+        dayColumn.addEventListener('dragleave', (e: DragEvent) => {
+            // Avoid flickering when moving over child elements
+            if (!dayColumn.contains(e.relatedTarget as Node)) {
+                dayColumn.classList.remove('drop-target-hover');
+            }
+        });
+
+        dayColumn.addEventListener('drop', async (e: DragEvent) => {
+            e.preventDefault();
+            dayColumn.classList.remove('drop-target-hover');
+
+            if (!e.dataTransfer) return;
+
+            const logId = e.dataTransfer.getData('text/plain');
+            const originalLog = this.plugin.data.timeLogs.find(log => log.id === logId);
+
+            if (!originalLog) return;
+
+            // Calculate original duration
+            const durationMinutes = moment(originalLog.endTime).diff(moment(originalLog.startTime), 'minutes');
+
+            // Calculate new start time based on drop position
+            const columnRect = dayColumn.getBoundingClientRect();
+            const dropY = e.clientY - columnRect.top;
+            
+            // Ensure dropY is within bounds
+            const relativeY = Math.max(0, Math.min(dropY, columnRect.height));
+            
+            const startMinutes = (relativeY / columnRect.height) * MINUTES_IN_DAY;
+
+            const newStartTime = day.clone().startOf('day').add(startMinutes, 'minutes');
+            const newEndTime = newStartTime.clone().add(durationMinutes, 'minutes');
+
+            // Check if the Alt/Option key is pressed to duplicate instead of move
+            if (e.altKey) {
+                await this.plugin.timeTrackerService.addLogEntry({
+                    taskNotePath: originalLog.taskNotePath,
+                    taskDescription: originalLog.taskDescription,
+                    notes: originalLog.notes,
+                    startTime: newStartTime.toISOString(),
+                    endTime: newEndTime.toISOString(),
+                    durationMinutes: durationMinutes
+                });
+            } else {
+                await this.plugin.timeTrackerService.updateLogEntry(logId, {
+                    startTime: newStartTime.toISOString(),
+                    endTime: newEndTime.toISOString()
+                });
+            }
+
+            // Re-render the entire view to reflect the change
+            this.render();
+        });
+    }
+
     private renderTimeBlocks(day: moment.Moment, dayColumn: HTMLElement) {
         const dayStart = day.clone().startOf('day');
         const dayEnd = day.clone().endOf('day');
 
-        // Find logs that INTERSECT with the current day
         const logsForDay = this.plugin.data.timeLogs.filter(log => {
             const start = moment(log.startTime);
             const end = moment(log.endTime);
-            // Ensure the log has a duration before attempting to render
             if (start.isSameOrAfter(end)) return false;
             return start.isBefore(dayEnd) && end.isAfter(dayStart);
         });
 
-        logsForDay.forEach(log => {
-            const startMoment = moment(log.startTime);
-            const endMoment = moment(log.endTime);
+        const eventGroups = this.groupOverlappingLogs(logsForDay);
 
-            // Clamp the segment to the current day's bounds
-            const segmentStart = moment.max(startMoment, dayStart);
-            const segmentEnd = moment.min(endMoment, dayEnd);
+        eventGroups.forEach(group => {
+            const groupSize = group.length;
+            group.forEach((log, index) => {
+                const startMoment = moment(log.startTime);
+                const endMoment = moment(log.endTime);
 
-            const startOfDay = segmentStart.clone().startOf('day');
-            const startMinute = segmentStart.diff(startOfDay, 'minutes');
-            const durationMinutes = segmentEnd.diff(segmentStart, 'minutes');
+                const segmentStart = moment.max(startMoment, dayStart);
+                const segmentEnd = moment.min(endMoment, dayEnd);
 
-            if (durationMinutes <= 0) return;
+                const startOfDay = segmentStart.clone().startOf('day');
+                const startMinute = segmentStart.diff(startOfDay, 'minutes');
+                const durationMinutes = segmentEnd.diff(segmentStart, 'minutes');
 
-            const top = (startMinute / MINUTES_IN_DAY) * 100;
-            const height = (durationMinutes / MINUTES_IN_DAY) * 100;
+                if (durationMinutes <= 0) return;
 
-            const block = dayColumn.createEl('div', { cls: 'timeline-block' });
-            block.style.top = `${top}%`;
-            block.style.height = `${height}%`;
-            block.style.backgroundColor = this.getBlockColor(log);
-            
-            // Add data-log-id for hover interaction
-            block.dataset.logId = log.id;
+                const width = 100 / groupSize;
+                const left = index * width;
 
-            const isMultiDay = !startMoment.isSame(endMoment, 'day');
-            if (isMultiDay) {
-                const isFirstSegment = day.isSame(startMoment, 'day');
-                const isLastSegment = day.isSame(endMoment, 'day');
-                
-                if (isFirstSegment) {
-                    block.addClass('timeline-block-continuation-start');
-                } else if (isLastSegment) {
-                    block.addClass('timeline-block-continuation-end');
+                if (durationMinutes < MIN_DURATION_FOR_BLOCK && !startMoment.isSame(endMoment, 'day')) {
+                    this.renderShortEventIndicator(log, dayColumn, startMinute, left, width);
                 } else {
-                    block.addClass('timeline-block-continuation-middle');
+                    this.renderFullBlock(log, dayColumn, startMinute, durationMinutes, segmentStart, segmentEnd, left, width);
                 }
-            }
-
-            const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
-            const fullStartTime = startMoment.format('MMM D, HH:mm');
-            const fullEndTime = endMoment.format('MMM D, HH:mm');
-
-            const tooltipParts = [
-                `Proyecto: ${projectName}`,
-                `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
-                `Periodo: ${fullStartTime} - ${fullEndTime}`,
-                `Notas: ${log.notes || '(Sin notas)'}`
-            ];
-            block.setAttribute('title', tooltipParts.join('\n'));
-
-            const blockContent = block.createEl('div', { cls: 'timeline-block-content' });
-            blockContent.createEl('strong', { text: projectName });
-
-            // Add hover listeners for unified highlighting
-            block.addEventListener('mouseenter', () => {
-                document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"]`).forEach(el => el.addClass('is-hovered'));
             });
-            block.addEventListener('mouseleave', () => {
-                document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"]`).forEach(el => el.removeClass('is-hovered'));
-            });
-
-            // For multi-day events, disable complex interactions for now to prevent data corruption.
-            // A simple click will open the editor modal.
-            if (isMultiDay) {
-                block.addEventListener('click', () => {
-                    new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
-                });
-            } else {
-                const resizeHandle = block.createEl('div', { cls: 'timeline-block-resize-handle' });
-                this.addBlockInteraction(block, resizeHandle, log, dayColumn);
-            }
         });
     }
 
+    private groupOverlappingLogs(logs: TimeLogEntry[]): TimeLogEntry[][] {
+        if (logs.length === 0) return [];
+
+        const sortedLogs = logs.sort((a, b) => moment(a.startTime).diff(moment(b.startTime)));
+
+        const groups: TimeLogEntry[][] = [];
+        let currentGroup: TimeLogEntry[] = [];
+
+        sortedLogs.forEach(log => {
+            if (currentGroup.length === 0) {
+                currentGroup.push(log);
+                return;
+            }
+
+            const groupEndTime = Math.max(...currentGroup.map(l => moment(l.endTime).valueOf()));
+            
+            if (moment(log.startTime).valueOf() < groupEndTime) {
+                currentGroup.push(log);
+            } else {
+                groups.push(currentGroup);
+                currentGroup = [log];
+            }
+        });
+
+        if (currentGroup.length > 0) {
+            groups.push(currentGroup);
+        }
+
+        return groups;
+    }
+
+    private renderShortEventIndicator(log: TimeLogEntry, dayColumn: HTMLElement, startMinute: number, left: number, width: number) {
+        const top = (startMinute / MINUTES_IN_DAY) * 100;
+
+        const indicator = dayColumn.createEl('div', { cls: 'timeline-short-event-indicator' });
+        indicator.style.top = `${top}%`;
+        indicator.style.left = `${left}%`;
+        indicator.style.width = `calc(${width}% - 2px)`; // 2px for margin
+        indicator.style.backgroundColor = this.getBlockColor(log);
+        indicator.dataset.logId = log.id;
+
+        const startMoment = moment(log.startTime);
+        const endMoment = moment(log.endTime);
+        const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
+        const fullStartTime = startMoment.format('MMM D, HH:mm');
+        const fullEndTime = endMoment.format('MMM D, HH:mm');
+        const duration = endMoment.diff(startMoment, 'minutes');
+
+        const tooltipParts = [
+            `Proyecto: ${projectName}`,
+            `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
+            `Periodo: ${fullStartTime} - ${fullEndTime} (${duration} min)`,
+            `Notas: ${log.notes || '(Sin notas)'}`
+        ];
+        indicator.setAttribute('title', tooltipParts.join('\n'));
+
+        indicator.addEventListener('click', () => {
+            new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+        });
+
+        indicator.addEventListener('mouseenter', () => {
+            document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"], .timeline-short-event-indicator[data-log-id="${log.id}"]`).forEach(el => el.addClass('is-hovered'));
+        });
+        indicator.addEventListener('mouseleave', () => {
+            document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"], .timeline-short-event-indicator[data-log-id="${log.id}"]`).forEach(el => el.removeClass('is-hovered'));
+        });
+    }
+
+    private renderFullBlock(log: TimeLogEntry, dayColumn: HTMLElement, startMinute: number, durationMinutes: number, segmentStart: moment.Moment, segmentEnd: moment.Moment, left: number, width: number) {
+        const top = (startMinute / MINUTES_IN_DAY) * 100;
+        const height = (durationMinutes / MINUTES_IN_DAY) * 100;
+
+        const block = dayColumn.createEl('div', { cls: 'timeline-block' });
+        block.style.top = `${top}%`;
+        block.style.height = `${height}%`;
+        block.style.left = `${left}%`;
+        block.style.width = `calc(${width}% - 2px)`; // 2px for margin
+        block.style.backgroundColor = this.getBlockColor(log);
+        
+        block.dataset.logId = log.id;
+
+        const startMoment = moment(log.startTime);
+        const endMoment = moment(log.endTime);
+        const day = segmentStart.clone().startOf('day');
+
+        const isMultiDay = !startMoment.isSame(endMoment, 'day');
+        if (isMultiDay) {
+            const isFirstSegment = day.isSame(startMoment, 'day');
+            const isLastSegment = day.isSame(endMoment, 'day');
+            
+            if (isFirstSegment) {
+                block.addClass('timeline-block-continuation-start');
+            } else if (isLastSegment) {
+                block.addClass('timeline-block-continuation-end');
+            } else {
+                block.addClass('timeline-block-continuation-middle');
+            }
+        }
+
+        const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
+        const fullStartTime = startMoment.format('MMM D, HH:mm');
+        const fullEndTime = endMoment.format('MMM D, HH:mm');
+
+        const tooltipParts = [
+            `Proyecto: ${projectName}`,
+            `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
+            `Periodo: ${fullStartTime} - ${fullEndTime}`,
+            `Notas: ${log.notes || '(Sin notas)'}`
+        ];
+        block.setAttribute('title', tooltipParts.join('\n'));
+
+        const blockContent = block.createEl('div', { cls: 'timeline-block-content' });
+        blockContent.createEl('strong', { text: projectName });
+
+        block.addEventListener('mouseenter', () => {
+            document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"], .timeline-short-event-indicator[data-log-id="${log.id}"]`).forEach(el => el.addClass('is-hovered'));
+        });
+        block.addEventListener('mouseleave', () => {
+            document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"], .timeline-short-event-indicator[data-log-id="${log.id}"]`).forEach(el => el.removeClass('is-hovered'));
+        });
+
+        if (isMultiDay) {
+            block.addEventListener('click', () => {
+                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+            });
+        } else {
+            const resizeHandle = block.createEl('div', { cls: 'timeline-block-resize-handle' });
+            this.addBlockInteraction(block, resizeHandle, log, dayColumn);
+        }
+    }
+
     private addBlockInteraction(block: HTMLElement, handle: HTMLElement, log: TimeLogEntry, dayColumn: HTMLElement) {
+        // Prevent the resize handle itself from being draggable
+        handle.draggable = false;
+
+        // 1. NATIVE DRAG-AND-DROP FOR MOVING BETWEEN COLUMNS
+        block.draggable = true;
+
+        block.addEventListener('dragstart', (e: DragEvent) => {
+            // Prevent drag if the resize handle was the target
+            if (e.target === handle) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Ensure dataTransfer is available
+            if (e.dataTransfer) {
+                e.dataTransfer.setData('text/plain', log.id);
+                e.dataTransfer.effectAllowed = 'copyMove';
+            }
+            
+            // Add a slight delay to allow the DOM to update before applying the class
+            setTimeout(() => {
+                block.classList.add('is-dragging');
+            }, 0);
+        });
+
+        block.addEventListener('dragend', () => {
+            block.classList.remove('is-dragging');
+        });
+
+
+        // 2. MOUSE EVENTS FOR RESIZING (existing logic preserved)
         const DRAG_THRESHOLD = 5;
-        let initialY: number, initialTop: number, initialHeight: number;
+        let initialY: number, initialHeight: number;
         let columnRect: DOMRect;
         let hasMoved = false;
-        let isCopying = false;
 
         const onResizeMouseDown = (e: MouseEvent) => {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation(); // Stop event from bubbling to the block's click/drag listeners
+            block.draggable = false; // Temporarily disable dragging during resize
             
             hasMoved = false;
             initialY = e.clientY;
@@ -206,14 +395,19 @@ export class TimelineView {
         };
 
         const onResizeMouseMove = (e: MouseEvent) => {
-            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) hasMoved = true;
-            const dy = e.clientY - initialY;
-            block.style.height = `${Math.max(10, initialHeight + dy)}px`;
+            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) {
+                hasMoved = true;
+            }
+            if (hasMoved) {
+                const dy = e.clientY - initialY;
+                block.style.height = `${Math.max(10, initialHeight + dy)}px`;
+            }
         };
 
         const onResizeMouseUp = async () => {
             document.removeEventListener('mousemove', onResizeMouseMove);
             document.removeEventListener('mouseup', onResizeMouseUp);
+            block.draggable = true; // Re-enable dragging after resize is complete
 
             if (hasMoved) {
                 const finalHeight = block.offsetHeight;
@@ -224,75 +418,18 @@ export class TimelineView {
                     durationMinutes: Math.round(durationMinutes)
                 });
                 this.render();
-            } else {
-                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
-            }
-        };
-
-        const onMoveMouseDown = (e: MouseEvent) => {
-            e.preventDefault();
-            
-            isCopying = e.altKey;
-            hasMoved = false;
-            initialY = e.clientY;
-            initialTop = block.offsetTop;
-            columnRect = dayColumn.getBoundingClientRect();
-
-            if (isCopying) {
-                document.body.classList.add('is-copying');
-            }
-
-            document.addEventListener('mousemove', onMoveMouseMove);
-            document.addEventListener('mouseup', onMoveMouseUp);
-        };
-
-        const onMoveMouseMove = (e: MouseEvent) => {
-            if (!hasMoved && Math.abs(e.clientY - initialY) > DRAG_THRESHOLD) hasMoved = true;
-            const dy = e.clientY - initialY;
-            block.style.top = `${initialTop + dy}px`;
-        };
-
-        const onMoveMouseUp = async () => {
-            document.removeEventListener('mousemove', onMoveMouseMove);
-            document.removeEventListener('mouseup', onMoveMouseUp);
-            
-            if (isCopying) {
-                document.body.classList.remove('is-copying');
-            }
-
-            if (hasMoved) {
-                const finalTop = block.offsetTop;
-                const startMinutes = (finalTop / columnRect.height) * MINUTES_IN_DAY;
-                const durationMinutes = moment(log.endTime).diff(moment(log.startTime), 'minutes');
-                
-                // The new start time is relative to the day of the column it was dropped in
-                const dayOfColumn = moment(dayColumn.dataset.date);
-                const newStartTime = dayOfColumn.startOf('day').add(startMinutes, 'minutes');
-                const newEndTime = newStartTime.clone().add(durationMinutes, 'minutes');
-
-                if (isCopying) {
-                    await this.plugin.timeTrackerService.addLogEntry({
-                        taskNotePath: log.taskNotePath,
-                        taskDescription: log.taskDescription,
-                        notes: log.notes,
-                        startTime: newStartTime.toISOString(),
-                        endTime: newEndTime.toISOString(),
-                        durationMinutes: durationMinutes
-                    });
-                } else {
-                    await this.plugin.timeTrackerService.updateLogEntry(log.id, {
-                        startTime: newStartTime.toISOString(),
-                        endTime: newEndTime.toISOString()
-                    });
-                }
-                this.render();
-            } else if (!isCopying) {
-                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
             }
         };
 
         handle.addEventListener('mousedown', onResizeMouseDown);
-        block.addEventListener('mousedown', onMoveMouseDown);
+
+        // 3. CLICK EVENT FOR OPENING THE MODAL (existing logic preserved)
+        block.addEventListener('click', () => {
+            // This check ensures that the modal doesn't open after a resize action.
+            if (!hasMoved) {
+                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+            }
+        });
     }
 
     private addCreateEvent(day: moment.Moment, dayColumn: HTMLElement) {

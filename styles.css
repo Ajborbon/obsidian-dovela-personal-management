@@ -925,14 +925,15 @@ details.gtd-card-container[open] > summary .gtd-card-header {
 
 .timeline-block {
     position: absolute;
-    left: 5px;
-    right: 5px;
-    border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: var(--font-ui-smaller);
     overflow: hidden;
-    box-sizing: border-box;
+    cursor: move;
     z-index: 1;
-    cursor: grab;
+    transition: all 0.2s ease-in-out;
+    box-sizing: border-box;
 }
 
 .timeline-block:active {
@@ -1015,3 +1016,24 @@ details.gtd-card-container[open] > summary .gtd-card-header {
 body.is-copying {
     cursor: copy;
 }
+
+
+/* --- Styles for Short Event Indicators --- */
+.timeline-short-event-indicator {
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    height: 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    z-index: 1;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.timeline-short-event-indicator.is-hovered {
+    transform: scale(1.05);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
