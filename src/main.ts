@@ -3,7 +3,8 @@ import { Plugin, Notice, WorkspaceLeaf, TFile } from 'obsidian';
 import { GtdView, GTD_VIEW_TYPE, GTD_VIEW_DISPLAY_TEXT, GTD_VIEW_ICON } from './modules/moduloGTDv3/view.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
 import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
-import type { ActiveTimerState, Task } from './modules/moduloGTDv3/model.js';
+import type { ActiveTimerState, Task, DovelaPluginData } from './modules/moduloGTDv3/model.js';
+import { DEFAULT_SETTINGS } from './modules/moduloGTDv3/model.js';
 import { parseVault } from './modules/moduloGTDv3/parser.js';
 import moment from 'moment';
 import { SmartInboxView } from './modules/moduloGTDv3/smartInboxView.js';
@@ -11,6 +12,7 @@ import { SmartInboxView } from './modules/moduloGTDv3/smartInboxView.js';
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
 export default class DovelaPersonalManagementPlugin extends Plugin {
+    public data!: DovelaPluginData;
     public activeTimer: ActiveTimerState | null = null;
     public timeTrackerService!: TimeTrackerService;
     public statusBarItem!: HTMLElement;
@@ -27,6 +29,8 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     override async onload() {
         console.log('Loading Dovela Personal Management Plugin...');
         
+        await this.loadPluginData();
+
         this.timeTrackerService = new TimeTrackerService(this);
         this.statusBarItem = this.addStatusBarItem();
         this.statusBarItem.style.display = 'none';
@@ -74,6 +78,37 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }
         this.app.workspace.detachLeavesOfType(GTD_VIEW_TYPE);
         this.smartInboxView?.remove();
+    }
+
+    async loadPluginData() {
+        this.data = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    
+        // --- ONE-TIME MIGRATION SCRIPT ---
+        const oldTimeLogsFile = `${this.manifest.dir}/timelogs.json`;
+        if (await this.app.vault.adapter.exists(oldTimeLogsFile)) {
+            try {
+                const oldLogsContent = await this.app.vault.adapter.read(oldTimeLogsFile);
+                const oldLogs = JSON.parse(oldLogsContent);
+                if (Array.isArray(oldLogs) && oldLogs.length > 0) {
+                    // Merge logs, preventing duplicates just in case
+                    const existingLogIds = new Set(this.data.timeLogs.map(log => log.id));
+                    const logsToMigrate = oldLogs.filter(log => !existingLogIds.has(log.id));
+                    this.data.timeLogs.push(...logsToMigrate);
+                    await this.savePluginData();
+                }
+                // Remove the old file so the migration doesn't run again
+                await this.app.vault.adapter.remove(oldTimeLogsFile);
+                new Notice('Dovela PM: Registros de tiempo migrados al nuevo formato.');
+                console.log('Dovela PM: Migration from timelogs.json completed successfully.');
+            } catch (error) {
+                new Notice('Dovela PM: Error al migrar los registros de tiempo. Revisa la consola.');
+                console.error('Dovela PM: Failed to migrate timelogs.json', error);
+            }
+        }
+    }
+
+    async savePluginData() {
+        await this.saveData(this.data);
     }
 
     private openSmartInbox(): void {

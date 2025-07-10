@@ -29,7 +29,8 @@ export class GtdView extends ItemView {
     constructor(leaf: WorkspaceLeaf, plugin: DovelaPersonalManagementPlugin) {
         super(leaf);
         this.plugin = plugin;
-        this.timeTrackerService = new TimeTrackerService(this.plugin);
+        // CORRECTO: Usar la instancia de servicio centralizada del plugin.
+        this.timeTrackerService = this.plugin.timeTrackerService;
     }
 
     getViewType(): string {

@@ -119,3 +119,19 @@ export interface ActiveTimerState {
     taskDescription?: string; // Descripción de la tarea que se estaba cronometrando.
     lineNumber?: number; // Línea de la tarea en la nota.
 }
+
+// --- Plugin Data ---
+
+// Define la estructura completa de los datos que el plugin guarda en data.json.
+export interface DovelaPluginData {
+    schemaVersion: number;
+    timeLogs: TimeLogEntry[];
+    interruptedTimer?: ActiveTimerState;
+}
+
+// Define los valores por defecto para los datos del plugin.
+export const DEFAULT_SETTINGS: DovelaPluginData = {
+    schemaVersion: 1,
+    timeLogs: [],
+    interruptedTimer: undefined
+};

@@ -264,7 +264,8 @@ export class TimeTrackerView {
 
         const { startDate, endDate } = this.getDateRange(filter);
         
-        const logs = await this.service.loadTimeLogs();
+        // CORRECTO: Leer los logs directamente desde los datos del plugin.
+        const logs = this.plugin.data.timeLogs;
         const filteredLogs = logs.filter(log => {
             const logTime = moment(log.startTime);
             if (startDate && logTime.isBefore(startDate)) return false;
