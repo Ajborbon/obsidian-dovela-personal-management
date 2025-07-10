@@ -1,4 +1,4 @@
-import { App, Modal, Setting, TFile, Notice } from 'obsidian';
+import { App, Modal, Setting, TFile, Notice, setIcon } from 'obsidian';
 import { TimeTrackerService } from './timeTrackerService.js';
 import type { Task, TimeLogEntry } from './model.js';
 import moment from 'moment';
@@ -38,6 +38,21 @@ export class TimeLogModal extends Modal {
 
         // --- Selector de Tareas (Renderizado Condicional) ---
         const taskSetting = new Setting(contentEl).setName('Tarea');
+        taskSetting.controlEl.addClass('dovela-task-setting-container');
+
+        const noteLinkIcon = taskSetting.controlEl.createEl('a', {
+            cls: 'dovela-note-link-icon',
+            attr: { 'aria-label': 'Abrir nota', title: 'Abrir nota' }
+        });
+        setIcon(noteLinkIcon, 'external-link');
+        noteLinkIcon.style.display = 'none'; // Oculto por defecto
+
+        noteLinkIcon.onClickEvent((e) => {
+            e.preventDefault();
+            if (this.entry.taskNotePath) {
+                this.app.workspace.openLinkText(this.entry.taskNotePath, '', true);
+            }
+        });
 
         // Si la tarea ya viene definida (modo edición o fin de temporizador), solo mostrarla.
         if (this.entry.taskNotePath) {
@@ -45,16 +60,16 @@ export class TimeLogModal extends Modal {
                 text: this.entry.taskDescription || this.entry.taskNotePath,
                 cls: 'task-display-text'
             });
+            noteLinkIcon.style.display = 'inline-block'; // Mostrar en modo edición
         } else {
             // MODO "MANUAL": Si no hay tarea, mostrar el selector interactivo.
-            taskSetting.controlEl.addClass('dovela-timelog-task-selector');
-
-            const sourceContainer = taskSetting.controlEl.createDiv({ cls: 'source-selector' });
-            const searchInputEl = taskSetting.controlEl.createEl('input', {
+            const searchContainer = taskSetting.controlEl.createDiv('dovela-timelog-task-selector');
+            const sourceContainer = searchContainer.createDiv({ cls: 'source-selector' });
+            const searchInputEl = searchContainer.createEl('input', {
                 type: 'text',
                 placeholder: 'Buscar tarea...'
             });
-            const resultsContainer = taskSetting.controlEl.createDiv({ cls: 'results-container' });
+            const resultsContainer = searchContainer.createDiv({ cls: 'results-container' });
             resultsContainer.style.display = 'none';
 
             const renderResults = (tasks: (TFile | Task)[]) => {
@@ -80,6 +95,7 @@ export class TimeLogModal extends Modal {
                         this.entry.taskDescription = description;
                         searchInputEl.value = text;
                         resultsContainer.style.display = 'none';
+                        noteLinkIcon.style.display = 'inline-block'; // Mostrar al seleccionar
                     });
                 });
             };

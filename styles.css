@@ -1037,3 +1037,110 @@ body.is-copying {
     z-index: 2;
 }
 
+
+
+/* --- Styles for Note Link Icon in TimeLogModal --- */
+.dovela-task-setting-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dovela-note-link-icon {
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.2s ease-in-out;
+    width: 16px;
+    height: 16px;
+}
+
+.dovela-note-link-icon:hover {
+    color: var(--text-normal);
+}
+
+
+
+/* --- Styles for Calendar Popover --- */
+.timeline-date-title-button {
+    background-color: transparent;
+    border: none;
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: var(--font-ui-large);
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: var(--radius-s);
+}
+.timeline-date-title-button:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.timeline-calendar-popover {
+    position: absolute;
+    z-index: 10;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-l);
+    padding: 8px;
+    width: 280px;
+    margin-top: 8px;
+}
+
+.popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+.popover-header button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.popover-weekdays, .popover-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    gap: 4px;
+}
+
+.popover-weekdays div {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+.day-cell {
+    padding: 6px 0;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    transition: background-color 0.2s ease;
+}
+.day-cell:hover {
+    background-color: var(--background-modifier-hover);
+}
+.day-cell.other-month {
+    color: var(--text-faint);
+    cursor: default;
+}
+.day-cell.other-month:hover {
+    background-color: transparent;
+}
+.day-cell.is-today {
+    font-weight: bold;
+    color: var(--text-accent);
+}
+.day-cell.is-selected {
+    background-color: var(--background-modifier-active);
+    color: var(--text-on-accent);
+}
+
+.day-cell.activity-low { background-color: rgba(var(--color-blue-rgb), 0.2); }
+.day-cell.activity-medium { background-color: rgba(var(--color-blue-rgb), 0.4); }
+.day-cell.activity-high { background-color: rgba(var(--color-blue-rgb), 0.6); }
+
+

@@ -15,12 +15,22 @@ export class TimelineView {
     private plugin: DovelaPersonalManagementPlugin;
     private viewType: TimelineViewType = 'day';
     private currentDate: moment.Moment;
+    private calendarPopover: HTMLElement | null = null;
+    private calendarCurrentDate: moment.Moment;
 
     constructor(container: HTMLElement, plugin: DovelaPersonalManagementPlugin) {
         this.container = container;
         this.plugin = plugin;
         this.currentDate = moment();
+        this.calendarCurrentDate = this.currentDate.clone();
         this.render();
+
+        // Close popover when clicking outside
+        this.container.ownerDocument.addEventListener('click', (e) => {
+            if (this.calendarPopover && !this.calendarPopover.contains(e.target as Node) && !(e.target as HTMLElement).closest('.timeline-date-title-button')) {
+                this.hideCalendarPopover();
+            }
+        });
     }
 
     public updateContainer(newContainer: HTMLElement) {
@@ -43,7 +53,13 @@ export class TimelineView {
         const dateNav = controlsContainer.createEl('div', { cls: 'timeline-date-nav' });
         dateNav.createEl('button', { text: '◄' }).addEventListener('click', () => this.navigate(-1));
         dateNav.createEl('button', { text: 'Hoy' }).addEventListener('click', () => this.goToday());
-        dateNav.createEl('span', { text: this.getDateRangeTitle(), cls: 'timeline-date-title' });
+        
+        const dateTitleButton = dateNav.createEl('button', { 
+            text: this.getDateRangeTitle(), 
+            cls: 'timeline-date-title-button' 
+        });
+        dateTitleButton.addEventListener('click', () => this.toggleCalendarPopover());
+
         dateNav.createEl('button', { text: '►' }).addEventListener('click', () => this.navigate(1));
 
         // Selector de Vista
@@ -54,6 +70,93 @@ export class TimelineView {
             if (this.viewType === view) button.addClass('is-active');
             button.addEventListener('click', () => this.setViewType(view));
         });
+    }
+
+    private toggleCalendarPopover() {
+        if (this.calendarPopover) {
+            this.hideCalendarPopover();
+        } else {
+            this.showCalendarPopover();
+        }
+    }
+
+    private showCalendarPopover() {
+        if (!this.calendarPopover) {
+            this.calendarPopover = this.container.createEl('div', { cls: 'timeline-calendar-popover' });
+        }
+        this.calendarPopover.style.display = 'block';
+        this.renderCalendarPopoverContent();
+    }
+
+    private hideCalendarPopover() {
+        if (this.calendarPopover) {
+            this.calendarPopover.style.display = 'none';
+            this.calendarPopover = null; // Destroy to ensure it's recreated fresh
+        }
+    }
+
+    private renderCalendarPopoverContent() {
+        if (!this.calendarPopover) return;
+        this.calendarPopover.empty();
+
+        // 1. Header
+        const header = this.calendarPopover.createEl('div', { cls: 'popover-header' });
+        header.createEl('button', { text: '◄' }).addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.calendarCurrentDate.subtract(1, 'month');
+            this.renderCalendarPopoverContent();
+        });
+        header.createEl('span', { text: this.calendarCurrentDate.format('MMMM YYYY') });
+        header.createEl('button', { text: '►' }).addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.calendarCurrentDate.add(1, 'month');
+            this.renderCalendarPopoverContent();
+        });
+
+        // 2. Weekday Headers
+        const weekdays = this.calendarPopover.createEl('div', { cls: 'popover-weekdays' });
+        moment.weekdaysMin().forEach(day => weekdays.createEl('div', { text: day }));
+
+        // 3. Days Grid
+        const daysGrid = this.calendarPopover.createEl('div', { cls: 'popover-days-grid' });
+        const activityMap = this.plugin.timeTrackerService.getMonthlyActivity(this.calendarCurrentDate);
+        
+        const startOfMonth = this.calendarCurrentDate.clone().startOf('month');
+        const endOfMonth = this.calendarCurrentDate.clone().endOf('month');
+        const startDayOfWeek = startOfMonth.day();
+
+        // Fill in days from the previous month
+        for (let i = 0; i < startDayOfWeek; i++) {
+            daysGrid.createEl('div', { cls: 'day-cell other-month' });
+        }
+
+        // Fill in days for the current month
+        for (let day = 1; day <= endOfMonth.date(); day++) {
+            const date = this.calendarCurrentDate.clone().date(day);
+            const dayKey = date.format('YYYY-MM-DD');
+            const dayCell = daysGrid.createEl('div', { cls: 'day-cell', text: String(day) });
+            
+            if (date.isSame(moment(), 'day')) {
+                dayCell.addClass('is-today');
+            }
+            if (date.isSame(this.currentDate, 'day')) {
+                dayCell.addClass('is-selected');
+            }
+
+            const minutes = activityMap.get(dayKey) || 0;
+            if (minutes > 0) {
+                if (minutes < 120) dayCell.addClass('activity-low');
+                else if (minutes < 300) dayCell.addClass('activity-medium');
+                else dayCell.addClass('activity-high');
+            }
+
+            dayCell.addEventListener('click', () => {
+                this.currentDate = date;
+                this.calendarCurrentDate = date.clone();
+                this.hideCalendarPopover();
+                this.render();
+            });
+        }
     }
 
     private renderGrid() {

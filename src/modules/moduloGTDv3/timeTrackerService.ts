@@ -72,4 +72,20 @@ export class TimeTrackerService {
         this.plugin.data.timeLogs = this.plugin.data.timeLogs.filter(log => log.id !== logId);
         await this.plugin.savePluginData();
     }
+
+    getMonthlyActivity(month: moment.Moment): Map<string, number> {
+        const activityMap = new Map<string, number>();
+        const startOfMonth = month.clone().startOf('month');
+        const endOfMonth = month.clone().endOf('month');
+
+        for (const log of this.plugin.data.timeLogs) {
+            const logStart = moment(log.startTime);
+            if (logStart.isBetween(startOfMonth, endOfMonth, 'day', '[]')) {
+                const dayKey = logStart.format('YYYY-MM-DD');
+                const currentMinutes = activityMap.get(dayKey) || 0;
+                activityMap.set(dayKey, currentMinutes + (log.durationMinutes || 0));
+            }
+        }
+        return activityMap;
+    }
 }
