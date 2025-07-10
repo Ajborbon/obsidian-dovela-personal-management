@@ -1,23 +1,18 @@
-
-// src/modules/moduloGTDv3/colorUtils.ts
-
 /**
- * Genera un color HSL consistente y legible a partir de un string (como una ruta de carpeta).
- * Utiliza un algoritmo de hashing simple para crear un matiz (hue) único.
- * Mantiene la saturación y la luminosidad en rangos que aseguran colores pastel suaves y buena legibilidad.
- *
- * @param str El string de entrada para generar el color.
- * @returns Un string de color HSL, por ejemplo, "hsl(120, 75%, 85%)".
+ * Generates a consistent, visually pleasing color from a string.
+ * Uses HSL color space to ensure colors are harmonious.
+ * @param str The input string (e.g., a folder path).
+ * @returns A CSS HSL color string (e.g., 'hsl(120, 65%, 80%)').
  */
-export function stringToHslColor(str: string): string {
+export function generateColorFromString(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
 
     const hue = hash % 360;
-    const saturation = 75; // Saturación fija para colores consistentes
-    const lightness = 85;  // Luminosidad alta para fondos pastel claros
+    const saturation = 65; // Keep saturation constant for a consistent look
+    const lightness = 85;  // Use a light color for backgrounds
 
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }

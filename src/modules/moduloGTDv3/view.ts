@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
 import { TimeTrackerView } from './timeTrackerView.js';
+import { TimelineView } from './timelineView.js'; // Importar la nueva vista
 
 // Import our custom modules
 import { parseVault } from './parser.js';
@@ -20,8 +21,9 @@ export class GtdView extends ItemView {
     private plugin: DovelaPersonalManagementPlugin;
     private timeTrackerService: TimeTrackerService;
     private timeTrackerView: TimeTrackerView | null = null;
+    private timelineView: TimelineView | null = null; // Añadir la nueva vista
 
-    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' = 'hierarchy';
+    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline' = 'hierarchy'; // Añadir 'timeline'
     private activeGrouping: 'none' | 'context' | 'person' | 'project' = 'none';
     private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
@@ -53,6 +55,7 @@ export class GtdView extends ItemView {
     override async onClose() {
         this.eventAbortController?.abort();
         this.timeTrackerView?.clearTimerInterval(); // Clear interval when view closes
+        this.timelineView?.clear(); // Limpiar la nueva vista
         this.contentEl.empty();
     }
 
@@ -121,7 +124,7 @@ export class GtdView extends ItemView {
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
 
-            // If the active view is the time tracker, render its specific content
+            // Render the specific content for the active view
             if (this.activeView === 'time-tracker') {
                 const timeTrackerContainer = this.contentEl.querySelector('#time-tracker-container');
                 if (timeTrackerContainer) {
@@ -129,6 +132,15 @@ export class GtdView extends ItemView {
                         this.timeTrackerView = new TimeTrackerView(timeTrackerContainer as HTMLElement, this.plugin, this.timeTrackerService);
                     } else {
                         this.timeTrackerView.updateContainer(timeTrackerContainer as HTMLElement);
+                    }
+                }
+            } else if (this.activeView === 'timeline') {
+                const timelineContainer = this.contentEl.querySelector('#timeline-container');
+                if (timelineContainer) {
+                    if (!this.timelineView) {
+                        this.timelineView = new TimelineView(timelineContainer as HTMLElement, this.plugin);
+                    } else {
+                        this.timelineView.updateContainer(timelineContainer as HTMLElement);
                     }
                 }
             }
@@ -192,7 +204,7 @@ export class GtdView extends ItemView {
             const button = target.closest('button');
             if (button) {
                 if (button.classList.contains('gtd-view-button')) {
-                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker';
+                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline';
                     if (view && view !== this.activeView) {
                         this.activeView = view;
                         this.drawView();

@@ -59,4 +59,17 @@ export class TimeTrackerService {
         this.plugin.data.interruptedTimer = undefined;
         await this.plugin.savePluginData();
     }
+
+    async updateLogEntry(logId: string, updatedData: Partial<Omit<TimeLogEntry, 'id'>>): Promise<void> {
+        const logIndex = this.plugin.data.timeLogs.findIndex(log => log.id === logId);
+        if (logIndex > -1) {
+            this.plugin.data.timeLogs[logIndex] = { ...this.plugin.data.timeLogs[logIndex], ...updatedData };
+            await this.plugin.savePluginData();
+        }
+    }
+
+    async deleteLogEntry(logId: string): Promise<void> {
+        this.plugin.data.timeLogs = this.plugin.data.timeLogs.filter(log => log.id !== logId);
+        await this.plugin.savePluginData();
+    }
 }

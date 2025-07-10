@@ -4,24 +4,24 @@ import type { Task, TimeLogEntry } from './model.js';
 import moment from 'moment';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 
-// Usamos Partial para que todas las propiedades de TimeLogEntry sean opcionales
-type TimeLogModalEntry = Partial<TimeLogEntry>;
-
 export class TimeLogModal extends Modal {
     private service: TimeTrackerService;
     private plugin: DovelaPersonalManagementPlugin;
     private onSave: () => void;
-    private entry: TimeLogModalEntry;
+    private entry: TimeLogEntry; // Ahora es un TimeLogEntry completo
     private availableTasks: (TFile | Task)[] = [];
+    private isEditing: boolean;
 
-    constructor(app: App, service: TimeTrackerService, plugin: DovelaPersonalManagementPlugin, onSave: () => void, entryData?: TimeLogModalEntry) {
+    constructor(app: App, service: TimeTrackerService, plugin: DovelaPersonalManagementPlugin, onSave: () => void, entryData?: Partial<TimeLogEntry>) {
         super(app);
         this.service = service;
         this.plugin = plugin;
         this.onSave = onSave;
-        
+        this.isEditing = !!entryData?.id;
+
         const now = moment().local();
         this.entry = {
+            id: entryData?.id || '', // Se mantiene el ID si existe
             taskNotePath: entryData?.taskNotePath || '',
             taskDescription: entryData?.taskDescription || '',
             startTime: entryData?.startTime ? moment(entryData.startTime).local().toISOString(true) : now.clone().subtract(1, 'hour').toISOString(true),
@@ -34,12 +34,12 @@ export class TimeLogModal extends Modal {
     override async onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        this.titleEl.setText('Registrar Tiempo');
+        this.titleEl.setText(this.isEditing ? 'Editar Registro de Tiempo' : 'Registrar Tiempo');
 
         // --- Selector de Tareas (Renderizado Condicional) ---
         const taskSetting = new Setting(contentEl).setName('Tarea');
 
-        // MODO "FIN DE TAREA": Si la tarea ya viene definida, solo mostrarla.
+        // Si la tarea ya viene definida (modo edición o fin de temporizador), solo mostrarla.
         if (this.entry.taskNotePath) {
             taskSetting.controlEl.createEl('div', {
                 text: this.entry.taskDescription || this.entry.taskNotePath,
@@ -167,11 +167,17 @@ export class TimeLogModal extends Modal {
                 text.inputEl.rows = 4;
             });
 
-        new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText('Guardar')
-                .setCta()
-                .onClick(() => this.save()));
+        const buttonContainer = new Setting(contentEl);
+        if (this.isEditing) {
+            buttonContainer.addButton(btn => btn
+                .setButtonText('Eliminar')
+                .setWarning()
+                .onClick(() => this.delete()));
+        }
+        buttonContainer.addButton(btn => btn
+            .setButtonText('Guardar')
+            .setCta()
+            .onClick(() => this.save()));
     }
 
     private parseTime(time: string, originalMoment: moment.Moment): moment.Moment | null {
@@ -197,16 +203,31 @@ export class TimeLogModal extends Modal {
             return;
         }
 
-        await this.service.addLogEntry({
-            taskNotePath: this.entry.taskNotePath || '',
-            startTime: this.entry.startTime || moment().toISOString(true),
-            endTime: this.entry.endTime || moment().toISOString(true),
+        const entryToSave = {
+            taskNotePath: this.entry.taskNotePath,
+            startTime: this.entry.startTime,
+            endTime: this.entry.endTime,
             durationMinutes: durationMinutes,
-            notes: this.entry.notes || '',
-            taskDescription: this.entry.taskDescription || ''
-        });
+            notes: this.entry.notes,
+            taskDescription: this.entry.taskDescription
+        };
+
+        if (this.isEditing) {
+            await this.service.updateLogEntry(this.entry.id, entryToSave);
+        } else {
+            await this.service.addLogEntry(entryToSave);
+        }
 
         this.onSave();
+        this.close();
+    }
+
+    async delete() {
+        if (!this.isEditing) return;
+        // Aquí se podría añadir una confirmación si se desea
+        await this.service.deleteLogEntry(this.entry.id);
+        new Notice('Registro eliminado.');
+        this.onSave(); // Llama a onSave para refrescar la vista
         this.close();
     }
 

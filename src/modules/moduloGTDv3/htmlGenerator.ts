@@ -318,7 +318,7 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
 
 export function generateGtdViewHtml(
     data: ProcessedVaultData, 
-    activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker', 
+    activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline', 
     taskBreadcrumbMap: Map<string, string>,
     activeGrouping: Grouping,
     activeSorting: Sorting
@@ -329,6 +329,7 @@ export function generateGtdViewHtml(
     const gtdActiveClass = activeView === 'gtd' ? 'active' : '';
     const inProgressActiveClass = activeView === 'inProgress' ? 'active' : '';
     const timeTrackerActiveClass = activeView === 'time-tracker' ? 'active' : '';
+    const timelineActiveClass = activeView === 'timeline' ? 'active' : ''; // Clase para la nueva vista
 
     let viewContent = '';
     let hierarchyControls = '';
@@ -345,6 +346,8 @@ export function generateGtdViewHtml(
         viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap, activeGrouping, activeSorting);
     } else if (activeView === 'time-tracker') {
         viewContent = '<div id="time-tracker-container"></div>';
+    } else if (activeView === 'timeline') {
+        viewContent = '<div id="timeline-container"></div>'; // Contenedor para la nueva vista
     }
 
     return `
@@ -354,6 +357,7 @@ export function generateGtdViewHtml(
                 <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
                 <button class="gtd-view-button ${inProgressActiveClass}" data-view="inProgress">En Progreso</button>
                 <button class="gtd-view-button ${timeTrackerActiveClass}" data-view="time-tracker">Time Tracker</button>
+                <button class="gtd-view-button ${timelineActiveClass}" data-view="timeline">Cronograma</button> 
                 <button class="gtd-refresh-button">Refrescar</button>
                 ${hierarchyControls}
             </div>

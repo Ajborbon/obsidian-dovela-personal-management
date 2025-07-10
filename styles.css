@@ -798,3 +798,173 @@ details.gtd-card-container[open] > summary .gtd-card-header {
 .is-hidden {
     display: none !important;
 }
+
+/* --- Estilos para la Vista de Cronograma (Timeline) --- */
+#timeline-container {
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  margin-top: 10px;
+  min-height: 200px; /* Altura mínima para que el contenedor sea visible */
+}
+
+.timeline-view-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.timeline-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.timeline-date-nav, .timeline-view-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.timeline-date-title {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.timeline-view-selector button.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.timeline-grid-container {
+    display: flex;
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.timeline-time-axis {
+    flex: 0 0 50px; /* Ancho fijo para la columna de horas */
+    display: flex;
+    flex-direction: column;
+    padding-right: 10px;
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+.timeline-hour-label {
+    flex-basis: calc(100% / 24);
+    text-align: right;
+    font-size: 0.8em;
+    color: var(--text-muted);
+    position: relative;
+}
+
+.timeline-hour-label::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -10px;
+    width: 10px;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.timeline-days-container {
+    flex-grow: 1;
+    display: grid;
+}
+
+.timeline-day-column {
+    position: relative;
+    border-right: 1px solid var(--background-modifier-border);
+}
+.timeline-day-column:last-child {
+    border-right: none;
+}
+
+.timeline-day-header {
+    text-align: center;
+    font-weight: bold;
+    padding: 5px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    position: sticky;
+    top: 0;
+    background-color: var(--background-secondary);
+    z-index: 5;
+}
+
+.timeline-hour-line {
+    height: calc(100% / 24);
+    border-bottom: 1px dotted var(--background-modifier-border-hover);
+    box-sizing: border-box;
+}
+.timeline-hour-line:last-child {
+    border-bottom: none;
+}
+
+.timeline-block {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    box-sizing: border-box;
+    z-index: 1;
+    cursor: grab;
+}
+
+.timeline-block:active {
+    cursor: grabbing;
+    z-index: 3;
+    opacity: 0.8;
+}
+
+.timeline-block-resize-handle {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.timeline-block:hover {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 5px var(--interactive-accent-hover);
+}
+
+.timeline-block-content {
+    padding: 5px;
+    font-size: 0.85em;
+    color: var(--text-normal);
+}
+
+.timeline-block-content strong {
+    display: block;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-block-content p {
+    margin: 0;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* Limita a 3 líneas */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.timeline-block-preview {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    background-color: var(--interactive-accent);
+    opacity: 0.4;
+    border-radius: 4px;
+    z-index: 2;
+    pointer-events: none; /* No interferir con otros eventos de ratón */
+}
