@@ -227,8 +227,8 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             }
         }, {
             taskNotePath: currentTimer.taskNotePath,
-            startTime: startTime,
-            endTime: endTime,
+            startTime: startTime.toISOString(true),
+            endTime: endTime.toISOString(true),
             notes: currentTimer.taskDescription || '',
             taskDescription: currentTimer.taskDescription || ''
         }).open();

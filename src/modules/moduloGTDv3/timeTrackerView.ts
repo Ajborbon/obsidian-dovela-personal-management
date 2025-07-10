@@ -643,12 +643,15 @@ export class TimeTrackerView {
         if (!this.plugin.activeTimer) return;
 
         this.plugin.stopTracking();
+        
+        // Sincroniza la UI para reflejar que el temporizador se ha detenido
         const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
         const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
         this.syncTimerUI(timerDisplay, startBtn, stopBtn, goToTaskButton, activeTaskDisplay);
     }
 
     private async openManualEntryModal() {
+        // Abre el modal sin datos previos para el registro manual
         new TimeLogModal(this.plugin.app, this.service, this.plugin, async () => {
             await this.renderStatistics();
         }).open();
