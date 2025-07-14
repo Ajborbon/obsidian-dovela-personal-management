@@ -87,6 +87,10 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             }
         });
 
+        this.addRibbonIcon('plus-circle', 'Captura Rápida (Smart Inbox)', () => {
+            this.openSmartInbox();
+        });
+        
         this.addRibbonIcon(GTD_VIEW_ICON, GTD_VIEW_DISPLAY_TEXT, () => {
             this.activateView();
         });
