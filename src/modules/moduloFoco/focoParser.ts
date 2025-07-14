@@ -149,7 +149,7 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
 
 // --- NUEVA LÓGICA DE RECOLECCIÓN ---
 
-async function collectFocusFiles(activeFile: TFile, vault: Vault, metadataCache: MetadataCache): Promise<Set<TFile>> {
+async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache: MetadataCache): Promise<Set<TFile>> {
     const focusFiles = new Set<TFile>();
     const processedPaths = new Set<string>();
 

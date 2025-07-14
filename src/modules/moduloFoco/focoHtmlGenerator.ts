@@ -1,4 +1,4 @@
-import type { ProcessedVaultData, HierarchicalItem, Task } from './focoModel.js';
+import type { ProcessedVaultData, HierarchicalItem, Task, InProgressData } from './focoModel.js';
 import { GtdList } from './focoProcessor.js';
 import { isDatePast } from './focoDateUtils.js';
 

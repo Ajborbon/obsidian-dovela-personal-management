@@ -1,4 +1,4 @@
-import type { HierarchicalItem, HierarchicalItemType } from './model.js';
+import type { HierarchicalItem, HierarchicalItemType } from './focoModel.js';
 
 // Define el orden de clasificación para los tipos de item.
 const TYPE_ORDER: Record<HierarchicalItemType, number> = {

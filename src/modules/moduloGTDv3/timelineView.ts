@@ -178,7 +178,7 @@ export class TimelineView {
         const headerContainer = daysWrapper.createEl('div', { cls: 'timeline-header-container' });
         headerContainer.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
         days.forEach(day => {
-            headerContainer.createEl('div', { cls: 'timeline-day-header', text: day.format('ddd D') });
+            if (day) headerContainer.createEl('div', { cls: 'timeline-day-header', text: day.format('ddd D') });
         });
 
         // Scrollable Grid Container
@@ -186,8 +186,9 @@ export class TimelineView {
         daysContainer.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
 
         days.forEach(day => {
+            if (!day) return;
             const dayColumn = daysContainer.createEl('div', { cls: 'timeline-day-column' });
-            dayColumn.dataset.date = day.format('YYYY-MM-DD');
+            dayColumn.dataset['date'] = day.format('YYYY-MM-DD');
             
             // Hour lines for the grid
             for (let hour = 0; hour < 24; hour++) {
@@ -258,7 +259,7 @@ export class TimelineView {
             if (e.altKey) {
                 await this.plugin.timeTrackerService.addLogEntry({
                     taskNotePath: originalLog.taskNotePath,
-                    taskDescription: originalLog.taskDescription,
+                    taskDescription: originalLog.taskDescription || '',
                     notes: originalLog.notes,
                     startTime: newStartTime.toISOString(),
                     endTime: newEndTime.toISOString(),
@@ -355,7 +356,7 @@ export class TimelineView {
         indicator.style.left = `${left}%`;
         indicator.style.width = `calc(${width}% - 2px)`; // 2px for margin
         indicator.style.backgroundColor = this.getBlockColor(log);
-        indicator.dataset.logId = log.id;
+        indicator.dataset['logId'] = log.id;
 
         const startMoment = moment(log.startTime);
         const endMoment = moment(log.endTime);
@@ -384,7 +385,7 @@ export class TimelineView {
         });
     }
 
-    private renderFullBlock(log: TimeLogEntry, dayColumn: HTMLElement, startMinute: number, durationMinutes: number, segmentStart: moment.Moment, segmentEnd: moment.Moment, left: number, width: number) {
+    private renderFullBlock(log: TimeLogEntry, dayColumn: HTMLElement, startMinute: number, durationMinutes: number, segmentStart: moment.Moment, _segmentEnd: moment.Moment, left: number, width: number) {
         const top = (startMinute / MINUTES_IN_DAY) * 100;
         const height = (durationMinutes / MINUTES_IN_DAY) * 100;
 
@@ -395,7 +396,7 @@ export class TimelineView {
         block.style.width = `calc(${width}% - 2px)`; // 2px for margin
         block.style.backgroundColor = this.getBlockColor(log);
         
-        block.dataset.logId = log.id;
+        block.dataset['logId'] = log.id;
 
         const startMoment = moment(log.startTime);
         const endMoment = moment(log.endTime);
@@ -593,7 +594,6 @@ export class TimelineView {
     // --- Lógica de Navegación y Estado ---
 
     private navigate(direction: -1 | 1) {
-        const unit = this.viewType === 'week' ? 'week' : (this.viewType === '3-day' ? 'day' : 'day');
         const amount = this.viewType === '3-day' ? 3 * direction : (this.viewType === 'week' ? 7 * direction : 1 * direction);
         this.currentDate.add(amount, 'day');
         this.render();
@@ -625,14 +625,17 @@ export class TimelineView {
     private getDateRangeTitle(): string {
         const days = this.getVisibleDays();
         if (days.length === 1) {
-            return days[0].format('MMMM D, YYYY');
+            const firstDay = days[0];
+            if (!firstDay) return 'Sin fecha';
+            return firstDay!.format('MMMM D, YYYY');
         }
         const start = days[0];
         const end = days[days.length - 1];
-        if (start.isSame(end, 'month')) {
-            return `${start.format('MMMM D')} - ${end.format('D, YYYY')}`;
+        if (!start || !end) return 'Rango de fechas';
+        if (start!.isSame(end!, 'month')) {
+            return `${start!.format('MMMM D')} - ${end!.format('D, YYYY')}`;
         }
-        return `${start.format('MMMM D')} - ${end.format('MMMM D, YYYY')}`;
+        return `${start!.format('MMMM D')} - ${end!.format('MMMM D, YYYY')}`;
     }
 
     private getButtonText(view: TimelineViewType): string {
@@ -645,7 +648,7 @@ export class TimelineView {
 
     private getBlockColor(log: TimeLogEntry): string {
         const pathParts = log.taskNotePath.split('/');
-        const colorSource = pathParts.length > 1 ? pathParts[0] : log.taskNotePath;
+        const colorSource = pathParts.length > 1 ? (pathParts[0] || log.taskNotePath) : log.taskNotePath;
         return generateColorFromString(colorSource);
     }
 

@@ -1,21 +1,23 @@
-import { App } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import type { TimeLogEntry, ActiveTimerState } from './model.js';
 import moment from 'moment';
 
 export class TimeTrackerService {
     private plugin: DovelaPersonalManagementPlugin;
-    private app: App;
 
     constructor(plugin: DovelaPersonalManagementPlugin) {
         this.plugin = plugin;
-        this.app = plugin.app;
     }
 
     async addLogEntry(entryData: Omit<TimeLogEntry, 'id'>): Promise<void> {
         const newEntry: TimeLogEntry = {
             id: Date.now().toString(),
-            ...entryData
+            taskNotePath: entryData.taskNotePath || '',
+            startTime: entryData.startTime || '',
+            endTime: entryData.endTime || '',
+            durationMinutes: entryData.durationMinutes || 0,
+            notes: entryData.notes || '',
+            taskDescription: entryData.taskDescription || ''
         };
         this.plugin.data.timeLogs.push(newEntry);
         await this.plugin.savePluginData();
@@ -56,15 +58,26 @@ export class TimeTrackerService {
     }
 
     async clearInterruptedSession(): Promise<void> {
-        this.plugin.data.interruptedTimer = undefined;
+        this.plugin.data.interruptedTimer = undefined as ActiveTimerState | undefined;
         await this.plugin.savePluginData();
     }
 
     async updateLogEntry(logId: string, updatedData: Partial<Omit<TimeLogEntry, 'id'>>): Promise<void> {
         const logIndex = this.plugin.data.timeLogs.findIndex(log => log.id === logId);
         if (logIndex > -1) {
-            this.plugin.data.timeLogs[logIndex] = { ...this.plugin.data.timeLogs[logIndex], ...updatedData };
-            await this.plugin.savePluginData();
+            const currentLog = this.plugin.data.timeLogs[logIndex];
+            if (currentLog) {
+                this.plugin.data.timeLogs[logIndex] = {
+                    id: currentLog.id,
+                    taskNotePath: updatedData.taskNotePath ?? currentLog.taskNotePath,
+                    startTime: updatedData.startTime ?? currentLog.startTime,
+                    endTime: updatedData.endTime ?? currentLog.endTime,
+                    durationMinutes: updatedData.durationMinutes ?? currentLog.durationMinutes,
+                    notes: updatedData.notes ?? currentLog.notes,
+                    taskDescription: updatedData.taskDescription ?? currentLog.taskDescription
+                };
+                await this.plugin.savePluginData();
+            }
         }
     }
 

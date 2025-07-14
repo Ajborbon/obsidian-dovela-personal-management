@@ -225,7 +225,7 @@ export class TimeLogModal extends Modal {
             endTime: this.entry.endTime,
             durationMinutes: durationMinutes,
             notes: this.entry.notes,
-            taskDescription: this.entry.taskDescription
+            taskDescription: this.entry.taskDescription || ''
         };
 
         if (this.isEditing) {

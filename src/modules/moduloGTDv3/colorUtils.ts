@@ -33,7 +33,11 @@ export function generateColorFromString(str: string): string {
 
     // Step 1: Select a base color from our curated palette.
     // This ensures the main hue is always from a harmonious set.
-    const [hue, saturation] = CURATED_COLOR_PALETTE[Math.abs(hash) % CURATED_COLOR_PALETTE.length];
+    const selectedColor = CURATED_COLOR_PALETTE[Math.abs(hash) % CURATED_COLOR_PALETTE.length];
+    if (!selectedColor) {
+        throw new Error('No color found in palette');
+    }
+    const [hue, saturation] = selectedColor;
 
     // Step 2: Introduce a subtle, deterministic variation in lightness.
     // This creates unique shades for different strings that map to the same base color.

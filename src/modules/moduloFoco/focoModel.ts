@@ -126,12 +126,12 @@ export interface ActiveTimerState {
 export interface DovelaPluginData {
     schemaVersion: number;
     timeLogs: TimeLogEntry[];
-    interruptedTimer?: ActiveTimerState;
+    interruptedTimer?: ActiveTimerState | undefined;
 }
 
 // Define los valores por defecto para los datos del plugin.
 export const DEFAULT_SETTINGS: DovelaPluginData = {
     schemaVersion: 1,
     timeLogs: [],
-    interruptedTimer: undefined
+    interruptedTimer: undefined as ActiveTimerState | undefined
 };

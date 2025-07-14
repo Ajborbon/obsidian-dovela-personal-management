@@ -4,6 +4,7 @@
     "allowArbitraryExtensions": true,
     "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
+    "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
     "importHelpers": true,
     "inlineSourceMap": true,
