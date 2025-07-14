@@ -107,7 +107,14 @@ export class TimeLogModal extends Modal {
                     if (taskOrFile instanceof TFile) {
                         return taskOrFile.path.toLowerCase().includes(searchTerm);
                     } else {
-                        return (taskOrFile as Task).content.toLowerCase().includes(searchTerm);
+                        const task = taskOrFile as Task;
+                        const searchCorpus = [
+                            task.content,
+                            ...task.contexts,
+                            ...task.assignedPeople,
+                            ...task.tags
+                        ].join(' ').toLowerCase();
+                        return searchCorpus.includes(searchTerm);
                     }
                 });
                 renderResults(filteredTasks);
