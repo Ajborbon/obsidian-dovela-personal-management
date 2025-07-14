@@ -156,20 +156,20 @@ export class GtdView extends ItemView {
     private addEventListeners(): void {
         const container = this.contentEl;
 
-        const contextFilter = container.querySelector('#context-filter') as HTMLSelectElement;
-        const personFilter = container.querySelector('#person-filter') as HTMLSelectElement;
+        const contextFilter = container.querySelector('#context-filter') as HTMLInputElement;
+        const personFilter = container.querySelector('#person-filter') as HTMLInputElement;
 
         const applyFilters = () => {
-            const selectedContext = contextFilter.value;
-            const selectedPerson = personFilter.value;
+            const selectedContext = contextFilter.value.trim();
+            const selectedPerson = personFilter.value.trim();
 
             container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
                 const htmlTaskEl = taskEl as HTMLElement;
                 const taskContexts: string[] = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
                 const taskPeople: string[] = JSON.parse(htmlTaskEl.dataset['people'] || '[]');
 
-                const contextMatch = selectedContext === 'all' || taskContexts.includes(selectedContext);
-                const personMatch = selectedPerson === 'all' || taskPeople.includes(selectedPerson);
+                const contextMatch = selectedContext === '' || taskContexts.includes(selectedContext);
+                const personMatch = selectedPerson === '' || taskPeople.includes(selectedPerson);
 
                 htmlTaskEl.style.display = (contextMatch && personMatch) ? '' : 'none';
             });
@@ -189,8 +189,8 @@ export class GtdView extends ItemView {
             });
         };
 
-        if (contextFilter) contextFilter.addEventListener('change', applyFilters);
-        if (personFilter) personFilter.addEventListener('change', applyFilters);
+        if (contextFilter) contextFilter.addEventListener('input', applyFilters);
+        if (personFilter) personFilter.addEventListener('input', applyFilters);
 
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;

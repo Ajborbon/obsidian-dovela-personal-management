@@ -164,17 +164,17 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         <div class="gtd-filters">
             <div class="gtd-filter-group">
                 <label for="context-filter">Filtrar por Contexto:</label>
-                <select id="context-filter">
-                    <option value="all">Todos</option>
-                    ${uniqueContexts.map(context => `<option value="${context}">${context}</option>`).join('')}
-                </select>
+                <input type="text" id="context-filter" list="context-list" placeholder="Escribe para filtrar...">
+                <datalist id="context-list">
+                    ${uniqueContexts.map(context => `<option value="${context}"></option>`).join('')}
+                </datalist>
             </div>
             <div class="gtd-filter-group">
                 <label for="person-filter">Filtrar por Persona:</label>
-                <select id="person-filter">
-                    <option value="all">Todos</option>
-                    ${uniquePeople.map(person => `<option value="${person}">${person}</option>`).join('')}
-                </select>
+                <input type="text" id="person-filter" list="person-list" placeholder="Escribe para filtrar...">
+                <datalist id="person-list">
+                    ${uniquePeople.map(person => `<option value="${person}"></option>`).join('')}
+                </datalist>
             </div>
         </div>
     `;

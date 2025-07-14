@@ -94,8 +94,8 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
 
     return { 
         gtdLists, 
-        uniqueContexts: Array.from(uniqueContexts), 
-        uniquePeople: Array.from(uniquePeople), 
+        uniqueContexts: Array.from(uniqueContexts).sort((a, b) => a.localeCompare(b)), 
+        uniquePeople: Array.from(uniquePeople).sort((a, b) => a.localeCompare(b)), 
         inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } } 
     };
 }
