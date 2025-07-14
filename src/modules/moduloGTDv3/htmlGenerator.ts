@@ -142,7 +142,7 @@ function renderTask(task: Task, breadcrumb: string): string {
     const peopleData = JSON.stringify(task.assignedPeople);
 
     return `
-        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
+        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}' data-content="${task.content.replace(/"/g, '&quot;')}">
             <div class="gtd-task-content">
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
                 ${linkedContent}
@@ -175,6 +175,10 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
                 <datalist id="person-list">
                     ${uniquePeople.map(person => `<option value="${person}"></option>`).join('')}
                 </datalist>
+            </div>
+            <div class="gtd-filter-group">
+                <label for="task-content-filter">Filtrar por Tarea:</label>
+                <input type="text" id="task-content-filter" placeholder="Escribe para filtrar...">
             </div>
         </div>
     `;

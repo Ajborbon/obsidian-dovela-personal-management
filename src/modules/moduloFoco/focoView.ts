@@ -154,17 +154,26 @@ export class FocoView extends ItemView {
         const container = this.contentEl;
         const contextFilter = container.querySelector('#context-filter') as HTMLInputElement;
         const personFilter = container.querySelector('#person-filter') as HTMLInputElement;
+        const contentFilter = container.querySelector('#task-content-filter') as HTMLInputElement;
+
         const applyFilters = () => {
             const selectedContext = contextFilter.value.trim();
             const selectedPerson = personFilter.value.trim();
+            const contentSearchTerm = contentFilter.value.trim().toLowerCase();
+
             container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
                 const htmlTaskEl = taskEl as HTMLElement;
                 const taskContexts: string[] = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
                 const taskPeople: string[] = JSON.parse(htmlTaskEl.dataset['people'] || '[]');
+                const taskContent = (htmlTaskEl.dataset['content'] || '').toLowerCase();
+
                 const contextMatch = selectedContext === '' || taskContexts.includes(selectedContext);
                 const personMatch = selectedPerson === '' || taskPeople.includes(selectedPerson);
-                htmlTaskEl.style.display = (contextMatch && personMatch) ? '' : 'none';
+                const contentMatch = contentSearchTerm === '' || taskContent.includes(contentSearchTerm);
+
+                htmlTaskEl.style.display = (contextMatch && personMatch && contentMatch) ? '' : 'none';
             });
+
             container.querySelectorAll('.gtd-list').forEach((listEl: Element) => {
                 const htmlListEl = listEl as HTMLElement;
                 const visibleTasks = htmlListEl.querySelectorAll('.gtd-task:not([style*="display: none;"])');
@@ -179,6 +188,8 @@ export class FocoView extends ItemView {
         };
         if (contextFilter) contextFilter.addEventListener('input', applyFilters);
         if (personFilter) personFilter.addEventListener('input', applyFilters);
+        if (contentFilter) contentFilter.addEventListener('input', applyFilters);
+
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
             if (target.classList.contains('gtd-breadcrumb-toggle')) {
