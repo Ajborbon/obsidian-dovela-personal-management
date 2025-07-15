@@ -1263,3 +1263,57 @@ body.is-copying {
 .custom-filter-controls.is-hidden {
   display: none;
 }
+
+/* --- Review Panel View --- */
+.dovela-review-panel {
+    padding: 15px;
+}
+
+.review-panel-empty-state {
+    text-align: center;
+    padding-top: 40px;
+    color: var(--text-muted);
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.review-panel-list {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 20px;
+}
+
+.review-panel-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    gap: 16px;
+}
+
+.review-panel-item:last-child {
+    border-bottom: none;
+}
+
+.project-info {
+    flex-grow: 1;
+}
+
+.project-name {
+    font-weight: bold;
+    font-size: var(--font-ui-large);
+}
+
+.project-path {
+    font-size: var(--font-ui-small);
+    color: var(--text-faint);
+}
+
+.project-actions {
+    display: flex;
+    gap: 8px;
+}

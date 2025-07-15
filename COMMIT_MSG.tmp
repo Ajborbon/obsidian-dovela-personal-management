@@ -1,13 +1,25 @@
-feat(activity-panel): Implementa el Panel de Actividad
+feat(gtd-review): Implementa Panel de Revisión para Proyectos Estancados
 
-Introduce una nueva funcionalidad de "Panel de Actividad" que ofrece a los usuarios una visión consolidada de su productividad y actividad reciente dentro de Obsidian.
+Introduce el "Panel de Revisión GTD", una nueva herramienta diseñada para ayudar a los usuarios a mantener la integridad de su sistema GTD identificando proyectos que se han quedado sin acciones definidas.
 
-Esta nueva vista incluye:
-- Un dashboard principal con métricas clave: tareas capturadas vs. completadas, y notas nuevas vs. modificadas.
-- Filtros de período de tiempo (Hoy, Ayer, Semana, Mes, y un rango de fechas personalizado) para analizar la actividad en diferentes lapsos.
-- Vistas de detalle interactivas: al hacer clic en una métrica, se muestra una lista detallada de las notas o tareas correspondientes.
-- El botón del filtro de período activo se resalta visualmente para mejorar la claridad.
+Esta funcionalidad aborda un punto clave de la metodología GTD: la necesidad de revisar periódicamente los proyectos para asegurarse de que no estén bloqueados o abandonados.
 
-Se puede acceder al panel a través de un nuevo comando en la paleta ("Panel de Actividad: Mostrar resumen de actividad") y un nuevo icono en la cinta lateral.
+**Características Principales:**
 
-La lógica de negocio está encapsulada en un nuevo `AnalyzerService`, y se han añadido estilos CSS dedicados para una presentación pulida.
+*   **Detección Inteligente:** Se ha creado un nuevo `StalledProjectService` que analiza todos los proyectos activos (con estado `🟢`). Para cada uno, evalúa su jerarquía completa (archivos en la misma carpeta, subcarpetas y hasta dos niveles de enlaces salientes) en busca de tareas abiertas (`- [ ]`). Si no encuentra ninguna, marca el proyecto como "estancado".
+*   **Panel de Acción Dedicado:**
+    *   Una nueva vista (`ReviewPanelView`) presenta una lista clara de todos los proyectos estancados.
+    *   Para cada proyecto, ofrece botones para tomar acciones inmediatas:
+        *   **+ Añadir Tarea:** Abre la nota principal del proyecto para definir la siguiente acción.
+        *   **🔵 Archivar:** Modifica el frontmatter del proyecto, cambiando su estado a `🔵` para archivarlo.
+        *   **📂 Abrir Carpeta:** Abre la ubicación del proyecto en el explorador de archivos del sistema.
+    *   Si no hay proyectos estancados, la vista muestra un mensaje de felicitación, reforzando los buenos hábitos.
+*   **Integración y Acceso:**
+    *   Se puede acceder al panel mediante un nuevo comando en la paleta: "Revisión GTD: Encontrar proyectos estancados".
+    *   Se ha añadido un nuevo icono (`clipboard-check`) en la cinta lateral para un acceso rápido.
+
+**Cambios Técnicos y Correcciones:**
+
+*   Se exportó la función `parseTasks` desde `focoParser.ts` para poder reutilizarla de forma segura en el nuevo servicio, evitando la duplicación de código.
+*   Se corrigieron errores de rutas de importación (`../model` a `./model`) y de manejo de eventos de clic (`.onClick` a `.onClickEvent`) que surgieron durante el desarrollo.
+*   Se añadieron los estilos CSS necesarios para una presentación limpia y funcional del nuevo panel.

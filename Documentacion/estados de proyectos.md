@@ -1,0 +1,4 @@
+🟢 -> Activo
+🔴 -> Cancelado
+🔵 -> Archivado
+🟡 -> Suspendido
