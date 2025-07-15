@@ -93,8 +93,47 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'time-tracker-start-for-active-note',
+            name: 'Control de Tiempo: Iniciar temporizador para la nota activa',
+            checkCallback: (checking: boolean) => {
+                // Conditions to meet for the command to be available
+                const activeFile = this.app.workspace.getActiveFile();
+                const isTimerRunning = !!this.activeTimer;
+
+                if (activeFile && !isTimerRunning) {
+                    if (!checking) {
+                        // Execute the command's logic
+                        const taskNotePath = activeFile.path;
+                        const taskDescription = activeFile.basename.replace('.md', '');
+                        this.startTracking(taskNotePath, taskDescription);
+                        new Notice(`Temporizador iniciado para: ${taskDescription}`);
+                    }
+                    return true; // Command is valid
+                }
+                return false; // Command is not valid
+            }
+        });
+
         this.addRibbonIcon('plus-circle', 'Captura Rápida (Smart Inbox)', () => {
             this.openSmartInbox();
+        });
+
+        this.addRibbonIcon('play-circle', 'Control de Tiempo: Iniciar temporizador para la nota activa', () => {
+            const activeFile = this.app.workspace.getActiveFile();
+            if (this.activeTimer) {
+                new Notice('Ya hay un temporizador en curso.');
+                return;
+            }
+            if (!activeFile) {
+                new Notice('Por favor, abra una nota para iniciar el temporizador.');
+                return;
+            }
+            
+            const taskNotePath = activeFile.path;
+            const taskDescription = activeFile.basename.replace('.md', '');
+            this.startTracking(taskNotePath, taskDescription);
+            new Notice(`Temporizador iniciado para: ${taskDescription}`);
         });
         
         this.addRibbonIcon(GTD_VIEW_ICON, GTD_VIEW_DISPLAY_TEXT, () => {

@@ -1,16 +1,9 @@
-feat(sync): Implementa sincronización de temporizador entre dispositivos
+feat(time-tracking): Añade comando y botón para iniciar temporizador
 
-Implementa un sistema robusto para la sincronización del estado del temporizador (iniciado/detenido) entre múltiples dispositivos.
+Añade dos nuevos métodos para iniciar el control de tiempo, mejorando la accesibilidad y el flujo de trabajo del usuario:
 
-**Detalles de la Implementación:**
+1.  **Comando de Paleta:** Se introduce el comando "Control de Tiempo: Iniciar temporizador para la nota activa". Este comando solo está disponible si hay una nota activa en el espacio de trabajo y no hay otro temporizador en curso.
 
--   **Sincronización por Sondeo (Polling):** Se introduce un "escuchador" que se ejecuta en segundo plano cada 15 segundos para verificar el estado del temporizador en el archivo `data.json`. Este mecanismo asegura que cualquier cambio (inicio o detención) se refleje en todos los dispositivos abiertos.
--   **Centralización de Lógica:** Se refactoriza la lógica de inicio y detención del temporizador en funciones únicas (`initializeTimerFromState`, `clearActiveTimer`) para eliminar la duplicación de código y asegurar un comportamiento consistente, ya sea que la acción se inicie localmente o a través de una sincronización.
--   **Ciclo de Vida del "Escuchador":** El "escuchador" de sincronización ahora se inicia cuando el plugin se carga (`onload`) y se detiene cuando se descarga (`onunload`), garantizando que esté siempre activo para detectar cambios sin depender del estado del temporizador.
--   **Actualización de Vistas:** Se añade un método `refreshAllTimerViews` para forzar la actualización de la interfaz de usuario en todas las vistas abiertas (GTD y Foco) cuando ocurre un cambio de estado, manteniendo la consistencia visual.
--   **Manejo de Sesiones Interrumpidas (Deprecado):** Se elimina el antiguo sistema de manejo de sesiones interrumpidas, ya que la nueva lógica de sincronización lo vuelve obsoleto y lo maneja de forma más elegante.
+2.  **Botón de Cinta (Ribbon):** Se añade un nuevo icono de "play" en la cinta lateral. Este botón permite iniciar el temporizador para la nota activa con un solo clic. Incluye validaciones para notificar al usuario si ya hay un temporizador activo o si no hay ninguna nota abierta.
 
-**Correcciones de Bugs:**
-
--   Se corrige un error de compilación donde un `TAbstractFile` no era asignable a un `TFile` en el manejador de eventos de modificación de archivos.
--   Se elimina una variable no utilizada en `timeTrackerService.ts`.
+Ambas funcionalidades se integran con el sistema de `startTracking` existente, asegurando la consistencia con la lógica de persistencia y sincronización ya implementada.
