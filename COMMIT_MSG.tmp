@@ -1,0 +1,16 @@
+feat(sync): Implementa sincronización de temporizador entre dispositivos
+
+Implementa un sistema robusto para la sincronización del estado del temporizador (iniciado/detenido) entre múltiples dispositivos.
+
+**Detalles de la Implementación:**
+
+-   **Sincronización por Sondeo (Polling):** Se introduce un "escuchador" que se ejecuta en segundo plano cada 15 segundos para verificar el estado del temporizador en el archivo `data.json`. Este mecanismo asegura que cualquier cambio (inicio o detención) se refleje en todos los dispositivos abiertos.
+-   **Centralización de Lógica:** Se refactoriza la lógica de inicio y detención del temporizador en funciones únicas (`initializeTimerFromState`, `clearActiveTimer`) para eliminar la duplicación de código y asegurar un comportamiento consistente, ya sea que la acción se inicie localmente o a través de una sincronización.
+-   **Ciclo de Vida del "Escuchador":** El "escuchador" de sincronización ahora se inicia cuando el plugin se carga (`onload`) y se detiene cuando se descarga (`onunload`), garantizando que esté siempre activo para detectar cambios sin depender del estado del temporizador.
+-   **Actualización de Vistas:** Se añade un método `refreshAllTimerViews` para forzar la actualización de la interfaz de usuario en todas las vistas abiertas (GTD y Foco) cuando ocurre un cambio de estado, manteniendo la consistencia visual.
+-   **Manejo de Sesiones Interrumpidas (Deprecado):** Se elimina el antiguo sistema de manejo de sesiones interrumpidas, ya que la nueva lógica de sincronización lo vuelve obsoleto y lo maneja de forma más elegante.
+
+**Correcciones de Bugs:**
+
+-   Se corrige un error de compilación donde un `TAbstractFile` no era asignable a un `TFile` en el manejador de eventos de modificación de archivos.
+-   Se elimina una variable no utilizada en `timeTrackerService.ts`.

@@ -575,6 +575,18 @@ export class TimeTrackerView {
         }
     }
 
+    public refreshTimerUI() {
+        const timerDisplay = this.container.querySelector('.timer-display') as HTMLElement;
+        const startButton = this.container.querySelector('.start-button') as HTMLElement;
+        const stopButton = this.container.querySelector('.stop-button') as HTMLElement;
+        const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
+        const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
+
+        if (timerDisplay && startButton && stopButton && goToTaskButton && activeTaskDisplay) {
+            this.syncTimerUI(timerDisplay, startButton, stopButton, goToTaskButton, activeTaskDisplay);
+        }
+    }
+
     public clearTimerInterval() {
         if (this.activeTimerInterval) {
             clearInterval(this.activeTimerInterval);

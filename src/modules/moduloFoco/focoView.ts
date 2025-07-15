@@ -20,7 +20,7 @@ export const FOCO_VIEW_ICON = 'crosshair';
 export class FocoView extends ItemView {
     private plugin: DovelaPersonalManagementPlugin;
     private timeTrackerService: TimeTrackerService;
-    private timeTrackerView: TimeTrackerView | null = null;
+    public timeTrackerView: TimeTrackerView | null = null;
     private timelineView: TimelineView | null = null;
     private activeFile: TFile | null = null;
 

@@ -20,7 +20,7 @@ export const GTD_VIEW_ICON = 'list-checks';
 export class GtdView extends ItemView {
     private plugin: DovelaPersonalManagementPlugin;
     private timeTrackerService: TimeTrackerService;
-    private timeTrackerView: TimeTrackerView | null = null;
+    public timeTrackerView: TimeTrackerView | null = null;
     private timelineView: TimelineView | null = null; // Añadir la nueva vista
 
     private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline' = 'hierarchy'; // Añadir 'timeline'

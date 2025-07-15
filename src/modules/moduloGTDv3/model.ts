@@ -124,14 +124,11 @@ export interface ActiveTimerState {
 
 // Define la estructura completa de los datos que el plugin guarda en data.json.
 export interface DovelaPluginData {
-    schemaVersion: number;
     timeLogs: TimeLogEntry[];
-    interruptedTimer?: ActiveTimerState | undefined;
+    activeTimer?: ActiveTimerState;
 }
 
-// Define los valores por defecto para los datos del plugin.
 export const DEFAULT_SETTINGS: DovelaPluginData = {
-    schemaVersion: 1,
     timeLogs: [],
-    interruptedTimer: undefined as ActiveTimerState | undefined
+    activeTimer: undefined
 };

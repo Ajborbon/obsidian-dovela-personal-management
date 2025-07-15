@@ -1,5 +1,5 @@
 
-import { Plugin, Notice, WorkspaceLeaf, TFile } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf, TFile, TAbstractFile } from 'obsidian';
 import { GtdView, GTD_VIEW_TYPE, GTD_VIEW_DISPLAY_TEXT, GTD_VIEW_ICON } from './modules/moduloGTDv3/view.js';
 import { FocoView, FOCO_VIEW_TYPE, FOCO_VIEW_ICON } from './modules/moduloFoco/focoView.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
@@ -18,6 +18,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     public timeTrackerService!: TimeTrackerService;
     public statusBarItem!: HTMLElement;
     private activeTimerInterval: number | null = null;
+    private syncInterval: number | null = null;
     public availableTasks: (TFile | Task)[] = [];
 
     // Metadata cache
@@ -36,12 +37,17 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.statusBarItem = this.addStatusBarItem();
         this.statusBarItem.style.display = 'none';
 
+        // Sync active timer from data.json on load
+        if (this.data.activeTimer) {
+            console.log("Dovela PM Sync: Active timer found on load. Initializing.");
+            this.initializeTimerFromState(this.data.activeTimer);
+        }
+
         await this.loadAvailableTasks();
         await this.collectMetadata();
-        this.handleInterruptedSession();
 
         // Re-scan for metadata on file changes
-        this.registerEvent(this.app.vault.on('modify', () => this.collectMetadata()));
+        this.registerEvent(this.app.vault.on('modify', (file) => this.handleFileChange(file)));
         this.registerEvent(this.app.vault.on('rename', () => this.collectMetadata()));
         this.registerEvent(this.app.vault.on('delete', () => this.collectMetadata()));
 
@@ -103,13 +109,15 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                 new Notice('Por favor, abra o seleccione una nota para usar la Vista de Foco.');
             }
         });
+
+        // Start the sync poller now that the plugin is fully loaded
+        this.startSyncInterval();
     }
 
     override onunload() {
         console.log('Unloading Dovela Personal Management Plugin...');
-        if (this.activeTimer) {
-            this.timeTrackerService.saveInterruptedSession(this.activeTimer);
-        }
+        this.stopSyncInterval(); // Use the dedicated stop function
+        if (this.activeTimerInterval) clearInterval(this.activeTimerInterval);
         this.app.workspace.detachLeavesOfType(GTD_VIEW_TYPE);
         this.smartInboxView?.remove();
     }
@@ -222,42 +230,6 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }
     }
 
-    private async handleInterruptedSession() {
-        const interruptedSession = await this.timeTrackerService.loadInterruptedSession();
-        if (interruptedSession) {
-            const notice = new Notice('Dovela: Sesión de tiempo interrumpida encontrada.', 0);
-            const buttonContainer = notice.noticeEl.createDiv({ cls: 'dovela-notice-buttons' });
-            
-            const saveButton = buttonContainer.createEl('button', { text: 'Guardar' });
-            saveButton.onclick = async () => {
-                const endTime = new Date();
-                const startTime = new Date(interruptedSession.startTime);
-                const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
-
-                if (durationMinutes > 0) {
-                    await this.timeTrackerService.addLogEntry({
-                        taskNotePath: interruptedSession.taskNotePath,
-                        startTime: interruptedSession.startTime,
-                        endTime: endTime.toISOString(),
-                        durationMinutes: durationMinutes,
-                        notes: 'Sesión recuperada automáticamente.',
-                        taskDescription: interruptedSession.taskDescription || ''
-                    });
-                }
-                await this.timeTrackerService.clearInterruptedSession();
-                notice.hide();
-                new Notice('Dovela: Sesión de tiempo guardada.');
-            };
-
-            const discardButton = buttonContainer.createEl('button', { text: 'Descartar' });
-            discardButton.onclick = async () => {
-                await this.timeTrackerService.clearInterruptedSession();
-                notice.hide();
-                new Notice('Dovela: Sesión de tiempo descartada.');
-            };
-        }
-    }
-
     public updateStatusBar(text: string) {
         if (!this.statusBarItem) return;
 
@@ -273,49 +245,61 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }
     }
 
-    public startTracking(taskNotePath: string, taskDescription: string, lineNumber?: number) {
+    public async startTracking(taskNotePath: string, taskDescription: string, lineNumber?: number) {
         if (this.activeTimer) return;
 
-        this.activeTimer = {
+        const newTimerState: ActiveTimerState = {
             taskNotePath: taskNotePath,
             startTime: moment().local().toISOString(true),
             taskDescription: taskDescription,
             ...(lineNumber !== undefined && { lineNumber })
         };
+        
+        // Persist the new state to trigger sync
+        this.data.activeTimer = newTimerState;
+        await this.savePluginData();
 
-        const taskName = taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
-        this.updateStatusBar(`${taskName}...`);
-
-        const startTimeMoment = moment(this.activeTimer.startTime);
-        this.activeTimerInterval = window.setInterval(() => {
-            const now = moment().local();
-            const diff = now.diff(startTimeMoment);
-            const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
-            const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-            const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
-            const timeString = `${hours}:${minutes}:${seconds}`;
-            this.updateStatusBar(`${taskName}... ${timeString}`);
-        }, 1000);
+        // Initialize the timer locally using the single, centralized function
+        this.initializeTimerFromState(newTimerState);
     }
 
     public async stopTracking() {
         if (!this.activeTimer || this.activeTimerInterval === null) return;
 
+        // Stop the local UI timer immediately, but keep the state in memory for the modal
         clearInterval(this.activeTimerInterval);
         this.activeTimerInterval = null;
-
+        
         const endTime = moment().local();
         const startTime = moment(this.activeTimer.startTime);
         const currentTimer = this.activeTimer;
 
         new TimeLogModal(this.app, this.timeTrackerService, this, async () => {
-            const leaves = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
-            if (leaves.length > 0) {
-                const view = leaves[0]!.view as GtdView;
+            // This onSave callback runs AFTER the user saves the log in the modal.
+            
+            // 1. Clear the active timer state from memory and stop sync
+            this.clearActiveTimer();
+            
+            // 2. Clear the active timer from persistent data
+            this.data.activeTimer = undefined;
+            await this.savePluginData();
+
+            // 3. Refresh statistics in all open views
+            const allGtdViews = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
+            allGtdViews.forEach(leaf => {
+                const view = leaf.view as GtdView;
                 if (view instanceof GtdView && 'refreshStatistics' in view) {
-                    await view.refreshStatistics();
+                    view.refreshStatistics();
                 }
-            }
+            });
+            const allFocoViews = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
+            allFocoViews.forEach(leaf => {
+                const view = leaf.view as FocoView;
+                 if (view instanceof FocoView && 'refreshStatistics' in view) {
+                    view.refreshStatistics();
+                }
+            });
+
         }, {
             taskNotePath: currentTimer.taskNotePath,
             startTime: startTime.toISOString(true),
@@ -323,9 +307,6 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             notes: currentTimer.taskDescription || '',
             taskDescription: currentTimer.taskDescription || ''
         }).open();
-
-        this.activeTimer = null;
-        this.updateStatusBar('');
     }
 
     public async loadAvailableTasks(source: TaskSource = 'all-tasks'): Promise<void> {
@@ -344,5 +325,110 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             default:
                 this.availableTasks = [];
         }
+    }
+
+    private async handleFileChange(file: TAbstractFile) {
+        // First, run the metadata collection on any change
+        await this.collectMetadata();
+
+        // We only care about file modifications, not folder modifications
+        if (!(file instanceof TFile)) {
+            return;
+        }
+
+        // Then, specifically handle data.json sync for immediate feedback
+        if (file.path === `${this.manifest.dir}/data.json`) {
+            console.log("Dovela PM Sync: data.json modified. Checking for changes.");
+            await this.syncTimerStateWithFile();
+        }
+    }
+
+    private initializeTimerFromState(timerState: ActiveTimerState) {
+        this.activeTimer = timerState;
+        const taskName = this.activeTimer.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
+        const startTimeMoment = moment(this.activeTimer.startTime);
+    
+        // Clear any existing interval before starting a new one
+        if (this.activeTimerInterval) clearInterval(this.activeTimerInterval);
+        this.activeTimerInterval = window.setInterval(() => {
+            const now = moment().local();
+            const diff = now.diff(startTimeMoment);
+            const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            this.updateStatusBar(`${taskName}... ${hours}:${minutes}:${seconds}`);
+        }, 1000);
+    
+        this.updateStatusBar(`${taskName}...`);
+        this.refreshAllTimerViews();
+    }
+
+    private clearActiveTimer() {
+        if (this.activeTimerInterval) {
+            clearInterval(this.activeTimerInterval);
+            this.activeTimerInterval = null;
+        }
+        this.activeTimer = null;
+        this.updateStatusBar('');
+        this.refreshAllTimerViews();
+    }
+
+    private async syncTimerStateWithFile() {
+        try {
+            const previousTimerStateInMemory = this.activeTimer;
+            
+            // Important: We read the data directly, not using loadPluginData to avoid side effects
+            const fileContent = await this.app.vault.adapter.read(`${this.manifest.dir}/data.json`);
+            const dataFromDisk = JSON.parse(fileContent) as DovelaPluginData;
+            const newTimerStateFromDisk = dataFromDisk.activeTimer;
+
+            const wasRunning = !!previousTimerStateInMemory;
+            const isRunning = !!newTimerStateFromDisk;
+
+            if (wasRunning && !isRunning) {
+                // Case 1: Timer was stopped on another device.
+                console.log("Dovela PM Sync: Timer stopped remotely. Updating UI.");
+                this.clearActiveTimer();
+            } else if (!wasRunning && isRunning) {
+                // Case 2: Timer was started on another device.
+                console.log("Dovela PM Sync: Timer started remotely. Updating UI.");
+                this.initializeTimerFromState(newTimerStateFromDisk!);
+            }
+            // Case 3 (wasRunning && isRunning) and Case 4 (!wasRunning && !isRunning) require no action.
+        } catch (error) {
+            console.error("Dovela PM Sync: Error during file sync check. It's possible the file was being written by another process. This is usually safe to ignore.", error);
+        }
+    }
+
+    private startSyncInterval() {
+        if (this.syncInterval) clearInterval(this.syncInterval);
+        console.log("Dovela PM Sync: Starting sync interval (15s).");
+        this.syncInterval = window.setInterval(() => this.syncTimerStateWithFile(), 15000);
+    }
+
+    private stopSyncInterval() {
+        if (this.syncInterval) {
+            console.log("Dovela PM Sync: Stopping sync interval.");
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
+    }
+
+    private refreshAllTimerViews() {
+        const allGtdViews = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
+        allGtdViews.forEach(leaf => {
+            const view = leaf.view as GtdView;
+            if (view.timeTrackerView && typeof view.timeTrackerView.refreshTimerUI === 'function') {
+                view.timeTrackerView.refreshTimerUI();
+            }
+        });
+
+        const allFocoViews = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
+        allFocoViews.forEach(leaf => {
+            const view = leaf.view as FocoView;
+            if (view.timeTrackerView && typeof view.timeTrackerView.refreshTimerUI === 'function') {
+                view.timeTrackerView.refreshTimerUI();
+            }
+        });
     }
 }

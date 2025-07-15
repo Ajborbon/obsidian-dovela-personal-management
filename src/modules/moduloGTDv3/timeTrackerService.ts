@@ -48,18 +48,17 @@ export class TimeTrackerService {
         return stats;
     }
 
-    async saveInterruptedSession(timer: ActiveTimerState): Promise<void> {
-        this.plugin.data.interruptedTimer = timer;
-        await this.plugin.savePluginData();
+    async saveInterruptedSession(): Promise<void> {
+        // This method is being deprecated in favor of the new activeTimer sync logic.
     }
 
     async loadInterruptedSession(): Promise<ActiveTimerState | null> {
-        return this.plugin.data.interruptedTimer || null;
+        // This method is being deprecated in favor of the new activeTimer sync logic.
+        return null;
     }
 
     async clearInterruptedSession(): Promise<void> {
-        this.plugin.data.interruptedTimer = undefined as ActiveTimerState | undefined;
-        await this.plugin.savePluginData();
+        // This method is being deprecated in favor of the new activeTimer sync logic.
     }
 
     async updateLogEntry(logId: string, updatedData: Partial<Omit<TimeLogEntry, 'id'>>): Promise<void> {
