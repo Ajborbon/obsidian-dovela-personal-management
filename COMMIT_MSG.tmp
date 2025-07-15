@@ -1,9 +1,13 @@
-feat(time-tracking): Añade comando y botón para iniciar temporizador
+feat(activity-panel): Implementa el Panel de Actividad
 
-Añade dos nuevos métodos para iniciar el control de tiempo, mejorando la accesibilidad y el flujo de trabajo del usuario:
+Introduce una nueva funcionalidad de "Panel de Actividad" que ofrece a los usuarios una visión consolidada de su productividad y actividad reciente dentro de Obsidian.
 
-1.  **Comando de Paleta:** Se introduce el comando "Control de Tiempo: Iniciar temporizador para la nota activa". Este comando solo está disponible si hay una nota activa en el espacio de trabajo y no hay otro temporizador en curso.
+Esta nueva vista incluye:
+- Un dashboard principal con métricas clave: tareas capturadas vs. completadas, y notas nuevas vs. modificadas.
+- Filtros de período de tiempo (Hoy, Ayer, Semana, Mes, y un rango de fechas personalizado) para analizar la actividad en diferentes lapsos.
+- Vistas de detalle interactivas: al hacer clic en una métrica, se muestra una lista detallada de las notas o tareas correspondientes.
+- El botón del filtro de período activo se resalta visualmente para mejorar la claridad.
 
-2.  **Botón de Cinta (Ribbon):** Se añade un nuevo icono de "play" en la cinta lateral. Este botón permite iniciar el temporizador para la nota activa con un solo clic. Incluye validaciones para notificar al usuario si ya hay un temporizador activo o si no hay ninguna nota abierta.
+Se puede acceder al panel a través de un nuevo comando en la paleta ("Panel de Actividad: Mostrar resumen de actividad") y un nuevo icono en la cinta lateral.
 
-Ambas funcionalidades se integran con el sistema de `startTracking` existente, asegurando la consistencia con la lógica de persistencia y sincronización ya implementada.
+La lógica de negocio está encapsulada en un nuevo `AnalyzerService`, y se han añadido estilos CSS dedicados para una presentación pulida.

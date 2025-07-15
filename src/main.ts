@@ -2,7 +2,9 @@
 import { Plugin, Notice, WorkspaceLeaf, TFile, TAbstractFile } from 'obsidian';
 import { GtdView, GTD_VIEW_TYPE, GTD_VIEW_DISPLAY_TEXT, GTD_VIEW_ICON } from './modules/moduloGTDv3/view.js';
 import { FocoView, FOCO_VIEW_TYPE, FOCO_VIEW_ICON } from './modules/moduloFoco/focoView.js';
+import { ActivityView, ACTIVITY_VIEW_TYPE, ACTIVITY_VIEW_DISPLAY_TEXT, ACTIVITY_VIEW_ICON } from './modules/moduloActividad/activityView.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
+import { AnalyzerService } from './modules/moduloActividad/analyzerService.js';
 import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
 import type { ActiveTimerState, Task, DovelaPluginData } from './modules/moduloGTDv3/model.js';
 import { DEFAULT_SETTINGS } from './modules/moduloGTDv3/model.js';
@@ -16,6 +18,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     public data!: DovelaPluginData;
     public activeTimer: ActiveTimerState | null = null;
     public timeTrackerService!: TimeTrackerService;
+    public analyzerService!: AnalyzerService;
     public statusBarItem!: HTMLElement;
     private activeTimerInterval: number | null = null;
     private syncInterval: number | null = null;
@@ -34,6 +37,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         await this.loadPluginData();
 
         this.timeTrackerService = new TimeTrackerService(this);
+        this.analyzerService = new AnalyzerService(this);
         this.statusBarItem = this.addStatusBarItem();
         this.statusBarItem.style.display = 'none';
 
@@ -62,6 +66,11 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             (leaf) => new FocoView(leaf, this, null) // Initially null, will be set on activation
         );
 
+        this.registerView(
+            ACTIVITY_VIEW_TYPE,
+            (leaf) => new ActivityView(leaf, this)
+        );
+
         this.addCommand({
             id: 'open-gtd-dashboard',
             name: 'Open GTD Dashboard',
@@ -82,6 +91,14 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                     return true;
                 }
                 return false;
+            }
+        });
+
+        this.addCommand({
+            id: 'open-activity-panel',
+            name: 'Panel de Actividad: Mostrar resumen de actividad',
+            callback: () => {
+                this.activateActivityView();
             }
         });
 
@@ -147,6 +164,10 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             } else {
                 new Notice('Por favor, abra o seleccione una nota para usar la Vista de Foco.');
             }
+        });
+
+        this.addRibbonIcon(ACTIVITY_VIEW_ICON, ACTIVITY_VIEW_DISPLAY_TEXT, () => {
+            this.activateActivityView();
         });
 
         // Start the sync poller now that the plugin is fully loaded
@@ -267,6 +288,19 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         if (switchToTimeTracker && view instanceof GtdView) {
             view.switchToTimeTrackerView();
         }
+    }
+
+    private async activateActivityView(): Promise<void> {
+        const leaves = this.app.workspace.getLeavesOfType(ACTIVITY_VIEW_TYPE);
+        if (leaves.length > 0) {
+            this.app.workspace.revealLeaf(leaves[0]);
+            return;
+        }
+        const leaf = this.app.workspace.getLeaf('tab');
+        await leaf.setViewState({
+            type: ACTIVITY_VIEW_TYPE,
+            active: true,
+        });
     }
 
     public updateStatusBar(text: string) {

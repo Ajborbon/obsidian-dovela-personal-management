@@ -321,11 +321,6 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     justify-content: center;
 }
 
-.gtd-focus-controls > span {
-    font-weight: bold;
-    color: var(--text-muted);
-}
-
 .gtd-grouping-button.active,
 .gtd-sorting-button.active {
     background-color: var(--interactive-accent);
@@ -1144,3 +1139,127 @@ body.is-copying {
 .day-cell.activity-high { background-color: rgba(var(--color-blue-rgb), 0.6); }
 
 
+/* --- Activity View --- */
+.dovela-activity-view {
+    padding: 15px;
+}
+
+.activity-filter-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.activity-period-button.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.activity-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.activity-card {
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.activity-card h4 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 8px;
+}
+
+.activity-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.activity-metric.is-clickable {
+  cursor: pointer;
+}
+
+.activity-metric.is-clickable:hover {
+  background-color: var(--background-secondary-alt);
+}
+
+.metric-label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+.metric-value {
+  font-size: var(--font-ui-large);
+  font-weight: bold;
+}
+
+.metric-value.positive {
+  color: var(--color-green);
+}
+
+.metric-value.negative {
+  color: var(--color-red);
+}
+
+.metric-value.neutral {
+  color: var(--text-normal);
+}
+
+/* Detail View */
+.activity-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.activity-detail-header h3 {
+  margin: 0;
+}
+
+.activity-detail-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.activity-detail-list li {
+  padding: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.activity-detail-list a {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-accent);
+}
+
+.activity-detail-list a:hover {
+  text-decoration: underline;
+}
+
+.detail-context {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  margin-left: 8px;
+}
+
+.custom-filter-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background-color: var(--background-secondary-alt);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.custom-filter-controls.is-hidden {
+  display: none;
+}
