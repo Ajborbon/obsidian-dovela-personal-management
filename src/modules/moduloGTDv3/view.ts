@@ -68,7 +68,7 @@ export class GtdView extends ItemView {
 
     public async refreshStatistics(): Promise<void> {
         if (this.timeTrackerView) {
-            await this.timeTrackerView.renderStatistics();
+            await this.timeTrackerView.renderStatistics(this.timeTrackerView.activeDateFilter);
         }
     }
 

@@ -8,9 +8,10 @@ export class TimeLogModal extends Modal {
     private service: TimeTrackerService;
     private plugin: DovelaPersonalManagementPlugin;
     private onSave: () => void;
-    private entry: TimeLogEntry; // Ahora es un TimeLogEntry completo
+    private entry: TimeLogEntry;
     private availableTasks: (TFile | Task)[] = [];
     private isEditing: boolean;
+    private savedOrDeleted = false; // Flag to track if the modal was closed properly
 
     constructor(app: App, service: TimeTrackerService, plugin: DovelaPersonalManagementPlugin, onSave: () => void, entryData?: Partial<TimeLogEntry>) {
         super(app);
@@ -21,7 +22,7 @@ export class TimeLogModal extends Modal {
 
         const now = moment().local();
         this.entry = {
-            id: entryData?.id || '', // Se mantiene el ID si existe
+            id: entryData?.id || '',
             taskNotePath: entryData?.taskNotePath || '',
             taskDescription: entryData?.taskDescription || '',
             startTime: entryData?.startTime ? moment(entryData.startTime).local().toISOString(true) : now.clone().subtract(1, 'hour').toISOString(true),
@@ -226,6 +227,8 @@ export class TimeLogModal extends Modal {
             return;
         }
 
+        this.savedOrDeleted = true; // Mark as properly closed
+
         const entryToSave = {
             taskNotePath: this.entry.taskNotePath,
             startTime: this.entry.startTime,
@@ -247,15 +250,21 @@ export class TimeLogModal extends Modal {
 
     async delete() {
         if (!this.isEditing) return;
-        // Aquí se podría añadir una confirmación si se desea
+        this.savedOrDeleted = true; // Mark as properly closed
         await this.service.deleteLogEntry(this.entry.id);
         new Notice('Registro eliminado.');
-        this.onSave(); // Llama a onSave para refrescar la vista
+        this.onSave();
         this.close();
     }
 
     override onClose() {
         const { contentEl } = this;
         contentEl.empty();
+
+        // If the modal was dismissed without saving, and there's an active timer, restart the UI.
+        if (!this.savedOrDeleted && this.plugin.activeTimer) {
+            console.log("Dovela PM: Time log modal dismissed. Restarting timer UI.");
+            this.plugin.initializeTimerFromState(this.plugin.activeTimer);
+        }
     }
 }

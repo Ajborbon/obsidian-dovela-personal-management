@@ -51,8 +51,10 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             this.initializeTimerFromState(this.data.activeTimer);
         }
 
-        await this.loadAvailableTasks();
-        await this.collectMetadata();
+        this.app.workspace.onLayoutReady(async () => {
+            await this.loadAvailableTasks();
+            await this.collectMetadata();
+        });
 
         // Re-scan for metadata on file changes
         this.registerEvent(this.app.vault.on('modify', (file) => this.handleFileChange(file)));
@@ -381,18 +383,20 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     }
 
     public async stopTracking() {
-        if (!this.activeTimer || this.activeTimerInterval === null) return;
+        if (!this.activeTimer) return;
 
         // Stop the local UI timer immediately, but keep the state in memory for the modal
-        clearInterval(this.activeTimerInterval);
-        this.activeTimerInterval = null;
+        if (this.activeTimerInterval) {
+            clearInterval(this.activeTimerInterval);
+            this.activeTimerInterval = null;
+        }
         
         const endTime = moment().local();
         const startTime = moment(this.activeTimer.startTime);
         const currentTimer = this.activeTimer;
 
         new TimeLogModal(this.app, this.timeTrackerService, this, async () => {
-            // This onSave callback runs AFTER the user saves the log in the modal.
+            // This onSave callback runs AFTER the user saves/deletes the log in the modal.
             
             // 1. Clear the active timer state from memory and stop sync
             this.clearActiveTimer();

@@ -28,7 +28,7 @@ export class TimeTrackerView {
     private selectedTask: { path: string, description: string, lineNumber: number } | null = null;
     private searchInputEl!: HTMLInputElement;
 
-    private activeDateFilter: string = 'today';
+    public activeDateFilter: string = 'today';
     private activeTaskSource: TaskSource = 'all-tasks';
 
     constructor(container: HTMLElement, plugin: DovelaPersonalManagementPlugin, service: TimeTrackerService) {
