@@ -29,7 +29,7 @@ function parseTimeToMinutes(timeStr: string | undefined): number | null {
     const ampmMatch = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
     if (ampmMatch) {
         let hours = parseInt(ampmMatch[1] || "0", 10);
-        const minutes = ampmMatch[2] ? parseInt(amppmMatch[2], 10) : 0;
+        const minutes = ampmMatch[2] ? parseInt(ampmMatch[2], 10) : 0;
         const period = (ampmMatch[3] || "").toLowerCase();
         if (hours === 12) {
             hours = period === 'am' ? 0 : 12;

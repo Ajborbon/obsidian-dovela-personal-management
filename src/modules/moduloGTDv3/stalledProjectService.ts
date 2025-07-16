@@ -1,6 +1,6 @@
 import { TFile, TFolder, Vault, MetadataCache } from 'obsidian';
-import { DovelaPluginSettings } from './model';
-import { parseTasks } from '../moduloFoco/focoParser'; // Reutilizamos el parser de tareas
+import type { DovelaPluginData } from './model.js';
+import { parseTasks } from '../moduloFoco/focoParser.js'; // Reutilizamos el parser de tareas
 
 /**
  * Representa un proyecto GTD que ha sido identificado como estancado.
@@ -19,12 +19,11 @@ export interface StalledProject {
 export class StalledProjectService {
     private vault: Vault;
     private metadataCache: MetadataCache;
-    private settings: DovelaPluginSettings;
 
-    constructor(vault: Vault, metadataCache: MetadataCache, settings: DovelaPluginSettings) {
+    constructor(vault: Vault, metadataCache: MetadataCache, _settings: DovelaPluginData) {
         this.vault = vault;
         this.metadataCache = metadataCache;
-        this.settings = settings;
+        // _settings is intentionally unused but kept for API compatibility
     }
 
     /**
@@ -64,7 +63,7 @@ export class StalledProjectService {
      */
     private async isProjectActive(file: TFile): Promise<boolean> {
         const fileCache = this.metadataCache.getFileCache(file);
-        return fileCache?.frontmatter?.estado === '🟢';
+        return fileCache?.frontmatter?.['estado'] === '🟢';
     }
 
     /**
@@ -77,7 +76,7 @@ export class StalledProjectService {
         for (const file of hierarchyFiles) {
             const content = await this.vault.cachedRead(file);
             const tasks = parseTasks(content, file);
-            if (tasks.some(task => !task.completed)) {
+            if (tasks.some((task: any) => !task.completed)) {
                 return true; // Encontramos una tarea abierta, no necesitamos seguir buscando.
             }
         }

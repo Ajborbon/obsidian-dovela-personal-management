@@ -1,6 +1,6 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, App } from 'obsidian';
-import type DovelaPersonalManagementPlugin from '../../main';
-import type { StalledProject } from './stalledProjectService';
+import { ItemView, WorkspaceLeaf, TFile, Notice } from 'obsidian';
+import type DovelaPersonalManagementPlugin from '../../main.js';
+import type { StalledProject } from './stalledProjectService.js';
 
 export const REVIEW_PANEL_VIEW_TYPE = 'dovela-gtd-review-panel-view';
 export const REVIEW_PANEL_DISPLAY_TEXT = 'Panel de Revisión GTD';
@@ -15,38 +15,42 @@ export class ReviewPanelView extends ItemView {
         this.plugin = plugin;
     }
 
-    getViewType(): string {
+    override getViewType(): string {
         return REVIEW_PANEL_VIEW_TYPE;
     }
 
-    getDisplayText(): string {
+    override getDisplayText(): string {
         return REVIEW_PANEL_DISPLAY_TEXT;
     }
 
-    getIcon(): string {
+    override getIcon(): string {
         return REVIEW_PANEL_ICON;
     }
 
-    async onOpen() {
+    override async onOpen() {
         this.render();
     }
 
-    async onClose() {
+    override async onClose() {
         // Lógica de limpieza si es necesaria
     }
 
     async render() {
         const container = this.containerEl.children[1];
+        if (!container) return;
         container.empty();
         container.addClass('dovela-review-panel');
 
         container.createEl('h2', { text: 'Panel de Revisión GTD' });
         const loadingEl = container.createEl('p', { text: 'Buscando proyectos estancados...' });
+        if (!loadingEl) return;
 
         try {
             this.stalledProjects = await this.plugin.stalledProjectService.findStalledProjects();
             loadingEl.remove();
-            this.drawContent(container);
+            if (container) {
+                this.drawContent(container);
+            }
         } catch (error) {
             console.error("Error al buscar proyectos estancados:", error);
             loadingEl.setText('Error al cargar los proyectos. Revise la consola.');

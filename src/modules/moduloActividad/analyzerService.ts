@@ -1,6 +1,6 @@
 import type { TFile } from 'obsidian';
 import moment from 'moment';
-import type DovelaPersonalManagementPlugin from '../../main';
+import type DovelaPersonalManagementPlugin from '../../main.js';
 
 // --- Data Structures for the results ---
 
@@ -106,25 +106,29 @@ export class AnalyzerService {
             let match;
             // Find completed tasks
             while ((match = completedRegex.exec(content)) !== null) {
-                const date = moment(match[2]);
-                if (date.isBetween(start, end, undefined, '[]')) {
-                    completed.push({
-                        content: match[1].trim(),
-                        date: match[2],
-                        sourceFile: file,
-                    });
+                if (match[2]) {
+                    const date = moment(match[2]);
+                    if (date.isBetween(start, end, undefined, '[]')) {
+                        completed.push({
+                            content: (match[1] || '').trim(),
+                            date: match[2],
+                            sourceFile: file,
+                        });
+                    }
                 }
             }
 
             // Find captured tasks
             while ((match = capturedRegex.exec(content)) !== null) {
-                const date = moment(match[2]);
-                if (date.isBetween(start, end, undefined, '[]')) {
-                    captured.push({
-                        content: match[1].trim(),
-                        date: match[2],
-                        sourceFile: file,
-                    });
+                if (match[2]) {
+                    const date = moment(match[2]);
+                    if (date.isBetween(start, end, undefined, '[]')) {
+                        captured.push({
+                            content: (match[1] || '').trim(),
+                            date: match[2],
+                            sourceFile: file,
+                        });
+                    }
                 }
             }
         }

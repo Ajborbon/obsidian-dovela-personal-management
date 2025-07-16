@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf, TFile } from 'obsidian';
-import type DovelaPersonalManagementPlugin from '../../main';
-import type { AnalyzerService, TaskDetail } from './analyzerService';
+import type DovelaPersonalManagementPlugin from '../../main.js';
+import type { AnalyzerService, TaskDetail } from './analyzerService.js';
 import moment from 'moment';
 
 export const ACTIVITY_VIEW_TYPE = 'dovela-activity-view';
@@ -16,8 +16,8 @@ export class ActivityView extends ItemView {
 
     private currentScreen: Screen = 'dashboard';
     private activePeriod: Period = 'week';
-    private customStartDate: moment.Moment | null = null;
-    private customEndDate: moment.Moment | null = null;
+    private customStartDate: moment.Moment | undefined = undefined;
+    private customEndDate: moment.Moment | undefined = undefined;
     private detailData: TFile[] | TaskDetail[] = [];
     private detailTitle: string = '';
 
@@ -27,29 +27,30 @@ export class ActivityView extends ItemView {
         this.analyzerService = plugin.analyzerService;
     }
 
-    getViewType(): string {
+    override getViewType(): string {
         return ACTIVITY_VIEW_TYPE;
     }
 
-    getDisplayText(): string {
+    override getDisplayText(): string {
         return ACTIVITY_VIEW_DISPLAY_TEXT;
     }
 
-    getIcon(): string {
+    override getIcon(): string {
         return ACTIVITY_VIEW_ICON;
     }
 
-    async onOpen() {
+    override async onOpen() {
         this.analyzerService.clearCache();
         this.render();
     }
 
-    async onClose() {
+    override async onClose() {
         // Cleanup
     }
 
     async render() {
         const container = this.containerEl.children[1];
+        if (!container) return;
         container.empty();
         container.addClass('dovela-activity-view');
 
@@ -64,6 +65,7 @@ export class ActivityView extends ItemView {
     }
 
     private async renderDashboard(container: Element) {
+        if (!container) return;
         let title = 'Panel de Actividad';
         if (this.activePeriod === 'custom' && (this.customStartDate || this.customEndDate)) {
             const start = this.customStartDate ? this.customStartDate.format('YYYY-MM-DD') : '...';
@@ -76,6 +78,7 @@ export class ActivityView extends ItemView {
 
         const metrics = await this.analyzerService.getMetricsForPeriod(this.activePeriod, this.customStartDate, this.customEndDate);
         const dashboardGrid = container.createDiv({ cls: 'activity-dashboard-grid' });
+        if (!dashboardGrid) return;
 
         const periodText = this.getPeriodText();
 
@@ -159,8 +162,8 @@ export class ActivityView extends ItemView {
 
         const applyButton = customFilterEl.createEl('button', { text: 'Aplicar' });
         applyButton.onClickEvent(() => {
-            this.customStartDate = startDateInput.value ? moment(startDateInput.value) : null;
-            this.customEndDate = endDateInput.value ? moment(endDateInput.value) : null;
+            this.customStartDate = startDateInput.value ? moment(startDateInput.value) : undefined;
+            this.customEndDate = endDateInput.value ? moment(endDateInput.value) : undefined;
             this.analyzerService.clearCache();
             this.render();
         });

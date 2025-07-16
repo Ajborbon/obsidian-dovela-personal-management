@@ -41,7 +41,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         this.timeTrackerService = new TimeTrackerService(this);
         this.analyzerService = new AnalyzerService(this);
-        this.stalledProjectService = new StalledProjectService(this.app.vault, this.app.metadataCache, this.data.settings);
+        this.stalledProjectService = new StalledProjectService(this.app.vault, this.app.metadataCache, this.data);
         this.statusBarItem = this.addStatusBarItem();
         this.statusBarItem.style.display = 'none';
 
@@ -314,27 +314,37 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     private async activateReviewPanelView(): Promise<void> {
         const leaves = this.app.workspace.getLeavesOfType(REVIEW_PANEL_VIEW_TYPE);
         if (leaves.length > 0) {
-            this.app.workspace.revealLeaf(leaves[0]);
+            const leaf = leaves[0];
+            if (leaf) {
+                this.app.workspace.revealLeaf(leaf);
+            }
             return;
         }
         const leaf = this.app.workspace.getLeaf('tab');
-        await leaf.setViewState({
-            type: REVIEW_PANEL_VIEW_TYPE,
-            active: true,
-        });
+        if (leaf) {
+            await leaf.setViewState({
+                type: REVIEW_PANEL_VIEW_TYPE,
+                active: true,
+            });
+        }
     }
 
     private async activateActivityView(): Promise<void> {
         const leaves = this.app.workspace.getLeavesOfType(ACTIVITY_VIEW_TYPE);
         if (leaves.length > 0) {
-            this.app.workspace.revealLeaf(leaves[0]);
+            const leaf = leaves[0];
+            if (leaf) {
+                this.app.workspace.revealLeaf(leaf);
+            }
             return;
         }
         const leaf = this.app.workspace.getLeaf('tab');
-        await leaf.setViewState({
-            type: ACTIVITY_VIEW_TYPE,
-            active: true,
-        });
+        if (leaf) {
+            await leaf.setViewState({
+                type: ACTIVITY_VIEW_TYPE,
+                active: true,
+            });
+        }
     }
 
     public updateStatusBar(text: string) {
