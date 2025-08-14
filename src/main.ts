@@ -8,7 +8,7 @@ import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js'
 import { StalledProjectService } from './modules/moduloGTDv3/stalledProjectService.js';
 import { AnalyzerService } from './modules/moduloActividad/analyzerService.js';
 import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
-import type { ActiveTimerState, Task, DovelaPluginData } from './modules/moduloGTDv3/model.js';
+import type { ActiveTimerState, Task, DovelaPluginData, TimeLogEntry } from './modules/moduloGTDv3/model.js';
 import { DEFAULT_SETTINGS } from './modules/moduloGTDv3/model.js';
 import { parseVault } from './modules/moduloGTDv3/parser.js';
 import moment from 'moment';
@@ -133,21 +133,34 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             id: 'time-tracker-start-for-active-note',
             name: 'Control de Tiempo: Iniciar temporizador para la nota activa',
             checkCallback: (checking: boolean) => {
-                // Conditions to meet for the command to be available
                 const activeFile = this.app.workspace.getActiveFile();
                 const isTimerRunning = !!this.activeTimer;
 
                 if (activeFile && !isTimerRunning) {
                     if (!checking) {
-                        // Execute the command's logic
                         const taskNotePath = activeFile.path;
                         const taskDescription = activeFile.basename.replace('.md', '');
                         this.startTracking(taskNotePath, taskDescription);
                         new Notice(`Temporizador iniciado para: ${taskDescription}`);
                     }
-                    return true; // Command is valid
+                    return true;
                 }
-                return false; // Command is not valid
+                return false;
+            }
+        });
+
+        this.addCommand({
+            id: 'time-tracker-edit-active-timer',
+            name: 'Control de Tiempo: Modificar temporizador activo',
+            checkCallback: (checking: boolean) => {
+                console.log("Dovela PM Debug: Checking for 'edit active timer' command. Active timer is:", this.activeTimer);
+                if (this.activeTimer) {
+                    if (!checking) {
+                        this.openEditActiveTimerModal();
+                    }
+                    return true;
+                }
+                return false;
             }
         });
 
@@ -371,6 +384,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             taskNotePath: taskNotePath,
             startTime: moment().local().toISOString(true),
             taskDescription: taskDescription,
+            notes: '', // Initialize notes as empty
             ...(lineNumber !== undefined && { lineNumber })
         };
         
@@ -384,50 +398,74 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
     public async stopTracking() {
         if (!this.activeTimer) return;
-
-        // Stop the local UI timer immediately, but keep the state in memory for the modal
+    
         if (this.activeTimerInterval) {
             clearInterval(this.activeTimerInterval);
             this.activeTimerInterval = null;
         }
-        
-        const endTime = moment().local();
-        const startTime = moment(this.activeTimer.startTime);
+    
         const currentTimer = this.activeTimer;
-
-        new TimeLogModal(this.app, this.timeTrackerService, this, async () => {
-            // This onSave callback runs AFTER the user saves/deletes the log in the modal.
-            
-            // 1. Clear the active timer state from memory and stop sync
+        const onSaveCallback = async (entryData: Partial<TimeLogEntry>) => {
+            // This callback handles saving the completed log.
+            if (entryData.id) { // This case is for editing existing logs, not stopping a timer.
+                await this.timeTrackerService.updateLogEntry(entryData.id, entryData);
+            } else {
+                await this.timeTrackerService.addLogEntry(entryData as Omit<TimeLogEntry, 'id'>);
+            }
+    
             this.clearActiveTimer();
-            
-            // 2. Clear the active timer from persistent data
             this.data.activeTimer = undefined;
             await this.savePluginData();
+    
+            // Refresh views
+            this.refreshAllGtdAndFocoViews();
+        };
+    
+        new TimeLogModal(
+            this.app,
+            this,
+            onSaveCallback,
+            {
+                taskNotePath: currentTimer.taskNotePath,
+                startTime: currentTimer.startTime,
+                endTime: moment().local().toISOString(true),
+                notes: currentTimer.notes || '', // Pass the accumulated notes
+                taskDescription: currentTimer.taskDescription || ''
+            }
+        ).open();
+    }
 
-            // 3. Refresh statistics in all open views
-            const allGtdViews = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
-            allGtdViews.forEach(leaf => {
-                const view = leaf.view as GtdView;
-                if (view instanceof GtdView && 'refreshStatistics' in view) {
-                    view.refreshStatistics();
-                }
-            });
-            const allFocoViews = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
-            allFocoViews.forEach(leaf => {
-                const view = leaf.view as FocoView;
-                 if (view instanceof FocoView && 'refreshStatistics' in view) {
-                    view.refreshStatistics();
-                }
-            });
-
-        }, {
-            taskNotePath: currentTimer.taskNotePath,
-            startTime: startTime.toISOString(true),
-            endTime: endTime.toISOString(true),
-            notes: currentTimer.taskDescription || '',
-            taskDescription: currentTimer.taskDescription || ''
-        }).open();
+    private async openEditActiveTimerModal() {
+        if (!this.activeTimer) return;
+    
+        const onSaveCallback = async (updatedEntry: Partial<TimeLogEntry>) => {
+            if (!this.activeTimer) return;
+    
+            // 1. Update the in-memory active timer
+            this.activeTimer.startTime = updatedEntry.startTime || this.activeTimer.startTime;
+            this.activeTimer.notes = updatedEntry.notes; // Update only notes
+    
+            // 2. Update the persisted active timer state
+            this.data.activeTimer = this.activeTimer;
+            await this.savePluginData();
+    
+            // 3. Re-initialize the status bar to reflect the changes immediately
+            this.initializeTimerFromState(this.activeTimer);
+            new Notice('Temporizador activo actualizado.');
+        };
+    
+        new TimeLogModal(
+            this.app,
+            this,
+            onSaveCallback,
+            {
+                taskNotePath: this.activeTimer.taskNotePath,
+                taskDescription: this.activeTimer.taskDescription,
+                startTime: this.activeTimer.startTime,
+                notes: this.activeTimer.notes, // Pass current notes to the modal
+            },
+            true // isEditingActiveTimer = true
+        ).open();
     }
 
     public async loadAvailableTasks(source: TaskSource = 'all-tasks'): Promise<void> {
@@ -464,7 +502,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         }
     }
 
-    private initializeTimerFromState(timerState: ActiveTimerState) {
+    public initializeTimerFromState(timerState: ActiveTimerState) {
         this.activeTimer = timerState;
         const taskName = this.activeTimer.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
         const startTimeMoment = moment(this.activeTimer.startTime);
@@ -549,6 +587,23 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             const view = leaf.view as FocoView;
             if (view.timeTrackerView && typeof view.timeTrackerView.refreshTimerUI === 'function') {
                 view.timeTrackerView.refreshTimerUI();
+            }
+        });
+    }
+
+    private refreshAllGtdAndFocoViews() {
+        const allGtdViews = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
+        allGtdViews.forEach(leaf => {
+            const view = leaf.view as GtdView;
+            if (view instanceof GtdView && 'refreshStatistics' in view) {
+                view.refreshStatistics();
+            }
+        });
+        const allFocoViews = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
+        allFocoViews.forEach(leaf => {
+            const view = leaf.view as FocoView;
+             if (view instanceof FocoView && 'refreshStatistics' in view) {
+                view.refreshStatistics();
             }
         });
     }

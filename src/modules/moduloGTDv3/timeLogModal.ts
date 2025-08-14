@@ -1,24 +1,32 @@
 import { App, Modal, Setting, TFile, Notice, setIcon } from 'obsidian';
-import { TimeTrackerService } from './timeTrackerService.js';
 import type { Task, TimeLogEntry } from './model.js';
 import moment from 'moment';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 
+// The callback now passes the entry data back to the caller.
+type OnSaveCallback = (entry: Partial<TimeLogEntry>) => Promise<void>;
+
 export class TimeLogModal extends Modal {
-    private service: TimeTrackerService;
     private plugin: DovelaPersonalManagementPlugin;
-    private onSave: () => void;
-    private entry: TimeLogEntry;
+    private onSave: OnSaveCallback;
+    private entry: Partial<TimeLogEntry>;
     private availableTasks: (TFile | Task)[] = [];
     private isEditing: boolean;
-    private savedOrDeleted = false; // Flag to track if the modal was closed properly
+    private isEditingActiveTimer: boolean; // Flag for our new mode
+    private savedOrDeleted = false;
 
-    constructor(app: App, service: TimeTrackerService, plugin: DovelaPersonalManagementPlugin, onSave: () => void, entryData?: Partial<TimeLogEntry>) {
+    constructor(
+        app: App,
+        plugin: DovelaPersonalManagementPlugin,
+        onSave: OnSaveCallback,
+        entryData: Partial<TimeLogEntry> = {},
+        isEditingActiveTimer = false // New parameter to control the mode
+    ) {
         super(app);
-        this.service = service;
         this.plugin = plugin;
         this.onSave = onSave;
         this.isEditing = !!entryData?.id;
+        this.isEditingActiveTimer = isEditingActiveTimer;
 
         const now = moment().local();
         this.entry = {
@@ -35,9 +43,10 @@ export class TimeLogModal extends Modal {
     override async onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        this.titleEl.setText(this.isEditing ? 'Editar Registro de Tiempo' : 'Registrar Tiempo');
+        // Set title based on the mode
+        this.titleEl.setText(this.isEditingActiveTimer ? 'Modificar Temporizador Activo' : (this.isEditing ? 'Editar Registro de Tiempo' : 'Registrar Tiempo'));
 
-        // --- Selector de Tareas (Renderizado Condicional) ---
+        // --- Task Selector (Conditional Rendering) ---
         const taskSetting = new Setting(contentEl).setName('Tarea');
         taskSetting.controlEl.addClass('dovela-task-setting-container');
 
@@ -55,15 +64,15 @@ export class TimeLogModal extends Modal {
             }
         });
 
-        // Si la tarea ya viene definida (modo edición o fin de temporizador), solo mostrarla.
+        // If the task is already defined (editing mode or stopping a timer), just display it.
         if (this.entry.taskNotePath) {
             taskSetting.controlEl.createEl('div', {
                 text: this.entry.taskDescription || this.entry.taskNotePath,
                 cls: 'task-display-text'
             });
-            noteLinkIcon.style.display = 'inline-block'; // Mostrar en modo edición
+            noteLinkIcon.style.display = 'inline-block';
         } else {
-            // MODO "MANUAL": Si no hay tarea, mostrar el selector interactivo.
+            // MANUAL MODE: If no task is defined, show the interactive selector.
             const searchContainer = taskSetting.controlEl.createDiv('dovela-timelog-task-selector');
             const sourceContainer = searchContainer.createDiv({ cls: 'source-selector' });
             const searchInputEl = searchContainer.createEl('input', {
@@ -96,7 +105,7 @@ export class TimeLogModal extends Modal {
                         this.entry.taskDescription = description;
                         searchInputEl.value = text;
                         resultsContainer.style.display = 'none';
-                        noteLinkIcon.style.display = 'inline-block'; // Mostrar al seleccionar
+                        noteLinkIcon.style.display = 'inline-block';
                     });
                 });
             };
@@ -142,6 +151,7 @@ export class TimeLogModal extends Modal {
             createSourceButton('in-progress', 'En Progreso');
             createSourceButton('all-tasks', 'Todas');
 
+            // Set initial state
             const initialSource = 'open-notes';
             updateButtons(initialSource);
             await this.plugin.loadAvailableTasks(initialSource);
@@ -149,19 +159,23 @@ export class TimeLogModal extends Modal {
             renderResults(this.availableTasks);
         }
 
-        new Setting(contentEl)
-            .setName('Fecha')
-            .addText(text => {
-                text.inputEl.type = 'date';
-                text.setValue(moment(this.entry.startTime).format('YYYY-MM-DD'));
-                text.onChange(value => {
-                    const newDate = moment(value, 'YYYY-MM-DD');
-                    const oldStartTime = moment(this.entry.startTime);
-                    const oldEndTime = moment(this.entry.endTime);
-                    this.entry.startTime = oldStartTime.year(newDate.year()).month(newDate.month()).date(newDate.date()).toISOString(true);
-                    this.entry.endTime = oldEndTime.year(newDate.year()).month(newDate.month()).date(newDate.date()).toISOString(true);
+        // --- Conditional Fields ---
+        // Hide Date and End Time when editing an active timer
+        if (!this.isEditingActiveTimer) {
+            new Setting(contentEl)
+                .setName('Fecha')
+                .addText(text => {
+                    text.inputEl.type = 'date';
+                    text.setValue(moment(this.entry.startTime).format('YYYY-MM-DD'));
+                    text.onChange(value => {
+                        const newDate = moment(value, 'YYYY-MM-DD');
+                        const oldStartTime = moment(this.entry.startTime);
+                        const oldEndTime = moment(this.entry.endTime);
+                        this.entry.startTime = oldStartTime.year(newDate.year()).month(newDate.month()).date(newDate.date()).toISOString(true);
+                        this.entry.endTime = oldEndTime.year(newDate.year()).month(newDate.month()).date(newDate.date()).toISOString(true);
+                    });
                 });
-            });
+        }
 
         new Setting(contentEl)
             .setName('Hora de Inicio')
@@ -173,20 +187,22 @@ export class TimeLogModal extends Modal {
                 });
             });
 
-        new Setting(contentEl)
-            .setName('Hora de Finalización')
-            .addText(text => {
-                text.setValue(moment(this.entry.endTime).format('HH:mm'));
-                text.onChange(value => {
-                    const newTime = this.parseTime(value, moment(this.entry.endTime));
-                    if (newTime) this.entry.endTime = newTime.toISOString(true);
+        if (!this.isEditingActiveTimer) {
+            new Setting(contentEl)
+                .setName('Hora de Finalización')
+                .addText(text => {
+                    text.setValue(moment(this.entry.endTime).format('HH:mm'));
+                    text.onChange(value => {
+                        const newTime = this.parseTime(value, moment(this.entry.endTime));
+                        if (newTime) this.entry.endTime = newTime.toISOString(true);
+                    });
                 });
-            });
+        }
 
         new Setting(contentEl)
             .setName('Notas de la Sesión')
             .addTextArea(text => {
-                text.setValue(this.entry.notes || this.entry.taskDescription || '');
+                text.setValue(this.entry.notes || ''); // Use only notes field
                 text.onChange(value => this.entry.notes = value);
                 text.inputEl.rows = 4;
             });
@@ -218,42 +234,34 @@ export class TimeLogModal extends Modal {
             return;
         }
 
-        const startTime = moment(this.entry.startTime);
-        const endTime = moment(this.entry.endTime);
-        const durationMinutes = endTime.diff(startTime, 'minutes');
+        // Only validate duration for completed logs
+        if (!this.isEditingActiveTimer) {
+            const startTime = moment(this.entry.startTime);
+            const endTime = moment(this.entry.endTime);
+            const durationMinutes = endTime.diff(startTime, 'minutes');
 
-        if (durationMinutes < 0) {
-            new Notice('La hora de finalización no puede ser anterior a la de inicio.');
-            return;
+            if (durationMinutes < 0) {
+                new Notice('La hora de finalización no puede ser anterior a la de inicio.');
+                return;
+            }
+            this.entry.durationMinutes = durationMinutes;
         }
 
-        this.savedOrDeleted = true; // Mark as properly closed
-
-        const entryToSave = {
-            taskNotePath: this.entry.taskNotePath,
-            startTime: this.entry.startTime,
-            endTime: this.entry.endTime,
-            durationMinutes: durationMinutes,
-            notes: this.entry.notes,
-            taskDescription: this.entry.taskDescription || ''
-        };
-
-        if (this.isEditing) {
-            await this.service.updateLogEntry(this.entry.id, entryToSave);
-        } else {
-            await this.service.addLogEntry(entryToSave);
-        }
-
-        this.onSave();
+        this.savedOrDeleted = true;
+        // The caller is now responsible for the save logic.
+        await this.onSave(this.entry);
         this.close();
     }
 
     async delete() {
-        if (!this.isEditing) return;
-        this.savedOrDeleted = true; // Mark as properly closed
-        await this.service.deleteLogEntry(this.entry.id);
+        if (!this.isEditing || !this.entry.id) return;
+        this.savedOrDeleted = true;
+        // Use the service from the plugin instance
+        await this.plugin.timeTrackerService.deleteLogEntry(this.entry.id);
         new Notice('Registro eliminado.');
-        this.onSave();
+        // We need a way to refresh the view after deletion.
+        // The onSave callback is repurposed here to trigger a refresh.
+        await this.onSave({});
         this.close();
     }
 
@@ -261,8 +269,8 @@ export class TimeLogModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        // If the modal was dismissed without saving, and there's an active timer, restart the UI.
-        if (!this.savedOrDeleted && this.plugin.activeTimer) {
+        // If the modal was dismissed without saving, and it was NOT for editing the active timer
+        if (!this.savedOrDeleted && this.plugin.activeTimer && !this.isEditingActiveTimer) {
             console.log("Dovela PM: Time log modal dismissed. Restarting timer UI.");
             this.plugin.initializeTimerFromState(this.plugin.activeTimer);
         }

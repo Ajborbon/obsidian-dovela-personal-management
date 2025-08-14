@@ -788,6 +788,24 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     display: flex;
     justify-content: center;
     gap: 10px;
+    width: 100%; /* Ensure the container takes full width */
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+}
+
+.timer-buttons-container > button {
+    flex-grow: 1; /* Allow buttons to grow and fill space */
+    min-width: 100px; /* Minimum width for each button */
+}
+
+.edit-button {
+    /* A neutral, non-destructive color */
+    background-color: var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.edit-button:hover {
+    background-color: var(--background-modifier-border-hover);
+    color: var(--text-normal);
 }
 
 .is-hidden {

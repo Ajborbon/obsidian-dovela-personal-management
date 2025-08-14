@@ -180,7 +180,8 @@ export class TimeTrackerView {
 
         const buttonsContainer = timerDiv.createDiv({ cls: 'timer-buttons-container' });
         const startButton = buttonsContainer.createEl('button', { text: '▶️ Iniciar', cls: 'start-button' });
-        const stopButton = buttonsContainer.createEl('button', { text: '⏹️ Detener', cls: 'stop-button', attr: { style: 'display: none;' } });
+        const stopButton = buttonsContainer.createEl('button', { text: '⏹️ Detener', cls: 'stop-button is-hidden' });
+        const editButton = buttonsContainer.createEl('button', { text: '✏️ Modificar', cls: 'edit-button is-hidden' });
         const manualButton = buttonsContainer.createEl('button', { text: '+ Manual', cls: 'manual-button' });
 
         startButton.onClickEvent(async () => {
@@ -190,18 +191,23 @@ export class TimeTrackerView {
             }
             const { path, description, lineNumber } = this.selectedTask;
             
-            this.startTimer(path, description, lineNumber, timerDisplay, startButton, stopButton);
+            this.startTimer(path, description, lineNumber, timerDisplay, startButton, stopButton, editButton);
         });
 
         stopButton.onClickEvent(() => {
-            this.stopTimer(timerDisplay, startButton, stopButton);
+            this.stopTimer(timerDisplay, startButton, stopButton, editButton);
+        });
+
+        editButton.onClickEvent(() => {
+            // This directly calls the method on the plugin instance
+            (this.plugin as any).openEditActiveTimerModal();
         });
 
         manualButton.onClickEvent(() => {
             this.openManualEntryModal();
         });
 
-        this.syncTimerUI(timerDisplay, startButton, stopButton, goToTaskButton, activeTaskDisplay);
+        this.syncTimerUI(timerDisplay, startButton, stopButton, editButton, goToTaskButton, activeTaskDisplay);
     }
 
     public async renderStatistics(filter: string = 'all') {
@@ -579,11 +585,12 @@ export class TimeTrackerView {
         const timerDisplay = this.container.querySelector('.timer-display') as HTMLElement;
         const startButton = this.container.querySelector('.start-button') as HTMLElement;
         const stopButton = this.container.querySelector('.stop-button') as HTMLElement;
+        const editButton = this.container.querySelector('.edit-button') as HTMLElement;
         const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
         const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
 
-        if (timerDisplay && startButton && stopButton && goToTaskButton && activeTaskDisplay) {
-            this.syncTimerUI(timerDisplay, startButton, stopButton, goToTaskButton, activeTaskDisplay);
+        if (timerDisplay && startButton && stopButton && editButton && goToTaskButton && activeTaskDisplay) {
+            this.syncTimerUI(timerDisplay, startButton, stopButton, editButton, goToTaskButton, activeTaskDisplay);
         }
     }
 
@@ -594,28 +601,30 @@ export class TimeTrackerView {
         }
     }
 
-    private syncTimerUI(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, goToTaskBtn: HTMLElement, activeTaskDisplay: HTMLElement) {
+    private syncTimerUI(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, editBtn: HTMLElement, goToTaskBtn: HTMLElement, activeTaskDisplay: HTMLElement) {
         // Clear any existing interval to prevent multiple timers running
         if (this.activeTimerInterval) {
             clearInterval(this.activeTimerInterval);
             this.activeTimerInterval = null;
         }
 
-        if (this.plugin.activeTimer) {
-            const { taskNotePath, taskDescription, startTime, lineNumber } = this.plugin.activeTimer;
+        const isTimerActive = !!this.plugin.activeTimer;
+
+        // Toggle visibility using the 'is-hidden' class
+        startBtn.classList.toggle('is-hidden', isTimerActive);
+        stopBtn.classList.toggle('is-hidden', !isTimerActive);
+        editBtn.classList.toggle('is-hidden', !isTimerActive);
+        goToTaskBtn.classList.toggle('is-hidden', !isTimerActive);
+        activeTaskDisplay.classList.toggle('is-hidden', !isTimerActive);
+
+        if (isTimerActive) {
+            const { taskNotePath, taskDescription, startTime, lineNumber } = this.plugin.activeTimer!;
             
-            // Restore selected task
             this.selectedTask = { path: taskNotePath, description: taskDescription || '', lineNumber: lineNumber || 0 };
             this.searchInputEl.value = taskDescription || taskNotePath;
             this.searchInputEl.disabled = true;
-
-            // Update UI to reflect running timer
-            startBtn.style.display = 'none';
-            stopBtn.style.display = 'inline-block';
             
             activeTaskDisplay.setText(taskDescription || 'Seguimiento de nota completa');
-            activeTaskDisplay.classList.remove('is-hidden');
-            goToTaskBtn.classList.remove('is-hidden');
 
             goToTaskBtn.onclick = () => {
                 this.plugin.app.workspace.openLinkText(taskNotePath, '', false, {
@@ -625,7 +634,6 @@ export class TimeTrackerView {
 
             const startTimeMoment = moment(startTime);
             
-            // Start local UI update interval
             this.activeTimerInterval = window.setInterval(() => {
                 const now = moment().local();
                 const diff = now.diff(startTimeMoment);
@@ -637,29 +645,23 @@ export class TimeTrackerView {
             }, 1000);
 
         } else {
-            // Ensure timer is reset if no active session
             timerDisplay.setText('00:00:00');
-            startBtn.style.display = 'inline-block';
-            stopBtn.style.display = 'none';
             this.searchInputEl.disabled = false;
-            
-            activeTaskDisplay.classList.add('is-hidden');
-            goToTaskBtn.classList.add('is-hidden');
             goToTaskBtn.onclick = null;
         }
     }
 
-    private startTimer(taskPath: string, taskDescription: string | undefined, lineNumber: number, timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
+    private startTimer(taskPath: string, taskDescription: string | undefined, lineNumber: number, timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, editBtn: HTMLElement) {
         if (this.plugin.activeTimer) return;
 
         this.plugin.startTracking(taskPath, taskDescription || '', lineNumber);
         // We need to pass the other UI elements to syncTimerUI
         const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
         const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
-        this.syncTimerUI(timerDisplay, startBtn, stopBtn, goToTaskButton, activeTaskDisplay);
+        this.syncTimerUI(timerDisplay, startBtn, stopBtn, editBtn, goToTaskButton, activeTaskDisplay);
     }
 
-    private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement) {
+    private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, editBtn: HTMLElement) {
         if (!this.plugin.activeTimer) return;
 
         this.plugin.stopTracking();
@@ -667,14 +669,21 @@ export class TimeTrackerView {
         // Sincroniza la UI para reflejar que el temporizador se ha detenido
         const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
         const activeTaskDisplay = this.container.querySelector('.active-task-display') as HTMLElement;
-        this.syncTimerUI(timerDisplay, startBtn, stopBtn, goToTaskButton, activeTaskDisplay);
+        this.syncTimerUI(timerDisplay, startBtn, stopBtn, editBtn, goToTaskButton, activeTaskDisplay);
     }
 
     private async openManualEntryModal() {
+        const onSaveCallback = async (entryData: Partial<TimeLogEntry>) => {
+            if (entryData.id) {
+                await this.plugin.timeTrackerService.updateLogEntry(entryData.id, entryData);
+            } else {
+                await this.plugin.timeTrackerService.addLogEntry(entryData as Omit<TimeLogEntry, 'id'>);
+            }
+            await this.renderStatistics(this.activeDateFilter);
+        };
+
         // Abre el modal sin datos previos para el registro manual
-        new TimeLogModal(this.plugin.app, this.service, this.plugin, async () => {
-            await this.renderStatistics();
-        }).open();
+        new TimeLogModal(this.plugin.app, this.plugin, onSaveCallback, {}).open();
     }
 
     

@@ -374,7 +374,13 @@ export class TimelineView {
         indicator.setAttribute('title', tooltipParts.join('\n'));
 
         indicator.addEventListener('click', () => {
-            new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+            const onSaveCallback = async (updatedEntry: Partial<TimeLogEntry>) => {
+                if (updatedEntry.id) {
+                    await this.plugin.timeTrackerService.updateLogEntry(updatedEntry.id, updatedEntry);
+                }
+                this.render();
+            };
+            new TimeLogModal(this.plugin.app, this.plugin, onSaveCallback, log, false).open();
         });
 
         indicator.addEventListener('mouseenter', () => {
@@ -440,7 +446,13 @@ export class TimelineView {
 
         if (isMultiDay) {
             block.addEventListener('click', () => {
-                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+                const onSaveCallback = async (updatedEntry: Partial<TimeLogEntry>) => {
+                    if (updatedEntry.id) {
+                        await this.plugin.timeTrackerService.updateLogEntry(updatedEntry.id, updatedEntry);
+                    }
+                    this.render();
+                };
+                new TimeLogModal(this.plugin.app, this.plugin, onSaveCallback, log, false).open();
             });
         } else {
             const resizeHandle = block.createEl('div', { cls: 'timeline-block-resize-handle' });
@@ -531,7 +543,13 @@ export class TimelineView {
         block.addEventListener('click', () => {
             // This check ensures that the modal doesn't open after a resize action.
             if (!hasMoved) {
-                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => this.render(), log).open();
+                const onSaveCallback = async (updatedEntry: Partial<TimeLogEntry>) => {
+                    if (updatedEntry.id) {
+                        await this.plugin.timeTrackerService.updateLogEntry(updatedEntry.id, updatedEntry);
+                    }
+                    this.render();
+                };
+                new TimeLogModal(this.plugin.app, this.plugin, onSaveCallback, log, false).open();
             }
         });
     }
