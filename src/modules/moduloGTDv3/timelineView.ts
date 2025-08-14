@@ -8,6 +8,7 @@ type TimelineViewType = 'day' | '3-day' | 'week';
 
 const MINUTES_IN_DAY = 24 * 60;
 const MIN_DURATION_FOR_BLOCK = 10; // En minutos
+const BASE_HOUR_HEIGHT = 50; // Altura base en píxeles para una hora
 
 
 export class TimelineView {
@@ -17,6 +18,7 @@ export class TimelineView {
     private currentDate: moment.Moment;
     private calendarPopover: HTMLElement | null = null;
     private calendarCurrentDate: moment.Moment;
+    private hourScale: number = 1.5; // Multiplicador de escala para el zoom
 
     constructor(container: HTMLElement, plugin: DovelaPersonalManagementPlugin) {
         this.container = container;
@@ -70,6 +72,20 @@ export class TimelineView {
             if (this.viewType === view) button.addClass('is-active');
             button.addEventListener('click', () => this.setViewType(view));
         });
+
+        // Controles de Zoom
+        const zoomControls = controlsContainer.createEl('div', { cls: 'timeline-zoom-controls' });
+        zoomControls.createEl('button', { text: '−' }).addEventListener('click', () => this.zoom(-0.25)); // Usar un guion más apropiado
+        
+        const zoomLabel = zoomControls.createEl('span', { cls: 'timeline-zoom-label' });
+        zoomLabel.setText(`Zoom: ${Math.round(this.hourScale * 100)}%`);
+        
+        zoomControls.createEl('button', { text: '+' }).addEventListener('click', () => this.zoom(0.25));
+    }
+
+    private zoom(delta: number) {
+        this.hourScale = Math.max(1, Math.min(4, this.hourScale + delta));
+        this.render();
     }
 
     private toggleCalendarPopover() {
@@ -162,12 +178,15 @@ export class TimelineView {
     private renderGrid() {
         const gridContainer = this.container.createEl('div', { cls: 'timeline-grid-container' });
 
+        const totalHeight = BASE_HOUR_HEIGHT * 24 * this.hourScale;
+
         // Eje de Tiempo (columna de horas)
         const timeAxis = gridContainer.createEl('div', { cls: 'timeline-time-axis' });
         // Add a blank space for the sticky header
         timeAxis.createEl('div', { cls: 'timeline-header-spacer' });
         for (let hour = 0; hour < 24; hour++) {
-            timeAxis.createEl('div', { cls: 'timeline-hour-label', text: `${hour}:00` });
+            const hourLabel = timeAxis.createEl('div', { cls: 'timeline-hour-label', text: `${hour}:00` });
+            hourLabel.style.height = `${BASE_HOUR_HEIGHT * this.hourScale}px`;
         }
 
         // Wrapper for headers and scrollable grid
@@ -184,16 +203,17 @@ export class TimelineView {
         // Scrollable Grid Container
         const daysContainer = daysWrapper.createEl('div', { cls: 'timeline-days-container' });
         daysContainer.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
+        daysContainer.style.height = `${totalHeight}px`;
 
         days.forEach(day => {
             if (!day) return;
             const dayColumn = daysContainer.createEl('div', { cls: 'timeline-day-column' });
             dayColumn.dataset['date'] = day.format('YYYY-MM-DD');
             
-            // Hour lines for the grid
-            for (let hour = 0; hour < 24; hour++) {
-                dayColumn.createEl('div', { cls: 'timeline-hour-line' });
-            }
+            // Hour lines for the grid - no longer needed as labels define height
+            // for (let hour = 0; hour < 24; hour++) {
+            //     dayColumn.createEl('div', { cls: 'timeline-hour-line' });
+            // }
 
             // Add listeners for drag-and-drop functionality
             this.addDropZoneInteraction(day, dayColumn);
@@ -360,15 +380,16 @@ export class TimelineView {
 
         const startMoment = moment(log.startTime);
         const endMoment = moment(log.endTime);
-        const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
         const fullStartTime = startMoment.format('MMM D, HH:mm');
         const fullEndTime = endMoment.format('MMM D, HH:mm');
-        const duration = endMoment.diff(startMoment, 'minutes');
+        const durationMinutes = endMoment.diff(startMoment, 'minutes');
+        const formattedDuration = this.formatDuration(durationMinutes);
 
         const tooltipParts = [
             `Proyecto: ${projectName}`,
             `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
-            `Periodo: ${fullStartTime} - ${fullEndTime} (${duration} min)`,
+            `Duración: ${formattedDuration}`,
+            `Periodo: ${fullStartTime} - ${fullEndTime}`,
             `Notas: ${log.notes || '(Sin notas)'}`
         ];
         indicator.setAttribute('title', tooltipParts.join('\n'));
@@ -404,6 +425,14 @@ export class TimelineView {
         
         block.dataset['logId'] = log.id;
 
+        // Lógica de visibilidad dinámica basada en la altura
+        const blockHeightPx = (durationMinutes / MINUTES_IN_DAY) * (BASE_HOUR_HEIGHT * 24 * this.hourScale);
+        if (blockHeightPx < 35) {
+            block.addClass('size-tiny');
+        } else if (blockHeightPx < 70) {
+            block.addClass('size-small');
+        }
+
         const startMoment = moment(log.startTime);
         const endMoment = moment(log.endTime);
         const day = segmentStart.clone().startOf('day');
@@ -425,17 +454,33 @@ export class TimelineView {
         const projectName = log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea';
         const fullStartTime = startMoment.format('MMM D, HH:mm');
         const fullEndTime = endMoment.format('MMM D, HH:mm');
+        const totalDurationMinutes = moment(log.endTime).diff(moment(log.startTime), 'minutes');
+        const formattedDuration = this.formatDuration(totalDurationMinutes);
 
         const tooltipParts = [
             `Proyecto: ${projectName}`,
             `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
+            `Duración: ${formattedDuration}`,
             `Periodo: ${fullStartTime} - ${fullEndTime}`,
             `Notas: ${log.notes || '(Sin notas)'}`
         ];
         block.setAttribute('title', tooltipParts.join('\n'));
 
         const blockContent = block.createEl('div', { cls: 'timeline-block-content' });
-        blockContent.createEl('strong', { text: projectName });
+        
+        // Lógica de contenido mejorada
+        blockContent.createEl('strong', { text: projectName, cls: 'timeline-block-project' });
+
+        if (log.taskDescription && log.taskDescription !== projectName) {
+            blockContent.createEl('p', { text: log.taskDescription, cls: 'timeline-block-task' });
+        }
+
+        if (log.notes) {
+            blockContent.createEl('p', { text: log.notes, cls: 'timeline-block-notes' });
+        }
+
+        // Añadir siempre la duración, reutilizando la variable ya calculada para el tooltip
+        blockContent.createEl('p', { text: formattedDuration, cls: 'timeline-block-duration' });
 
         block.addEventListener('mouseenter', () => {
             document.querySelectorAll(`.timeline-block[data-log-id="${log.id}"], .timeline-short-event-indicator[data-log-id="${log.id}"]`).forEach(el => el.addClass('is-hovered'));
@@ -668,6 +713,21 @@ export class TimelineView {
         const pathParts = log.taskNotePath.split('/');
         const colorSource = pathParts.length > 1 ? (pathParts[0] || log.taskNotePath) : log.taskNotePath;
         return generateColorFromString(colorSource);
+    }
+
+    private formatDuration(minutes: number): string {
+        if (minutes < 1) {
+            return '< 1 min';
+        }
+        if (minutes < 60) {
+            return `${minutes} min`;
+        }
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        if (remainingMinutes === 0) {
+            return `${hours} h`;
+        }
+        return `${hours} h ${remainingMinutes} min`;
     }
 
     public clear(): void {

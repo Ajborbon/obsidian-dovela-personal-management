@@ -973,6 +973,50 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     padding: 5px;
     font-size: 0.85em;
     color: var(--text-normal);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.timeline-block-project,
+.timeline-block-task,
+.timeline-block-notes,
+.timeline-block-duration {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.timeline-block-project {
+    font-weight: bold;
+}
+
+.timeline-block-task {
+    font-size: 0.9em;
+}
+
+.timeline-block-notes {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    padding-top: 4px;
+}
+
+.timeline-block-duration {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--text-accent);
+    padding-top: 4px;
+}
+
+/* Ocultar elementos en bloques pequeños */
+.timeline-block.size-small .timeline-block-notes {
+    display: none;
+}
+
+.timeline-block.size-tiny .timeline-block-task,
+.timeline-block.size-tiny .timeline-block-notes {
+    display: none;
 }
 
 .timeline-block-content strong {
@@ -1334,4 +1378,21 @@ body.is-copying {
 .project-actions {
     display: flex;
     gap: 8px;
+}
+
+.timeline-zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.timeline-zoom-label {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    background-color: var(--background-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    min-width: 80px; /* Ancho mínimo para evitar que el layout salte */
+    text-align: center;
 }
