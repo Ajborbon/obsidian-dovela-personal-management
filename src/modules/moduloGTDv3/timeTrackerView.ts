@@ -9,14 +9,19 @@ import moment from 'moment';
 import 'moment/locale/es';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
+type FolderType = 'ROOT' | 'AV' | 'AI' | 'PGTD' | 'PQ' | 'DEFAULT';
 
 interface TreeNode {
     name: string;
+    folderType: FolderType;
     path: string;
-    duration: number;
-    recordCount: number; // <-- Añadido
+    duration: number; // Total duration (own + descendants)
+    recordCount: number; // Total record count (own + descendants)
+    ownDuration: number; // Duration from logs directly in this node (if it's a file)
+    ownRecordCount: number; // Record count from logs directly in this node
+    isTransitNode: boolean; // True if it has no own time and exactly one child
     children: TreeNode[];
-    logs?: TimeLogEntry[] | undefined; // Explicitly allow undefined
+    logs?: TimeLogEntry[] | undefined;
 }
 
 export class TimeTrackerView {
@@ -277,6 +282,28 @@ export class TimeTrackerView {
         // Estado inicial por defecto
         updateTreeControlButtons('collapse');
 
+        // --- Smart Jump Event Listener ---
+        this.statsContainer.addEventListener('click', (event) => {
+            const summary = (event.target as HTMLElement).closest('.stats-table-row-summary');
+            if (!summary) return;
+
+            const details = summary.parentElement as HTMLDetailsElement;
+            // Only apply smart jump if the node is a transit node AND it's currently closed.
+            if (details && details.classList.contains('is-transit-node') && !details.open) {
+                event.preventDefault(); // Prevent the default single-level toggle.
+                
+                // Smart jump logic to open the entire chain.
+                let currentElement: HTMLDetailsElement | null = details;
+                while (currentElement && currentElement.classList.contains('is-transit-node')) {
+                    currentElement.open = true;
+                    const nextElement = currentElement.querySelector(':scope > .stats-table-row');
+                    currentElement = nextElement ? nextElement as HTMLDetailsElement : null;
+                }
+            }
+            // If the node is already open, we do nothing and let the default browser behavior handle the collapse.
+        });
+
+
         const { startDate, endDate } = this.getDateRange(filter);
         
         // CORRECTO: Leer los logs directamente desde los datos del plugin.
@@ -409,111 +436,117 @@ export class TimeTrackerView {
     private customStartDate: moment.Moment | undefined;
     private customEndDate: moment.Moment | undefined;
 
-    private buildTree(logs: TimeLogEntry[]): TreeNode[] {
-        const finalTreeNodes: { [key: string]: TreeNode } = {}; // Map to hold all nodes, including intermediate directories
+    private parseNodeName(name: string): { folderType: FolderType } {
+        const rules: { regex: RegExp, type: FolderType }[] = [
+            { regex: /^\d{2} - /, type: 'ROOT' },
+            { regex: /^AV - /, type: 'AV' },
+            { regex: /^AI - /, type: 'AI' },
+            { regex: /^PGTD - /, type: 'PGTD' },
+            { regex: /^PQ - /, type: 'PQ' }
+        ];
 
-        // Create all nodes (directories and files) and assign logs to files
+        for (const rule of rules) {
+            if (rule.regex.test(name)) {
+                return { folderType: rule.type };
+            }
+        }
+
+        return { folderType: 'DEFAULT' };
+    }
+
+    private buildTree(logs: TimeLogEntry[]): TreeNode[] {
+        const treeNodes: { [key: string]: TreeNode } = {};
+
+        // 1. Create all nodes from paths and assign logs to file nodes
         for (const log of logs) {
             if (!log.taskNotePath) continue;
             const pathParts = log.taskNotePath.split('/');
-            let currentPathAccumulator = '';
+            let currentPath = '';
 
             for (let i = 0; i < pathParts.length; i++) {
                 const part = pathParts[i];
-                if (!part) continue; // Skip empty parts
-                
+                currentPath = i === 0 ? part : `${currentPath}/${part}`;
                 const isFile = i === pathParts.length - 1 && part.endsWith('.md');
-                
-                if (currentPathAccumulator === '') {
-                    currentPathAccumulator = part;
-                } else {
-                    currentPathAccumulator += '/' + part;
-                }
 
-                if (!finalTreeNodes[currentPathAccumulator]) {
-                    finalTreeNodes[currentPathAccumulator] = {
-                        name: isFile ? part.replace('.md', '') : part,
-                        path: currentPathAccumulator,
+                if (!treeNodes[currentPath]) {
+                    const name = isFile ? part.replace('.md', '') : part;
+                    const { folderType } = this.parseNodeName(name);
+                    
+                    treeNodes[currentPath] = {
+                        name: name,
+                        folderType: folderType,
+                        path: currentPath,
                         duration: 0,
-                        recordCount: 0, // <-- Añadido
+                        recordCount: 0,
+                        ownDuration: 0,
+                        ownRecordCount: 0,
+                        isTransitNode: false,
                         children: [],
-                        ...(isFile ? { logs: [] } : {}) // Only add logs property for files
+                        ...(isFile && { logs: [] })
                     };
                 }
 
-                // If it's the file itself, add the log
                 if (isFile) {
-                    const targetNode = finalTreeNodes[currentPathAccumulator];
-                    if (targetNode && targetNode.logs) {
-                        targetNode.logs.push(log);
-                    }
+                    treeNodes[currentPath].logs?.push(log);
                 }
             }
         }
 
-        // Link children to parents and sum durations for leaf nodes
-        const sortedKeys = Object.keys(finalTreeNodes).sort((a, b) => a.length - b.length); // Process shorter paths (parents) first
-
+        // 2. Link children to parents
+        const sortedKeys = Object.keys(treeNodes).sort((a, b) => a.length - b.length);
         for (const path of sortedKeys) {
-            const node = finalTreeNodes[path];
-            if (!node) continue; // Skip if node doesn't exist
-            
-            // Sum duration and count from its own logs if it's a file (leaf node)
+            const node = treeNodes[path];
+            const parentPath = path.substring(0, path.lastIndexOf('/'));
+            if (parentPath && treeNodes[parentPath]) {
+                treeNodes[parentPath].children.push(node);
+            }
+        }
+
+        // 3. Bottom-up traversal to calculate durations and identify transit nodes
+        const reverseSortedKeys = sortedKeys.slice().reverse();
+        for (const path of reverseSortedKeys) {
+            const node = treeNodes[path];
+
+            // Calculate own duration/count if it's a file with logs
             if (node.logs) {
-                node.duration = node.logs.reduce((sum, log) => sum + log.durationMinutes, 0);
-                node.recordCount = node.logs.length; // <-- Añadido
+                node.ownDuration = node.logs.reduce((sum, log) => sum + log.durationMinutes, 0);
+                node.ownRecordCount = node.logs.length;
                 node.logs.sort((a, b) => moment(a.startTime).valueOf() - moment(b.startTime).valueOf());
             }
 
+            // Sum up from children
+            const descendantDuration = node.children.reduce((sum, child) => sum + child.duration, 0);
+            const descendantRecordCount = node.children.reduce((sum, child) => sum + child.recordCount, 0);
+
+            node.duration = node.ownDuration + descendantDuration;
+            node.recordCount = node.ownRecordCount + descendantRecordCount;
+
+            // Identify transit node
+            node.isTransitNode = node.ownDuration === 0 && node.children.length === 1;
+        }
+
+        // 4. Collect root nodes and sort children
+        const rootNodes: TreeNode[] = [];
+        for (const path of sortedKeys) {
             const parentPath = path.substring(0, path.lastIndexOf('/'));
-            const parentNode = finalTreeNodes[parentPath];
-            if (parentPath && parentNode) {
-                parentNode.children.push(node);
+            if (!parentPath || !treeNodes[parentPath]) {
+                rootNodes.push(treeNodes[path]);
             }
         }
 
-        // Final pass to sum up durations for parent nodes from their children (from leaves up to roots)
-        const reverseSortedKeys = Object.keys(finalTreeNodes).sort((a, b) => b.length - a.length); // Process longer paths (leaves) first
-
-        for (const path of reverseSortedKeys) {
-            const node = finalTreeNodes[path];
-            if (!node) continue; // Skip if node doesn't exist
-            
-            if (node.children.length > 0) {
-                // Sum children's duration and record count to its own
-                node.duration = node.children.reduce((sum, child) => sum + child.duration, node.duration);
-                node.recordCount = node.children.reduce((sum, child) => sum + child.recordCount, node.recordCount); // <-- Añadido
-            }
-        }
-
-        // Collect root nodes
-        const finalRootNodes: TreeNode[] = [];
-        for (const path in finalTreeNodes) {
-            const node = finalTreeNodes[path];
-            if (!node) continue; // Skip if node doesn't exist
-            
-            const parentPath = path.substring(0, path.lastIndexOf('/'));
-            const parentNode = finalTreeNodes[parentPath];
-            if (!parentPath || !parentNode) { // If no parent or parent doesn't exist in our map, it's a root
-                finalRootNodes.push(node);
-            }
-        }
-
-        // Sort children within each node and root nodes
-        function sortNodes(nodes: TreeNode[]) {
+        function sortRecursive(nodes: TreeNode[]) {
             nodes.sort((a, b) => {
-                // Directories first, then files
                 const aIsFile = a.path.endsWith('.md');
                 const bIsFile = b.path.endsWith('.md');
                 if (aIsFile && !bIsFile) return 1;
-                if (!aIsFile && bIsFile) return -1;
+                if (!bIsFile && aIsFile) return -1;
                 return a.name.localeCompare(b.name);
             });
-            nodes.forEach(node => sortNodes(node.children));
+            nodes.forEach(node => sortRecursive(node.children));
         }
-        sortNodes(finalRootNodes);
+        sortRecursive(rootNodes);
 
-        return finalRootNodes;
+        return rootNodes;
     }
 
     private renderTree(nodes: TreeNode[], parent: HTMLElement, level: number, totalDurationForPeriod: number) {
@@ -528,30 +561,48 @@ export class TimeTrackerView {
 
             const rowContainer = parent.createEl('details', {
                 cls: 'stats-table-row',
-                attr: { 'data-level': level.toString(), open: level < 2 } // Open first two levels by default
+                attr: { 
+                    'data-level': level.toString(), 
+                    'data-folder-type': node.folderType.toLowerCase(),
+                    open: level < 2 
+                }
             });
+
+            if (node.isTransitNode) {
+                rowContainer.classList.add('is-transit-node');
+            }
 
             const summary = rowContainer.createEl('summary', { cls: 'stats-table-row-summary' });
             summary.style.paddingLeft = `${(level - 1) * 20}px`;
 
             const nameCell = summary.createEl('div', { cls: 'row-name' });
-            const icon = node.children.length > 0 ? '📁' : '📄';
-            nameCell.createEl('span', { text: `${icon} ${node.name}`, cls: 'node-name-text' });
+            const isFolder = node.children.length > 0;
+            const iconEl = nameCell.createSpan({ cls: 'node-icon' });
+            iconEl.setText(isFolder ? '📁' : '📄');
+            
+            nameCell.createEl('span', { text: node.name, cls: 'node-name-text' });
 
             const statsCell = summary.createEl('div', { cls: 'row-stats' });
+            
+            // --- NEW DURATION AND PERCENTAGE LOGIC ---
+            const percentage = totalDurationForPeriod > 0 ? (node.duration / totalDurationForPeriod) * 100 : 0;
+            
+            let durationString = '';
             const hours = Math.floor(node.duration / 60);
             const minutes = node.duration % 60;
-            const percentage = totalDurationForPeriod > 0 ? (node.duration / totalDurationForPeriod) * 100 : 0;
+
+            if (node.duration < 60) {
+                durationString = `${minutes}m`;
+            } else {
+                durationString = `${hours}h ${minutes}m`;
+            }
 
             if (node.recordCount > 0) {
                 statsCell.createEl('span', { text: `[${node.recordCount}]`, cls: 'stat-log-count' });
+                statsCell.createEl('span', { text: durationString, cls: 'stat-duration' });
+                statsCell.createEl('span', { text: `${percentage.toFixed(1)}%`, cls: 'stat-percentage-text' });
             }
-            statsCell.createEl('span', { text: `${hours}h ${minutes}m`, cls: 'stat-duration' });
-            
-            const percentageContainer = statsCell.createEl('div', { cls: 'stat-percentage' });
-            percentageContainer.createEl('span', { text: `${percentage.toFixed(2)}%` });
-            const progressBar = percentageContainer.createEl('div', { cls: 'progress-bar-container' });
-            progressBar.createEl('div', { cls: 'progress-bar' }).style.width = `${percentage}%`;
+            // --- END OF NEW LOGIC ---
 
             // Render children or logs
             if (node.children.length > 0) {

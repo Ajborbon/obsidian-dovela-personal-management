@@ -570,7 +570,8 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
+    justify-content: flex-end;
     width: 220px; /* Fixed width for alignment */
 }
 
@@ -580,32 +581,12 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     color: var(--text-muted);
 }
 
-.stat-percentage {
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.stat-percentage span {
+.stat-percentage-text {
     width: 50px;
     text-align: right;
+    font-size: 0.9em;
     font-weight: bold;
-}
-
-.progress-bar-container {
-    flex-grow: 1;
-    background-color: var(--background-modifier-hover);
-    border-radius: 4px;
-    height: 8px;
-    overflow: hidden;
-}
-
-.progress-bar {
-    background-color: var(--interactive-accent);
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease-in-out;
+    color: var(--text-normal);
 }
 
 /* --- Expandable Log Details --- */
@@ -1456,3 +1437,63 @@ body.is-copying {
     min-width: 80px; /* Ancho mínimo para evitar que el layout salte */
     text-align: center;
 }
+
+/* --- Estilos para Nodos de Tránsito en la Tabla de Estadísticas --- */
+.stats-table-row.is-transit-node > .stats-table-row-summary .row-stats {
+  opacity: 0.4;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.stats-table-row.is-transit-node > .stats-table-row-summary:hover .row-stats {
+  opacity: 1;
+}
+
+/* --- Estilos para Tipos de Carpetas en la Tabla de Estadísticas --- */
+:root {
+  --dovela-color-root: #6A737D;
+  --dovela-color-av: #007BFF;
+  --dovela-color-ai: #6F42C1;
+  --dovela-color-pgtd: #28A745;
+  --dovela-color-pq: #FD7E14;
+  --dovela-color-default: #ADB5BD;
+}
+
+.stats-table-row-summary {
+  position: relative;
+  padding-left: 12px; /* Space for the color bar */
+}
+
+/* Barra de color vertical */
+.stats-table-row-summary::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 4px;
+  border-radius: 2px;
+  background-color: var(--dovela-color-default); /* Color por defecto */
+}
+
+.node-icon {
+  margin-right: 8px;
+  color: var(--dovela-color-default); /* Color por defecto */
+}
+
+/* Aplicar colores por tipo de carpeta */
+.stats-table-row[data-folder-type="root"] > .stats-table-row-summary::before { background-color: var(--dovela-color-root); }
+.stats-table-row[data-folder-type="root"] .node-icon { color: var(--dovela-color-root) !important; }
+
+.stats-table-row[data-folder-type="av"] > .stats-table-row-summary::before { background-color: var(--dovela-color-av); }
+.stats-table-row[data-folder-type="av"] .node-icon { color: var(--dovela-color-av) !important; }
+
+.stats-table-row[data-folder-type="ai"] > .stats-table-row-summary::before { background-color: var(--dovela-color-ai); }
+.stats-table-row[data-folder-type="ai"] .node-icon { color: var(--dovela-color-ai) !important; }
+
+.stats-table-row[data-folder-type="pgtd"] > .stats-table-row-summary::before { background-color: var(--dovela-color-pgtd); }
+.stats-table-row[data-folder-type="pgtd"] .node-icon { color: var(--dovela-color-pgtd) !important; }
+
+.stats-table-row[data-folder-type="pq"] > .stats-table-row-summary::before { background-color: var(--dovela-color-pq); }
+.stats-table-row[data-folder-type="pq"] .node-icon { color: var(--dovela-color-pq) !important; }
+
+/* El tipo 'default' ya está cubierto por las reglas base */
