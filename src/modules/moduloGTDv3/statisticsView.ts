@@ -6,6 +6,8 @@ import { formatDuration } from './durationUtils.js';
 import { TimeLogModal } from './timeLogModal.js';
 import moment from 'moment';
 import 'moment/locale/es';
+import * as XLSX from 'xlsx';
+import { Notice, Menu } from 'obsidian';
 
 type FolderType = 'ROOT' | 'AV' | 'AI' | 'PGTD' | 'PQ' | 'DEFAULT';
 
@@ -388,6 +390,20 @@ export class StatisticsView {
             const summary = rowContainer.createEl('summary', { cls: 'stats-table-row-summary' });
             summary.style.paddingLeft = `${(level - 1) * 20}px`;
 
+            summary.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+                const menu = new Menu();
+                menu.addItem((item) =>
+                    item
+                        .setTitle('Exportar a Excel')
+                        .setIcon('document')
+                        .onClick(() => {
+                            this.exportNodeToExcel(node);
+                        })
+                );
+                menu.showAtMouseEvent(event);
+            });
+
             const nameCell = summary.createEl('div', { cls: 'row-name' });
             const isFolder = node.children.length > 0;
             const iconEl = nameCell.createSpan({ cls: 'node-icon' });
@@ -463,6 +479,114 @@ export class StatisticsView {
                     }
                 }
             }
+        }
+    }
+
+    private collectLogsFromNode(node: TreeNode): TimeLogEntry[] {
+        let logs: TimeLogEntry[] = [];
+
+        if (node.logs) {
+            logs = logs.concat(node.logs);
+        }
+
+        for (const child of node.children) {
+            logs = logs.concat(this.collectLogsFromNode(child));
+        }
+
+        return logs;
+    }
+
+    private getFilterDateRangeText(): string {
+        const { startDate, endDate } = this.getDateRange(this.activeDateFilter);
+        
+        switch (this.activeDateFilter) {
+            case 'today':
+                return 'Hoy';
+            case 'week':
+                return `Semana del ${startDate?.format('D MMM')}`;
+            case 'month':
+                return startDate?.format('MMMM YYYY') || 'Mes Actual';
+            case 'year':
+                return `Año ${startDate?.format('YYYY')}`;
+            case 'all':
+                return 'Siempre';
+            case 'custom':
+                if (startDate && endDate) {
+                    return `${startDate.format('YYYY-MM-DD')} a ${endDate.format('YYYY-MM-DD')}`;
+                } else if (startDate) {
+                    return `Desde ${startDate.format('YYYY-MM-DD')}`;
+                } else if (endDate) {
+                    return `Hasta ${endDate.format('YYYY-MM-DD')}`;
+                }
+                return 'Rango Personalizado';
+            case 'single-day':
+                return startDate?.format('YYYY-MM-DD') || 'Día específico';
+            default:
+                return 'General';
+        }
+    }
+
+    private exportNodeToExcel(node: TreeNode) {
+        const logs = this.collectLogsFromNode(node);
+
+        if (logs.length === 0) {
+            new Notice('No hay registros de tiempo para exportar en este nodo.');
+            return;
+        }
+
+        // Ordenar los registros por fecha de inicio
+        logs.sort((a, b) => moment(a.startTime).valueOf() - moment(b.startTime).valueOf());
+
+        const dataForSheet = logs.map(log => {
+            const startTime = moment(log.startTime);
+            const endTime = moment(log.endTime);
+            const finalTaskName = log.taskNotePath?.split('/').pop()?.replace('.md', '') || 'N/A';
+
+            return {
+                'Ruta Completa': log.taskNotePath?.replace('.md', '') || '',
+                'Tarea': finalTaskName,
+                'Descripción Tarea': log.taskDescription,
+                'Fecha': startTime.format('YYYY-MM-DD'),
+                'Día de la Semana': startTime.locale('es').format('dddd'),
+                'Hora Inicio': startTime.format('HH:mm'),
+                'Hora Fin': endTime.format('HH:mm'),
+                'Duración (Minutos)': log.durationMinutes,
+                'Duración (hh:mm)': formatDuration(log.durationMinutes, true),
+                'Notas del Registro': log.notes || ''
+            };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Registros de Tiempo');
+
+        // Auto-ajustar el ancho de las columnas
+        const colsWidth = Object.keys(dataForSheet[0]).map(key => {
+            const maxLength = Math.max(...dataForSheet.map(row => (row[key as keyof typeof row] ?? '').toString().length), key.length);
+            return { wch: maxLength + 2 }; // +2 para un poco de padding
+        });
+        worksheet['!cols'] = colsWidth;
+
+        const dateRangeText = this.getFilterDateRangeText();
+        const fileName = `Exportación - ${node.name} - ${dateRangeText}.xlsx`;
+
+        try {
+            const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            new Notice('La exportación a Excel ha comenzado.');
+        } catch (error) {
+            console.error('Error al exportar a Excel:', error);
+            new Notice('Error al generar el archivo Excel. Consulte la consola para más detalles.');
         }
     }
 }
