@@ -1,3 +1,4 @@
+import { DatePickerModal } from './datePickerModal.js';
 import { TFile, Notice } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
@@ -37,6 +38,7 @@ export class TimeTrackerView {
 
     public activeDateFilter: string = 'today';
     private activeTaskSource: TaskSource = 'all-tasks';
+    private currentDateFocus: moment.Moment = moment();
 
     constructor(container: HTMLElement, plugin: DovelaPersonalManagementPlugin, service: TimeTrackerService) {
         this.container = container;
@@ -221,66 +223,9 @@ export class TimeTrackerView {
         this.activeDateFilter = filter;
         this.statsContainer.empty();
         
-        let titleText = 'Estadísticas de Tiempo';
-        const filters = {
-            'today': 'Hoy',
-            'week': 'Esta Semana',
-            'month': 'Este Mes',
-            'year': 'Este Año',
-            'all': 'Siempre',
-            'custom': 'Personalizado'
-        };
-
-        if (this.activeDateFilter === 'custom') {
-            const start = this.customStartDate ? this.customStartDate.format('YYYY-MM-DD') : '';
-            const end = this.customEndDate ? this.customEndDate.format('YYYY-MM-DD') : '';
-            if (start && end) {
-                titleText = `Estadísticas de Tiempo: ${start} - ${end}`;
-            } else if (start) {
-                titleText = `Estadísticas de Tiempo: Desde ${start}`;
-            } else if (end) {
-                titleText = `Estadísticas de Tiempo: Hasta ${end}`;
-            }
-        } else {
-            const filterKey = this.activeDateFilter as keyof typeof filters;
-            titleText = `Estadísticas de Tiempo: ${filters[filterKey]}`;
-        }
-
-        this.statsContainer.createEl('h3', { text: titleText });
-
-        // --- Contenedor de Controles de la Vista de Estadísticas ---
-        const statsControls = this.statsContainer.createDiv({ cls: 'stats-view-controls' });
-
-        // Controles de Filtro de Fecha
-        this.renderFilterControls(statsControls);
-        const customFilterContainer = statsControls.createDiv({ cls: 'custom-filter-container is-hidden' });
-        this.renderCustomFilterControls(customFilterContainer);
-
-        // Controles de Expansión/Colapso del Árbol
-        const treeControls = statsControls.createDiv({ cls: 'tree-controls' });
-        const expandButton = treeControls.createEl('button', { text: 'Expandir Todo' });
-        const collapseButton = treeControls.createEl('button', { text: 'Colapsar Parcialmente' });
-
-        const updateTreeControlButtons = (activeButton: 'expand' | 'collapse') => {
-            expandButton.classList.toggle('is-active', activeButton === 'expand');
-            collapseButton.classList.toggle('is-active', activeButton === 'collapse');
-        };
-
-        expandButton.onClickEvent(() => {
-            this.statsContainer.querySelectorAll('details').forEach(d => d.open = true);
-            updateTreeControlButtons('expand');
-        });
-
-        collapseButton.onClickEvent(() => {
-            this.statsContainer.querySelectorAll('details').forEach(d => {
-                const level = parseInt(d.dataset['level'] || '99', 10);
-                d.open = level < 2;
-            });
-            updateTreeControlButtons('collapse');
-        });
-
-        // Estado inicial por defecto
-        updateTreeControlButtons('collapse');
+        const { startDate, endDate } = this.getDateRange(filter);
+        
+        this.renderUnifiedDatePicker(this.statsContainer, filter, startDate, endDate);
 
         // --- Smart Jump Event Listener ---
         this.statsContainer.addEventListener('click', (event) => {
@@ -304,7 +249,6 @@ export class TimeTrackerView {
         });
 
 
-        const { startDate, endDate } = this.getDateRange(filter);
         
         // CORRECTO: Leer los logs directamente desde los datos del plugin.
         const logs = this.plugin.data.timeLogs;
@@ -349,56 +293,42 @@ export class TimeTrackerView {
         });
     }
 
-    private renderFilterControls(parent: HTMLElement) {
-        const filterContainer = parent.createDiv({ cls: 'time-stats-filters' });
-        const filters: Record<string, string> = {
-            'today': 'Hoy',
-            'week': 'Esta Semana',
-            'month': 'Este Mes',
-            'year': 'Este Año',
-            'all': 'Siempre',
-            'custom': 'Personalizado'
-        };
+    private generateTitleText(filter: string, startDate?: moment.Moment, endDate?: moment.Moment): string {
+        moment.locale('es');
+        let title = 'Estadísticas de Tiempo';
 
-        for (const [key, value] of Object.entries(filters)) {
-            const button = filterContainer.createEl('button', { 
-                text: value, 
-                cls: this.activeDateFilter === key ? 'is-active' : '' 
-            });
-            button.onClickEvent(() => {
-                const customContainer = this.statsContainer.querySelector('.custom-filter-container');
-                if (key === 'custom') {
-                    customContainer?.classList.remove('is-hidden');
-                } else {
-                    customContainer?.classList.add('is-hidden');
-                    this.renderStatistics(key);
-                }
-            });
-        }
-    }
-
-    private renderCustomFilterControls(parent: HTMLElement) {
-        const startDateInput = parent.createEl('input', { type: 'date' });
-        const endDateInput = parent.createEl('input', { type: 'date' });
-        const applyButton = parent.createEl('button', { text: 'Aplicar' });
-
-        // Set initial values if custom dates are already set
-        if (this.customStartDate) {
-            startDateInput.value = this.customStartDate.format('YYYY-MM-DD');
-        }
-        if (this.customEndDate) {
-            endDateInput.value = this.customEndDate.format('YYYY-MM-DD');
+        if (!startDate) {
+            return `${title}: Siempre`;
         }
 
-        applyButton.onClickEvent(() => {
-            this.customStartDate = startDateInput.value ? moment(startDateInput.value).startOf('day') : undefined;
-            this.customEndDate = endDateInput.value ? moment(endDateInput.value).endOf('day') : undefined;
-            this.renderStatistics('custom');
-        });
+        const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+        switch (filter) {
+            case 'today':
+            case 'single-day':
+                return `${title}: ${capitalize(startDate.format('dddd, D [de] MMMM [de] YYYY'))}`;
+            case 'week':
+                const endOfWeek = startDate.clone().endOf('isoWeek');
+                return `${title}: ${startDate.format('D MMM')} - ${endOfWeek.format('D MMM, YYYY')}`;
+            case 'month':
+                return `${title}: ${capitalize(startDate.format('MMMM [de] YYYY'))}`;
+            case 'year':
+                return `${title}: Año ${startDate.format('YYYY')}`;
+            case 'custom':
+                const start = this.customStartDate?.format('dddd, D MMM YYYY');
+                const end = this.customEndDate?.format('dddd, D MMM YYYY');
+                if (start && end) return `${title}: ${start} a ${end}`;
+                if (start) return `${title}: Desde ${start}`;
+                if (end) return `${title}: Hasta ${end}`;
+                return `${title}: Rango Personalizado`;
+            case 'all':
+            default:
+                return `${title}: Siempre`;
+        }
     }
 
     private getDateRange(filter: string): { startDate?: moment.Moment, endDate?: moment.Moment } {
-        const now = moment().local();
+        const now = this.currentDateFocus.clone().local();
         let startDate: moment.Moment | undefined;
         let endDate: moment.Moment | undefined;
 
@@ -409,7 +339,7 @@ export class TimeTrackerView {
                 break;
             case 'week':
                 startDate = now.clone().startOf('isoWeek');
-                endDate = now.clone().endOf('day'); // End of current day
+                endDate = now.clone().endOf('isoWeek');
                 break;
             case 'month':
                 startDate = now.clone().startOf('month');
@@ -427,6 +357,11 @@ export class TimeTrackerView {
                 if (this.customEndDate) customRange.endDate = this.customEndDate;
                 return customRange;
             }
+            case 'single-day': {
+                startDate = now.clone().startOf('day');
+                endDate = now.clone().endOf('day');
+                break;
+            }
             default:
                 return {}; // Fallback
         }
@@ -435,6 +370,85 @@ export class TimeTrackerView {
 
     private customStartDate: moment.Moment | undefined;
     private customEndDate: moment.Moment | undefined;
+
+    private renderUnifiedDatePicker(parent: HTMLElement, filter: string, startDate?: moment.Moment, endDate?: moment.Moment) {
+        const controlsContainer = parent.createDiv({ cls: 'stats-controls-container' });
+        const headerContainer = controlsContainer.createDiv({ cls: 'stats-header-container' });
+    
+        // Date Navigation (Left)
+        const navContainer = headerContainer.createDiv({ cls: 'date-navigation' });
+        const prevButton = navContainer.createEl('button', { text: '‹' });
+        const nextButton = navContainer.createEl('button', { text: '›' });
+    
+        // Date Display Button (Center)
+        const dateDisplayButton = navContainer.createEl('button', { 
+            cls: 'date-display',
+            text: this.generateTitleText(filter, startDate, endDate) 
+        });
+    
+        // View Toolbar (Right)
+        this.renderViewToolbar(headerContainer);
+    
+        // --- LOGIC ---
+    
+        // Navigation Logic
+        const canNavigate = !['all', 'custom'].includes(filter);
+        prevButton.disabled = !canNavigate;
+        nextButton.disabled = !canNavigate;
+    
+        if (canNavigate) {
+            const updateDateFocus = (direction: 'next' | 'prev') => {
+                const amount = direction === 'next' ? 1 : -1;
+                let unit: moment.unitOfTime.DurationConstructor = 'day';
+                
+                switch (filter) {
+                    case 'week': unit = 'week'; break;
+                    case 'month': unit = 'month'; break;
+                    case 'year': unit = 'year'; break;
+                    case 'today':
+                    case 'single-day':
+                    default: unit = 'day'; break;
+                }
+                this.currentDateFocus.add(amount, unit);
+                this.renderStatistics(filter);
+            };
+    
+            prevButton.onClickEvent(() => updateDateFocus('prev'));
+            nextButton.onClickEvent(() => updateDateFocus('next'));
+        }
+    
+        // Date Picker Modal Logic
+        dateDisplayButton.onClickEvent(() => {
+            new DatePickerModal(this.plugin.app, (result) => {
+                if (result.filter === 'custom') {
+                    this.customStartDate = result.startDate;
+                    this.customEndDate = result.endDate;
+                } else if (result.filter === 'single-day' && result.startDate) {
+                    this.currentDateFocus = result.startDate;
+                } else if (['today', 'week', 'month', 'year'].includes(result.filter)) {
+                    this.currentDateFocus = moment();
+                }
+                this.renderStatistics(result.filter);
+            }).open();
+        });
+    }
+    
+    private renderViewToolbar(parent: HTMLElement) {
+        const toolbarContainer = parent.createDiv({ cls: 'view-toolbar' });
+        const expandButton = toolbarContainer.createEl('button', { text: '🔽' });
+        const collapseButton = toolbarContainer.createEl('button', { text: '🔼' });
+    
+        expandButton.onClickEvent(() => {
+            this.statsContainer.querySelectorAll('details').forEach(d => d.open = true);
+        });
+    
+        collapseButton.onClickEvent(() => {
+            this.statsContainer.querySelectorAll('details').forEach(d => {
+                const level = parseInt(d.dataset['level'] || '99', 10);
+                d.open = level < 2;
+            });
+        });
+    }
 
     private parseNodeName(name: string): { folderType: FolderType } {
         const rules: { regex: RegExp, type: FolderType }[] = [

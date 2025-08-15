@@ -1497,3 +1497,160 @@ body.is-copying {
 .stats-table-row[data-folder-type="pq"] .node-icon { color: var(--dovela-color-pq) !important; }
 
 /* El tipo 'default' ya está cubierto por las reglas base */
+
+/* --- Date Picker Modal --- */
+.date-picker-modal .modal-content {
+    padding: 0;
+}
+
+.date-picker-modal .main-container {
+    display: flex;
+    padding: 15px;
+    gap: 20px;
+}
+
+.date-picker-modal .quick-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 0 0 150px; /* Ancho fijo para las acciones rápidas */
+    border-right: 1px solid var(--background-modifier-border);
+    padding-right: 20px;
+}
+
+.date-picker-modal .quick-actions h4 {
+    margin: 0 0 5px 0;
+}
+
+.date-picker-modal .calendar-container {
+    flex-grow: 1;
+}
+
+.date-picker-modal .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.date-picker-modal .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.date-picker-modal .weekday,
+.date-picker-modal .day-cell {
+    text-align: center;
+    padding: 8px 0;
+    border-radius: 4px;
+}
+
+.date-picker-modal .weekday {
+    font-size: 0.9em;
+    color: var(--text-muted);
+}
+
+.date-picker-modal .day-cell {
+    cursor: pointer;
+}
+
+.date-picker-modal .day-cell:not(.empty):hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.date-picker-modal .day-cell.is-today {
+    font-weight: bold;
+    color: var(--text-accent);
+    border: 1px solid var(--text-accent);
+}
+
+.date-picker-modal .day-cell.is-start-date,
+.date-picker-modal .day-cell.is-end-date {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.date-picker-modal .day-cell.is-in-range {
+    background-color: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+    border-radius: 0; /* Make the range a solid block */
+}
+
+/* Connect the range selection visually */
+.date-picker-modal .day-cell.is-start-date {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.date-picker-modal .day-cell.is-end-date {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* --- Statistics View Controls --- */
+.stats-controls-container {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.stats-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.date-navigation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-navigation button {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 6px 10px;
+    transition: all 0.2s ease-in-out;
+}
+
+.date-navigation button:hover:not(:disabled) {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+
+.date-navigation button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.date-display {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--text-normal);
+}
+
+.view-toolbar {
+    display: flex;
+    gap: 8px;
+}
+
+.view-toolbar button {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 1.2em; /* Make icons a bit larger */
+    transition: all 0.2s ease-in-out;
+}
+
+.view-toolbar button:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
