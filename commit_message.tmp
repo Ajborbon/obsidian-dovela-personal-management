@@ -1,24 +1,10 @@
-feat(ui): Refactorizar vistas de seguimiento y mejorar interfaz de usuario
+feat(stats): Añadir mapa de calor de actividad al selector de fechas
 
-Se realiza una refactorización significativa para separar la lógica de "Seguimiento de Tiempo" y "Estadísticas" en vistas independientes, mejorando la modularidad y la experiencia de usuario. Adicionalmente, se aplican varias mejoras a la interfaz en las vistas de Jerarquía y Foco.
+Se mejora la experiencia de usuario en la vista de "Estadísticas" al implementar un mapa de calor en el calendario del selector de fechas.
 
-### Cambios Principales
+Esta funcionalidad proporciona una referencia visual inmediata de los días que contienen registros de tiempo, permitiendo al usuario identificar y seleccionar períodos de actividad de manera más rápida e intuitiva.
 
-1.  **Separación de Vistas (Seguimiento y Estadísticas):**
-    *   Se crea una nueva `StatisticsView` (`statisticsView.ts`) que encapsula toda la lógica para mostrar las estadísticas de tiempo.
-    *   `TimeTrackerView` se simplifica para manejar únicamente los controles del temporizador y la selección de tareas.
-    *   Se añade un nuevo botón "Estadísticas" en los dashboards de GTD y Foco para acceder a la nueva vista.
-
-2.  **Mejoras en la Vista de Seguimiento:**
-    *   La sección "Control de Tiempo" ahora muestra de forma estructurada el **Proyecto**, la **Tarea** y las **Notas** del temporizador activo.
-    *   La fila "Tarea" se oculta automáticamente si su descripción es idéntica al nombre del proyecto para evitar redundancia.
-
-3.  **Mejoras en la Vista Jerárquica:**
-    *   Los botones "Expandir Todo" y "Colapsar Todo" se mueven de la barra principal a una barra de controles propia dentro de la vista jerárquica, dejando claro su alcance.
-
-4.  **Mejoras en la Vista de Foco:**
-    *   Se añade un título prominente en la parte superior que muestra el nombre del archivo que se está enfocando, mejorando el contexto.
-
-5.  **Ajustes de Estilo (CSS):**
-    *   Se centró el botón de selección de fecha en la vista de Estadísticas.
-    *   Se añadieron estilos para los nuevos controles de la jerarquía, el título de la vista de Foco y la nueva sección de detalles del temporizador.
+Cambios técnicos:
+- Se modifica `DatePickerModal.ts` para aceptar y renderizar un `activityMap`, aplicando clases CSS (`activity-low`, `activity-medium`, `activity-high`) a las celdas de los días con registros.
+- En `statisticsView.ts`, se implementa la lógica para calcular el número de registros por día.
+- El mapa de calor se genera a partir de todos los registros de tiempo existentes y se pasa al `DatePickerModal` al momento de su apertura.

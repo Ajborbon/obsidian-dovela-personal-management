@@ -12,11 +12,13 @@ export class DatePickerModal extends Modal {
     private selectionStartDate: moment.Moment | null = null;
     private selectionEndDate: moment.Moment | null = null;
     private applyButton: HTMLButtonElement;
+    private activityMap: { [date: string]: number };
 
-    constructor(app: App, onChoose: (result: DatePickerResult) => void) {
+    constructor(app: App, onChoose: (result: DatePickerResult) => void, activityMap: { [date: string]: number } = {}) {
         super(app);
         this.onChoose = onChoose;
         this.calendarMonth = moment().startOf('month');
+        this.activityMap = activityMap;
     }
 
     onOpen() {
@@ -140,6 +142,14 @@ export class DatePickerModal extends Modal {
         for (let day = 1; day <= daysInMonth; day++) {
             const dayEl = grid.createDiv({ text: day.toString(), cls: 'day-cell' });
             const currentDay = this.calendarMonth.clone().date(day);
+
+            const dayKey = currentDay.format('YYYY-MM-DD');
+            const activity = this.activityMap[dayKey];
+            if (activity) {
+                if (activity < 3) dayEl.addClass('activity-low');
+                else if (activity < 7) dayEl.addClass('activity-medium');
+                else dayEl.addClass('activity-high');
+            }
 
             if (currentDay.isSame(moment(), 'day')) {
                 dayEl.addClass('is-today');

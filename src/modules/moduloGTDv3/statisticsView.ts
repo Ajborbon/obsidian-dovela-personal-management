@@ -229,6 +229,16 @@ export class StatisticsView {
         }
     
         dateDisplayButton.onClickEvent(() => {
+            const activityMap = this.plugin.timeTrackerService.getMonthlyActivity(moment());
+            const activityObject: { [date: string]: number } = {};
+            
+            // Convert Map to object
+            const allLogs = this.plugin.data.timeLogs;
+            for (const log of allLogs) {
+                const date = moment(log.startTime).format('YYYY-MM-DD');
+                activityObject[date] = (activityObject[date] || 0) + 1;
+            }
+
             new DatePickerModal(this.plugin.app, (result) => {
                 if (result.filter === 'custom') {
                     this.customStartDate = result.startDate;
@@ -239,7 +249,7 @@ export class StatisticsView {
                     this.currentDateFocus = moment();
                 }
                 this.renderStatistics(result.filter);
-            }).open();
+            }, activityObject).open();
         });
     }
     
