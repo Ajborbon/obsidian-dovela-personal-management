@@ -1654,3 +1654,27 @@ body.is-copying {
     background-color: var(--background-modifier-hover);
     border-color: var(--background-modifier-border);
 }
+
+/* --- Hierarchy View Controls --- */
+.hierarchy-controls {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* --- Focus View Title --- */
+.focus-view-title {
+    text-align: center;
+    font-size: 1.1em;
+    color: var(--text-muted);
+    padding: 5px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.focus-view-title span {
+    font-weight: bold;
+    color: var(--text-normal);
+}

@@ -322,10 +322,11 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
 
 export function generateGtdViewHtml(
     data: ProcessedVaultData, 
-    activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline', 
+    activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'statistics' | 'timeline', 
     taskBreadcrumbMap: Map<string, string>,
     activeGrouping: Grouping,
-    activeSorting: Sorting
+    activeSorting: Sorting,
+    focusFileName?: string
 ): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
@@ -333,26 +334,33 @@ export function generateGtdViewHtml(
     const gtdActiveClass = activeView === 'gtd' ? 'active' : '';
     const inProgressActiveClass = activeView === 'inProgress' ? 'active' : '';
     const timeTrackerActiveClass = activeView === 'time-tracker' ? 'active' : '';
-    const timelineActiveClass = activeView === 'timeline' ? 'active' : ''; // Clase para la nueva vista
+    const statisticsActiveClass = activeView === 'statistics' ? 'active' : '';
+    const timelineActiveClass = activeView === 'timeline' ? 'active' : '';
 
     let viewContent = '';
-    let hierarchyControls = '';
-
     if (activeView === 'hierarchy') {
-        viewContent = data.hierarchicalData.map(root => renderHierarchyViewRecursive(root, 0)).join('');
-        hierarchyControls = `
-            <button class="gtd-hierarchy-control-button" data-action="expand-all">Expandir Todo</button>
-            <button class="gtd-hierarchy-control-button" data-action="collapse-all">Colapsar Todo</button>
+        const hierarchyControls = `
+            <div class="hierarchy-controls">
+                <button class="gtd-hierarchy-control-button" data-action="expand-all">Expandir Todo</button>
+                <button class="gtd-hierarchy-control-button" data-action="collapse-all">Colapsar Todo</button>
+            </div>
         `;
+        viewContent = hierarchyControls + data.hierarchicalData.map(root => renderHierarchyViewRecursive(root, 0)).join('');
     } else if (activeView === 'gtd') {
         viewContent = renderGtdListsView(data, taskBreadcrumbMap);
     } else if (activeView === 'inProgress') {
         viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap, activeGrouping, activeSorting);
     } else if (activeView === 'time-tracker') {
         viewContent = '<div id="time-tracker-container"></div>';
+    } else if (activeView === 'statistics') {
+        viewContent = '<div id="statistics-container"></div>';
     } else if (activeView === 'timeline') {
-        viewContent = '<div id="timeline-container"></div>'; // Contenedor para la nueva vista
+        viewContent = '<div id="timeline-container"></div>';
     }
+
+    const focusTitleHtml = focusFileName 
+        ? `<div class="focus-view-title">Foco: <span>${focusFileName}</span></div>` 
+        : '';
 
     return `
         <div class="gtd-view-container">
@@ -360,11 +368,12 @@ export function generateGtdViewHtml(
                 <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">Vista Jerárquica</button>
                 <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
                 <button class="gtd-view-button ${inProgressActiveClass}" data-view="inProgress">En Progreso</button>
-                <button class="gtd-view-button ${timeTrackerActiveClass}" data-view="time-tracker">Time Tracker</button>
+                <button class="gtd-view-button ${timeTrackerActiveClass}" data-view="time-tracker">Seguimiento</button>
+                <button class="gtd-view-button ${statisticsActiveClass}" data-view="statistics">Estadísticas</button>
                 <button class="gtd-view-button ${timelineActiveClass}" data-view="timeline">Cronograma</button> 
                 <button class="gtd-refresh-button">Refrescar</button>
-                ${hierarchyControls}
             </div>
+            ${focusTitleHtml}
             <div class="gtd-total-tasks">
                 <span>Total de Tareas Abiertas: ${totalOpenTasks}</span>
             </div>

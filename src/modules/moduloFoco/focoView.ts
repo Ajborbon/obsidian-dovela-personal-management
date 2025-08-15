@@ -1,15 +1,16 @@
 
 import { ItemView, WorkspaceLeaf, TFile } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
-import { TimeTrackerService } from '../moduloGTDv3/timeTrackerService.js'; // Re-use existing service
+import { TimeTrackerService } from '../moduloGTDv3/timeTrackerService.js';
 import { TimeTrackerView } from '../moduloGTDv3/timeTrackerView.js';
+import { StatisticsView } from '../moduloGTDv3/statisticsView.js';
 import { TimelineView } from '../moduloGTDv3/timelineView.js';
 
 // Import from the new "foco" module
 import { parseFocus } from './focoParser.js';
 import { buildHierarchy } from './focoHierarchyBuilder.js';
 import { processGtdLists } from './focoProcessor.js';
-import { processInProgressTasks } from '../moduloGTDv3/inProgressProcessor.js'; // Can be re-used for now
+import { processInProgressTasks } from '../moduloGTDv3/inProgressProcessor.js';
 import { generateGtdViewHtml } from './focoHtmlGenerator.js';
 import type { ProcessedVaultData, HierarchicalItem } from './focoModel.js';
 
@@ -21,10 +22,11 @@ export class FocoView extends ItemView {
     private plugin: DovelaPersonalManagementPlugin;
     private timeTrackerService: TimeTrackerService;
     public timeTrackerView: TimeTrackerView | null = null;
+    public statisticsView: StatisticsView | null = null;
     private timelineView: TimelineView | null = null;
     private activeFile: TFile | null = null;
 
-    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline' = 'hierarchy';
+    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'statistics' | 'timeline' = 'hierarchy';
     private activeGrouping: 'none' | 'context' | 'person' | 'project' = 'none';
     private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
@@ -72,8 +74,8 @@ export class FocoView extends ItemView {
     }
 
     public async refreshStatistics(): Promise<void> {
-        if (this.timeTrackerView) {
-            await this.timeTrackerView.renderStatistics(this.timeTrackerView.activeDateFilter);
+        if (this.statisticsView) {
+            await this.statisticsView.renderStatistics(this.statisticsView.activeDateFilter);
         }
     }
 
@@ -100,7 +102,6 @@ export class FocoView extends ItemView {
         this.eventAbortController = new AbortController();
 
         try {
-            // Use the new focus parser
             const parsedData = await parseFocus(activeFile, this.app.vault, this.app.metadataCache);
             const hierarchicalData = buildHierarchy(parsedData.hierarchicalData);
             const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
@@ -118,7 +119,7 @@ export class FocoView extends ItemView {
                 uniquePeople: uniquePeople,
             };
 
-            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting);
+            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.activeFile?.basename);
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
 
@@ -129,6 +130,15 @@ export class FocoView extends ItemView {
                         this.timeTrackerView = new TimeTrackerView(timeTrackerContainer as HTMLElement, this.plugin, this.timeTrackerService);
                     } else {
                         this.timeTrackerView.updateContainer(timeTrackerContainer as HTMLElement);
+                    }
+                }
+            } else if (this.activeView === 'statistics') {
+                const statisticsContainer = this.contentEl.querySelector('#statistics-container');
+                if (statisticsContainer) {
+                    if (!this.statisticsView) {
+                        this.statisticsView = new StatisticsView(statisticsContainer as HTMLElement, this.plugin);
+                    } else {
+                        this.statisticsView.updateContainer(statisticsContainer as HTMLElement);
                     }
                 }
             } else if (this.activeView === 'timeline') {
@@ -200,7 +210,7 @@ export class FocoView extends ItemView {
             const button = target.closest('button');
             if (button) {
                 if (button.classList.contains('gtd-view-button')) {
-                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'timeline';
+                    const view = button.getAttribute('data-view') as 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'statistics' | 'timeline';
                     if (view && view !== this.activeView) {
                         this.activeView = view;
                         if (this.activeFile) this.drawView(this.activeFile);
