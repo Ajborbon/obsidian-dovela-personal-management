@@ -190,7 +190,12 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
     ];
 
     const navLinks = listOrder
-        .filter(listName => gtdLists[listName] && gtdLists[listName].length > 0)
+        .filter(listName => {
+            const tasks = gtdLists[listName];
+            if (!tasks) return false;
+            const totalTasksInList = Array.isArray(tasks) ? tasks.length : (tasks instanceof Map ? Array.from(tasks.values()).reduce((sum, arr) => sum + arr.length, 0) : 0);
+            return totalTasksInList > 0;
+        })
         .map(listName => `
             <a href="#gtd-list-${listName.replace(/[^a-zA-Z0-9-]/g, '-')}" class="gtd-nav-link">${listName}</a>
         `).join(' | ');
@@ -199,18 +204,38 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
 
     for (const listName of listOrder) {
         const tasks = gtdLists[listName];
-        if (!tasks || tasks.length === 0) continue;
+        const totalTasksInList = Array.isArray(tasks) ? tasks.length : (tasks instanceof Map ? Array.from(tasks.values()).reduce((sum, arr) => sum + arr.length, 0) : 0);
+
+        if (!tasks || totalTasksInList === 0) continue;
 
         const listId = `gtd-list-${listName.replace(/[^a-zA-Z0-9-]/g, '-')}`;
+
         html += `
             <details class="gtd-list" open id="${listId}">
-                <summary>${listName} <span class="gtd-list-count">(${tasks.length})</span></summary>
+                <summary>${listName} <span class="gtd-list-count">(${totalTasksInList})</span></summary>
         `;
         
         const renderTaskWithBreadcrumb = (task: Task) => renderTask(task, taskBreadcrumbMap.get(task.id) || '');
 
-        if (listName === GtdList.HopeToday) {
-            tasks.sort((a, b) => {
+        if (listName === GtdList.NextActions) {
+            const grouped = tasks as Map<string, Task[]>;
+            const sortedGroupNames = Array.from(grouped.keys()).sort();
+
+            for (const groupName of sortedGroupNames) {
+                const groupTasks = grouped.get(groupName);
+                if (groupTasks) {
+                    html += `
+                        <div class="gtd-group">
+                            <div class="gtd-group-title">${groupName}</div>
+                            <ul class="gtd-task-list">
+                                ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
+        } else if (listName === GtdList.HopeToday) {
+            (tasks as Task[]).sort((a, b) => {
                 const aIsCalendar = a.dateSymbol === '📅' ? 0 : 1;
                 const bIsCalendar = b.dateSymbol === '📅' ? 0 : 1;
                 if (aIsCalendar !== bIsCalendar) return aIsCalendar - bIsCalendar;
@@ -218,7 +243,7 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
             });
 
             const grouped: Record<string, Task[]> = {};
-            for (const task of tasks) {
+            for (const task of (tasks as Task[])) {
                 const key = task.contexts[0] || task.assignedPeople[0] || 'Sin Contexto';
                 if (!grouped[key]) grouped[key] = [];
                 grouped[key].push(task);
@@ -240,15 +265,15 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
                 }
             }
         } else if (listName === GtdList.Overdue) {
-            tasks.sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
+            (tasks as Task[]).sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
             html += `
                 <ul class="gtd-task-list">
-                    ${tasks.map(renderTaskWithBreadcrumb).join('')}
+                    ${(tasks as Task[]).map(renderTaskWithBreadcrumb).join('')}
                 </ul>
             `;
         } else if (listName === GtdList.Assigned) {
             const grouped: Record<string, Task[]> = {};
-            for (const task of tasks) {
+            for (const task of (tasks as Task[])) {
                 const key = task.assignedPeople[0] || 'Sin Asignar';
                 if (!grouped[key]) grouped[key] = [];
                 grouped[key].push(task);
@@ -272,7 +297,7 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         } else {
             html += `
                 <ul class="gtd-task-list">
-                    ${tasks.map(renderTaskWithBreadcrumb).join('')}
+                    ${(tasks as Task[]).map(renderTaskWithBreadcrumb).join('')}
                 </ul>
             `;
         }

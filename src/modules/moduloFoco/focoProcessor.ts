@@ -15,10 +15,24 @@ export enum GtdList {
     Overdue = 'Vencidas',
 }
 
+// Define a type for the gtdLists object
+type GtdListsData = {
+    [GtdList.Inbox]: Task[];
+    [GtdList.NextActions]: Map<string, Task[]>; // Changed from Task[]
+    [GtdList.Calendar]: Task[];
+    [GtdList.HopeToday]: Task[];
+    [GtdList.Assigned]: Task[];
+    [GtdList.Projects]: Task[];
+    [GtdList.SomedayMaybe]: Task[];
+    [GtdList.ThisWeekNot]: Task[];
+    [GtdList.Paused]: Task[];
+    [GtdList.Overdue]: Task[];
+};
+
 export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>): Omit<ProcessedVaultData, 'hierarchicalData' | 'allTasks'> {
-    const gtdLists: Record<GtdList, Task[]> = {
+    const gtdLists: GtdListsData = {
         [GtdList.Inbox]: [],
-        [GtdList.NextActions]: [],
+        [GtdList.NextActions]: new Map(), // Changed from []
         [GtdList.Calendar]: [],
         [GtdList.HopeToday]: [],
         [GtdList.Assigned]: [],
@@ -31,6 +45,9 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
 
     const uniqueContexts = new Set<string>();
     const uniquePeople = new Set<string>();
+
+    // Temporary array to hold next actions before grouping
+    const tempNextActions: Task[] = [];
 
     for (const task of allTasks) {
         if (task.completed) continue;
@@ -84,12 +101,21 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
 
         // Rule 2: Next Actions (Captures present, past 🛫, and future with context)
         } else if (task.contexts.length > 0) {
-            gtdLists[GtdList.NextActions].push(task);
+            tempNextActions.push(task); // Add to temporary list
         
         // Default to Inbox
         } else {
             gtdLists[GtdList.Inbox].push(task);
         }
+    }
+
+    // Group Next Actions by context
+    for (const task of tempNextActions) {
+        const context = task.contexts[0] || '(Sin Contexto)';
+        if (!gtdLists[GtdList.NextActions].has(context)) {
+            gtdLists[GtdList.NextActions].set(context, []);
+        }
+        gtdLists[GtdList.NextActions].get(context)?.push(task);
     }
 
     return { 
