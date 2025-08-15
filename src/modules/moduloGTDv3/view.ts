@@ -210,6 +210,20 @@ export class GtdView extends ItemView {
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
 
+            const navLink = target.closest('.gtd-nav-link');
+            if (navLink) {
+                event.preventDefault();
+                const href = navLink.getAttribute('href');
+                if (href && href.startsWith('#')) {
+                    const targetId = href.substring(1);
+                    const targetElement = container.querySelector(`[id="${targetId}"]`);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+                return;
+            }
+
             if (target.classList.contains('gtd-breadcrumb-toggle')) {
                 const taskEl = target.closest('.gtd-task');
                 taskEl?.classList.toggle('breadcrumb-is-open');

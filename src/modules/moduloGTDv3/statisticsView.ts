@@ -54,6 +54,22 @@ export class StatisticsView {
 
         // --- Smart Jump Event Listener ---
         this.container.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+
+            const navLink = target.closest('.gtd-nav-link');
+            if (navLink) {
+                event.preventDefault();
+                const href = navLink.getAttribute('href');
+                if (href && href.startsWith('#')) {
+                    const targetId = href.substring(1);
+                    const targetElement = this.container.querySelector(`[id="${targetId}"]`);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+                return;
+            }
+
             const summary = (event.target as HTMLElement).closest('.stats-table-row-summary');
             if (!summary) return;
 

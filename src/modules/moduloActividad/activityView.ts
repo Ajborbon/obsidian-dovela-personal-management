@@ -54,6 +54,24 @@ export class ActivityView extends ItemView {
         container.empty();
         container.addClass('dovela-activity-view');
 
+        container.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+
+            const navLink = target.closest('.gtd-nav-link');
+            if (navLink) {
+                event.preventDefault();
+                const href = navLink.getAttribute('href');
+                if (href && href.startsWith('#')) {
+                    const targetId = href.substring(1);
+                    const targetElement = container.querySelector(`[id="${targetId}"]`);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+                return;
+            }
+        });
+
         switch (this.currentScreen) {
             case 'dashboard':
                 await this.renderDashboard(container);
