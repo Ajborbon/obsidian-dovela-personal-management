@@ -3,6 +3,7 @@ import moment from 'moment';
 import { generateColorFromString } from './colorUtils.js';
 import type { TimeLogEntry } from './model.js';
 import { TimeLogModal } from './timeLogModal.js';
+import { formatDuration } from './durationUtils.js';
 
 type TimelineViewType = 'day' | '3-day' | 'week';
 
@@ -383,7 +384,7 @@ export class TimelineView {
         const fullStartTime = startMoment.format('MMM D, HH:mm');
         const fullEndTime = endMoment.format('MMM D, HH:mm');
         const durationMinutes = endMoment.diff(startMoment, 'minutes');
-        const formattedDuration = this.formatDuration(durationMinutes);
+        const formattedDuration = formatDuration(durationMinutes);
 
         const tooltipParts = [
             `Proyecto: ${projectName}`,
@@ -455,7 +456,7 @@ export class TimelineView {
         const fullStartTime = startMoment.format('MMM D, HH:mm');
         const fullEndTime = endMoment.format('MMM D, HH:mm');
         const totalDurationMinutes = moment(log.endTime).diff(moment(log.startTime), 'minutes');
-        const formattedDuration = this.formatDuration(totalDurationMinutes);
+        const formattedDuration = formatDuration(totalDurationMinutes);
 
         const tooltipParts = [
             `Proyecto: ${projectName}`,
@@ -713,21 +714,6 @@ export class TimelineView {
         const pathParts = log.taskNotePath.split('/');
         const colorSource = pathParts.length > 1 ? (pathParts[0] || log.taskNotePath) : log.taskNotePath;
         return generateColorFromString(colorSource);
-    }
-
-    private formatDuration(minutes: number): string {
-        if (minutes < 1) {
-            return '< 1 min';
-        }
-        if (minutes < 60) {
-            return `${minutes} min`;
-        }
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        if (remainingMinutes === 0) {
-            return `${hours} h`;
-        }
-        return `${hours} h ${remainingMinutes} min`;
     }
 
     public clear(): void {

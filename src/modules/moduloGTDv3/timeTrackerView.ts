@@ -3,8 +3,10 @@ import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
 import { TimeLogModal } from './timeLogModal.js';
 import type { Task, TimeLogEntry } from './model.js';
+import { formatDuration } from './durationUtils.js';
 // Removed unused import: parseVault
 import moment from 'moment';
+import 'moment/locale/es';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
@@ -559,22 +561,50 @@ export class TimeTrackerView {
                 for (const log of node.logs) {
                     const logEntryEl = logsContainer.createEl('div', { cls: 'log-entry' });
                     
+                    // Añadir evento de clic para abrir el modal de edición
+                    logEntryEl.addEventListener('click', () => {
+                        const onSaveCallback = async (updatedEntry: Partial<TimeLogEntry>) => {
+                            if (updatedEntry.id) {
+                                await this.plugin.timeTrackerService.updateLogEntry(updatedEntry.id, updatedEntry);
+                            }
+                            this.renderStatistics(this.activeDateFilter);
+                        };
+                        new TimeLogModal(this.plugin.app, this.plugin, onSaveCallback, log, false).open();
+                    });
+
                     const date = moment(log.startTime);
-                    const dayOfWeek = date.locale('es').format('dddd');
-                    const formattedDate = date.format('YYYY-MM-DD');
                     const startTime = date.format('HH:mm');
                     const endTime = moment(log.endTime).format('HH:mm');
+                    const dayOfWeek = date.locale('es').format('dddd');
+                    
+                    // Contenedor principal para la fecha
+                    const dateLineEl = logEntryEl.createEl('div', { cls: 'log-entry-line log-entry-date-container' });
 
-                    logEntryEl.createEl('div', { cls: 'log-entry-line' })
-                        .setText(`🗓️ ${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}, ${formattedDate}`);
+                    // "Badge" del calendario
+                    const dateBadge = dateLineEl.createEl('div', { cls: 'date-badge' });
+                    dateBadge.createEl('span', { text: date.format('MMM'), cls: 'date-badge-month' });
+                    dateBadge.createEl('span', { text: date.format('D'), cls: 'date-badge-day' });
+
+                    // Contexto de la fecha (Día de la semana, Año)
+                    const dateContext = `${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}, ${date.format('YYYY')}`;
+                    dateLineEl.createEl('span', { text: dateContext, cls: 'date-context' });
+
+                    const formattedDuration = formatDuration(log.durationMinutes);
+                    const timeLineEl = logEntryEl.createEl('div', { cls: 'log-entry-line log-entry-time-line' });
                     
-                    logEntryEl.createEl('div', { cls: 'log-entry-line' })
-                        .setText(`🕒 Inicio: ${startTime} - Fin: ${endTime} (${log.durationMinutes}m)`);
+                    timeLineEl.createEl('span', { text: `🕒 ${startTime} → ${endTime}` });
+                    timeLineEl.createEl('span', { text: formattedDuration, cls: 'duration-pill' });
                     
-                    const notes = log.notes || log.taskDescription;
-                    if (notes) {
+                    // Mostrar la descripción de la tarea solo si es diferente del nombre del proyecto
+                    if (log.taskDescription && log.taskDescription !== node.name) {
                         logEntryEl.createEl('div', { cls: 'log-entry-line' })
-                            .setText(`📝 Nota: ${notes}`);
+                            .setText(`📌 Tarea: ${log.taskDescription}`);
+                    }
+                    
+                    // Mostrar las notas si existen
+                    if (log.notes) {
+                        logEntryEl.createEl('div', { cls: 'log-entry-line' })
+                            .setText(`📝 Nota: ${log.notes}`);
                     }
                 }
             }

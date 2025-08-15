@@ -621,6 +621,11 @@ details.gtd-card-container[open] > summary .gtd-card-header {
     padding: 10px;
     margin-bottom: 8px;
     font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+.log-entry:hover {
+    background-color: var(--background-modifier-hover);
 }
 .log-entry:last-child {
     margin-bottom: 0;
@@ -632,6 +637,61 @@ details.gtd-card-container[open] > summary .gtd-card-header {
 }
 .log-entry-line:last-child {
     margin-bottom: 0;
+}
+
+.log-entry-date-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-badge {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    overflow: hidden; /* To clip the children's corners */
+    width: 40px;
+    flex-shrink: 0; /* Prevent the badge from shrinking */
+}
+
+.date-badge-month {
+    background-color: var(--background-secondary-alt);
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 2px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.date-badge-day {
+    font-size: 1.1em;
+    font-weight: bold;
+    padding: 3px 0;
+    color: var(--text-normal);
+}
+
+.date-context {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.log-entry-time-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.duration-pill {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-accent);
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 12px; /* Pill shape */
+    font-size: 0.9em;
 }
 
 /* --- Smart Inbox Styles --- */
