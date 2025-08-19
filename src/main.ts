@@ -5,6 +5,7 @@ import { FocoView, FOCO_VIEW_TYPE, FOCO_VIEW_ICON } from './modules/moduloFoco/f
 import { ActivityView, ACTIVITY_VIEW_TYPE, ACTIVITY_VIEW_DISPLAY_TEXT, ACTIVITY_VIEW_ICON } from './modules/moduloActividad/activityView.js';
 import { ReviewPanelView, REVIEW_PANEL_VIEW_TYPE, REVIEW_PANEL_DISPLAY_TEXT, REVIEW_PANEL_ICON } from './modules/moduloGTDv3/reviewPanelView.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
+import { TimeTrackerCommands } from './modules/moduloGTDv3/timeTrackerCommands.js';
 import { StalledProjectService } from './modules/moduloGTDv3/stalledProjectService.js';
 import { AnalyzerService } from './modules/moduloActividad/analyzerService.js';
 import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
@@ -20,6 +21,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     public data!: DovelaPluginData;
     public activeTimer: ActiveTimerState | null = null;
     public timeTrackerService!: TimeTrackerService;
+    public timeTrackerCommands!: TimeTrackerCommands;
     public analyzerService!: AnalyzerService;
     public stalledProjectService!: StalledProjectService;
     public statusBarItem!: HTMLElement;
@@ -40,6 +42,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         await this.loadPluginData();
 
         this.timeTrackerService = new TimeTrackerService(this);
+        this.timeTrackerCommands = new TimeTrackerCommands(this);
         this.analyzerService = new AnalyzerService(this);
         this.stalledProjectService = new StalledProjectService(this.app.vault, this.app.metadataCache, this.data);
         this.statusBarItem = this.addStatusBarItem();
@@ -129,61 +132,15 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             }
         });
 
-        this.addCommand({
-            id: 'time-tracker-start-for-active-note',
-            name: 'Control de Tiempo: Iniciar temporizador para la nota activa',
-            checkCallback: (checking: boolean) => {
-                const activeFile = this.app.workspace.getActiveFile();
-                const isTimerRunning = !!this.activeTimer;
-
-                if (activeFile && !isTimerRunning) {
-                    if (!checking) {
-                        const taskNotePath = activeFile.path;
-                        const taskDescription = activeFile.basename.replace('.md', '');
-                        this.startTracking(taskNotePath, taskDescription);
-                        new Notice(`Temporizador iniciado para: ${taskDescription}`);
-                    }
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        this.addCommand({
-            id: 'time-tracker-edit-active-timer',
-            name: 'Control de Tiempo: Modificar temporizador activo',
-            checkCallback: (checking: boolean) => {
-                console.log("Dovela PM Debug: Checking for 'edit active timer' command. Active timer is:", this.activeTimer);
-                if (this.activeTimer) {
-                    if (!checking) {
-                        this.openEditActiveTimerModal();
-                    }
-                    return true;
-                }
-                return false;
-            }
-        });
+        // Registrar comandos del time tracker
+        this.timeTrackerCommands.registerCommands();
 
         this.addRibbonIcon('plus-circle', 'Captura Rápida (Smart Inbox)', () => {
             this.openSmartInbox();
         });
 
-        this.addRibbonIcon('play-circle', 'Control de Tiempo: Iniciar temporizador para la nota activa', () => {
-            const activeFile = this.app.workspace.getActiveFile();
-            if (this.activeTimer) {
-                new Notice('Ya hay un temporizador en curso.');
-                return;
-            }
-            if (!activeFile) {
-                new Notice('Por favor, abra una nota para iniciar el temporizador.');
-                return;
-            }
-            
-            const taskNotePath = activeFile.path;
-            const taskDescription = activeFile.basename.replace('.md', '');
-            this.startTracking(taskNotePath, taskDescription);
-            new Notice(`Temporizador iniciado para: ${taskDescription}`);
-        });
+        // Registrar ribbon icons del time tracker
+        this.timeTrackerCommands.registerRibbonIcons();
         
         this.addRibbonIcon(GTD_VIEW_ICON, GTD_VIEW_DISPLAY_TEXT, () => {
             this.activateView();
@@ -444,7 +401,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         ).open();
     }
 
-    private async openEditActiveTimerModal() {
+    public async openEditActiveTimerModal() {
         if (!this.activeTimer) return;
     
         const onSaveCallback = async (updatedEntry: Partial<TimeLogEntry>) => {
