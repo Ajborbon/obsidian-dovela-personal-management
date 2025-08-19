@@ -104,7 +104,7 @@ function renderInProgressView(
     const renderTaskWithBreadcrumb = (task: Task) => renderInProgressTask(task, taskBreadcrumbMap.get(task.id) || '');
 
     for (const groupName in groups) {
-        const groupTasks = groups[groupName];
+        const groupTasks = (groups as any)[groupName] as Task[];
         if (groupTasks && groupTasks.length > 0) {
             const tasksHtml = groupTasks.map(renderTaskWithBreadcrumb).join('');
             html += `
@@ -193,7 +193,14 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         .filter(listName => {
             const tasks = gtdLists[listName];
             if (!tasks) return false;
-            const totalTasksInList = Array.isArray(tasks) ? tasks.length : (tasks instanceof Map ? Array.from(tasks.values()).reduce((sum, arr) => sum + arr.length, 0) : 0);
+            const totalTasksInList = Array.isArray(tasks)
+                ? tasks.length
+                : (tasks && typeof (tasks as any).values === 'function'
+                    ? (() => {
+                        const vals = Array.from((tasks as any).values()) as Task[][];
+                        return vals.reduce((sum, arr) => sum + arr.length, 0);
+                    })()
+                    : 0);
             return totalTasksInList > 0;
         })
         .map(listName => `
@@ -202,9 +209,16 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
     
     html += `<nav class="gtd-quick-nav">${navLinks}</nav>`;
 
-    for (const listName of listOrder) {
+        for (const listName of listOrder) {
         const tasks = gtdLists[listName];
-        const totalTasksInList = Array.isArray(tasks) ? tasks.length : (tasks instanceof Map ? Array.from(tasks.values()).reduce((sum, arr) => sum + arr.length, 0) : 0);
+        const totalTasksInList = Array.isArray(tasks)
+            ? tasks.length
+            : (tasks && typeof (tasks as any).values === 'function'
+                ? (() => {
+                    const vals = Array.from((tasks as any).values()) as Task[][];
+                    return vals.reduce((sum, arr) => sum + arr.length, 0);
+                })()
+                : 0);
 
         if (!tasks || totalTasksInList === 0) continue;
 
@@ -218,8 +232,8 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         const renderTaskWithBreadcrumb = (task: Task) => renderTask(task, taskBreadcrumbMap.get(task.id) || '');
 
         if (listName === GtdList.NextActions) {
-            const grouped = tasks as Map<string, Task[]>;
-            const sortedGroupNames = Array.from(grouped.keys()).sort();
+            const grouped = tasks as unknown as Map<string, Task[]>;
+            const sortedGroupNames = (Array.from(((grouped as any)?.keys?.() ?? []) as string[])).sort();
 
             for (const groupName of sortedGroupNames) {
                 const groupTasks = grouped.get(groupName);

@@ -86,7 +86,7 @@ export function processInProgressTasks(
 
     const stats = {
         total: inProgressTasks.length,
-        overdue: inProgressTasks.filter(t => t.date && isDatePast(t.date)).length,
+        overdue: inProgressTasks.filter(t => (t.date ? isDatePast(t.date) : false)).length,
         definedTimeMinutes,
         estimatedTimeMinutes,
     };

@@ -11,7 +11,7 @@ type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 export class TimeTrackerView {
     private container: HTMLElement;
     private plugin: DovelaPersonalManagementPlugin;
-    private service: TimeTrackerService;
+    private _service: TimeTrackerService;
     
     private activeTimerInterval: number | null = null;
     
@@ -23,7 +23,9 @@ export class TimeTrackerView {
     constructor(container: HTMLElement, plugin: DovelaPersonalManagementPlugin, service: TimeTrackerService) {
         this.container = container;
         this.plugin = plugin;
-        this.service = service;
+        this._service = service;
+        // Mark _service as used to satisfy the compiler (the service is intentionally unused here).
+        void this._service;
         this.render();
     }
 
@@ -240,7 +242,7 @@ export class TimeTrackerView {
 
             const projectName = taskNotePath.split('/').pop()?.replace('.md', '') || 'N/A';
 
-            const createDetailRow = (label: string, value: string) => {
+            const createDetailRow = (label: string, value?: string) => {
                 if (!value) return; // No renderizar si no hay valor
                 const row = activeTaskDetailsContainer.createDiv({ cls: 'task-detail-row' });
                 row.createEl('strong', { text: `${label}:` });
@@ -256,11 +258,15 @@ export class TimeTrackerView {
 
             createDetailRow('Notas', notes);
 
-            goToTaskBtn.onclick = () => {
-                this.plugin.app.workspace.openLinkText(taskNotePath, '', false, {
-                    eState: { line: lineNumber }
-                });
-            };
+            if (taskNotePath) {
+                goToTaskBtn.onclick = () => {
+                    this.plugin.app.workspace.openLinkText(taskNotePath, '', false, {
+                        eState: { line: lineNumber }
+                    });
+                };
+            } else {
+                goToTaskBtn.onclick = null;
+            }
 
             const startTimeMoment = moment(startTime);
             
@@ -303,7 +309,8 @@ export class TimeTrackerView {
     private async openManualEntryModal() {
         const onSaveCallback = async (entryData: Partial<TimeLogEntry>) => {
             if (entryData.id) {
-                await this.plugin.timeTrackerService.updateLogEntry(entryData.id, entryData);
+                const id = entryData.id as string;
+                await this.plugin.timeTrackerService.updateLogEntry(id, entryData);
             } else {
                 await this.plugin.timeTrackerService.addLogEntry(entryData as Omit<TimeLogEntry, 'id'>);
             }

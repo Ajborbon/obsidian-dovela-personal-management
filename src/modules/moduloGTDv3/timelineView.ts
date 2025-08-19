@@ -386,6 +386,7 @@ export class TimelineView {
         const durationMinutes = endMoment.diff(startMoment, 'minutes');
         const formattedDuration = formatDuration(durationMinutes);
 
+        const projectName = log.taskNotePath ? log.taskNotePath.split('/').pop()?.replace('.md', '') || 'Tarea' : 'Tarea';
         const tooltipParts = [
             `Proyecto: ${projectName}`,
             `Tarea: ${log.taskDescription || '(Sin descripción)'}`,
@@ -642,12 +643,23 @@ export class TimelineView {
                 const startTime = day.clone().startOf('day').add(startMinute, 'minutes');
                 const endTime = day.clone().startOf('day').add(endMinute, 'minutes');
 
-                new TimeLogModal(this.plugin.app, this.plugin.timeTrackerService, this.plugin, () => {
-                    this.render();
-                }, {
-                    startTime: startTime.toISOString(),
-                    endTime: endTime.toISOString()
-                }).open();
+                new TimeLogModal(
+                    this.plugin.app,
+                    this.plugin,
+                    async (entry: Partial<TimeLogEntry>) => {
+                        // Delegate saving to the timeTrackerService; if entry has id -> update, else add
+                        if (entry.id) {
+                            await this.plugin.timeTrackerService.updateLogEntry(entry.id, entry);
+                        } else {
+                            await this.plugin.timeTrackerService.addLogEntry(entry as Omit<TimeLogEntry, 'id'>);
+                        }
+                        this.render();
+                    },
+                    {
+                        startTime: startTime.toISOString(),
+                        endTime: endTime.toISOString()
+                    }
+                ).open();
             };
 
             dayColumn.addEventListener('mousemove', onMouseMove);

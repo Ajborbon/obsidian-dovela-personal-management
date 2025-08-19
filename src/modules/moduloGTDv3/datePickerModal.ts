@@ -1,4 +1,5 @@
-import { App, Modal, moment, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
+import moment from 'moment';
 
 type DatePickerResult = {
     filter: string;
@@ -11,7 +12,7 @@ export class DatePickerModal extends Modal {
     private calendarMonth: moment.Moment;
     private selectionStartDate: moment.Moment | null = null;
     private selectionEndDate: moment.Moment | null = null;
-    private applyButton: HTMLButtonElement;
+    private applyButton?: HTMLButtonElement;
     private activityMap: { [date: string]: number };
 
     constructor(app: App, onChoose: (result: DatePickerResult) => void, activityMap: { [date: string]: number } = {}) {
@@ -21,13 +22,13 @@ export class DatePickerModal extends Modal {
         this.activityMap = activityMap;
     }
 
-    onOpen() {
+    override onOpen() {
         const { contentEl } = this;
         contentEl.addClass('date-picker-modal');
         this.renderModalContent(contentEl);
     }
 
-    onClose() {
+    override onClose() {
         const { contentEl } = this;
         contentEl.empty();
     }
@@ -60,7 +61,7 @@ export class DatePickerModal extends Modal {
         const actionsContainer = container.createDiv('quick-actions');
         actionsContainer.createEl('h4', { text: 'Acciones Rápidas' });
 
-        const actions = {
+        const actions: Record<string, string> = {
             'today': 'Hoy',
             'week': 'Esta Semana',
             'month': 'Este Mes',
@@ -128,7 +129,7 @@ export class DatePickerModal extends Modal {
         const grid = calendarContainer.createDiv('calendar-grid');
         const weekdays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
         weekdays.forEach(day => {
-            grid.createDiv({ text: day, cls: 'weekday' });
+            grid.createEl('div', { text: day, cls: 'weekday' });
         });
 
         const firstDayOfMonth = this.calendarMonth.clone().startOf('month');
@@ -136,11 +137,11 @@ export class DatePickerModal extends Modal {
         const startOffset = (firstDayOfMonth.isoWeekday() - 1);
 
         for (let i = 0; i < startOffset; i++) {
-            grid.createDiv({ cls: 'day-cell empty' });
+            grid.createEl('div', { cls: 'day-cell empty' });
         }
 
         for (let day = 1; day <= daysInMonth; day++) {
-            const dayEl = grid.createDiv({ text: day.toString(), cls: 'day-cell' });
+            const dayEl = grid.createEl('div', { text: day.toString(), cls: 'day-cell' });
             const currentDay = this.calendarMonth.clone().date(day);
 
             const dayKey = currentDay.format('YYYY-MM-DD');

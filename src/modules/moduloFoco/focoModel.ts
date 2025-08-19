@@ -82,7 +82,7 @@ export interface HierarchicalItem {
 // Contenedor para los datos procesados.
 export interface ProcessedVaultData {
     hierarchicalData: HierarchicalItem[];
-    gtdLists: Record<string, Task[]>;
+    gtdLists: Record<string, Task[] | Map<string, Task[]>>;
     inProgressData: InProgressData;
     allTasks: Task[];
     uniqueContexts: string[];

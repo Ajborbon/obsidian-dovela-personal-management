@@ -82,8 +82,8 @@ export class StatisticsView {
                 let currentElement: HTMLDetailsElement | null = details;
                 while (currentElement && currentElement.classList.contains('is-transit-node')) {
                     currentElement.open = true;
-                    const nextElement = currentElement.querySelector(':scope > .stats-table-row');
-                    currentElement = nextElement ? nextElement as HTMLDetailsElement : null;
+                    const nextElement = currentElement.querySelector(':scope > .stats-table-row') as HTMLDetailsElement | null;
+                    currentElement = nextElement ?? null;
                 }
             }
         });
@@ -126,7 +126,7 @@ export class StatisticsView {
         });
     }
 
-    private generateTitleText(filter: string, startDate?: moment.Moment, endDate?: moment.Moment): string {
+    private generateTitleText(filter: string, startDate?: moment.Moment, _endDate?: moment.Moment): string {
         moment.locale('es');
         let title = 'Estadísticas de Tiempo';
 
@@ -245,7 +245,6 @@ export class StatisticsView {
         }
     
         dateDisplayButton.onClickEvent(() => {
-            const activityMap = this.plugin.timeTrackerService.getMonthlyActivity(moment());
             const activityObject: { [date: string]: number } = {};
             
             // Convert Map to object
@@ -314,6 +313,7 @@ export class StatisticsView {
 
             for (let i = 0; i < pathParts.length; i++) {
                 const part = pathParts[i];
+                if (!part) continue;
                 currentPath = i === 0 ? part : `${currentPath}/${part}`;
                 const isFile = i === pathParts.length - 1 && part.endsWith('.md');
 
@@ -336,7 +336,10 @@ export class StatisticsView {
                 }
 
                 if (isFile) {
-                    treeNodes[currentPath].logs?.push(log);
+                    const targetNode = treeNodes[currentPath];
+                    if (targetNode?.logs) {
+                        targetNode.logs.push(log);
+                    }
                 }
             }
         }
@@ -344,6 +347,7 @@ export class StatisticsView {
         const sortedKeys = Object.keys(treeNodes).sort((a, b) => a.length - b.length);
         for (const path of sortedKeys) {
             const node = treeNodes[path];
+            if (!node) continue;
             const parentPath = path.substring(0, path.lastIndexOf('/'));
             if (parentPath && treeNodes[parentPath]) {
                 treeNodes[parentPath].children.push(node);
@@ -353,11 +357,15 @@ export class StatisticsView {
         const reverseSortedKeys = sortedKeys.slice().reverse();
         for (const path of reverseSortedKeys) {
             const node = treeNodes[path];
+            if (!node) continue;
 
-            if (node.logs) {
-                node.ownDuration = node.logs.reduce((sum, log) => sum + log.durationMinutes, 0);
-                node.ownRecordCount = node.logs.length;
-                node.logs.sort((a, b) => moment(a.startTime).valueOf() - moment(b.startTime).valueOf());
+            if (node.logs && node.logs.length > 0) {
+                // Work with a local copy to satisfy the compiler and avoid mutating while iterating
+                const logsCopy = node.logs.slice();
+                node.ownDuration = logsCopy.reduce((sum, log) => sum + log.durationMinutes, 0);
+                node.ownRecordCount = logsCopy.length;
+                logsCopy.sort((a, b) => moment(a.startTime).valueOf() - moment(b.startTime).valueOf());
+                node.logs = logsCopy;
             }
 
             const descendantDuration = node.children.reduce((sum, child) => sum + child.duration, 0);
@@ -371,9 +379,11 @@ export class StatisticsView {
 
         const rootNodes: TreeNode[] = [];
         for (const path of sortedKeys) {
+            const node = treeNodes[path];
+            if (!node) continue;
             const parentPath = path.substring(0, path.lastIndexOf('/'));
             if (!parentPath || !treeNodes[parentPath]) {
-                rootNodes.push(treeNodes[path]);
+                rootNodes.push(node);
             }
         }
 
@@ -416,7 +426,7 @@ export class StatisticsView {
             const summary = rowContainer.createEl('summary', { cls: 'stats-table-row-summary' });
             summary.style.paddingLeft = `${(level - 1) * 20}px`;
 
-            summary.addEventListener('contextmenu', (event) => {
+                summary.addEventListener('contextmenu', (event) => {
                 event.preventDefault();
                 const menu = new Menu();
                 menu.addItem((item) =>
@@ -424,7 +434,7 @@ export class StatisticsView {
                         .setTitle('Exportar a Excel')
                         .setIcon('document')
                         .onClick(() => {
-                            this.exportNodeToExcel(node);
+                            this.exportNodeToExcel(node as TreeNode);
                         })
                 );
                 menu.showAtMouseEvent(event);
@@ -459,9 +469,9 @@ export class StatisticsView {
 
             if (node.children.length > 0) {
                 this.renderTree(node.children, rowContainer, level + 1, totalDurationForPeriod);
-            } else if (node.logs && node.logs.length > 0) {
+            } else if ((node.logs ?? []).length > 0) {
                 const logsContainer = rowContainer.createEl('div', { cls: 'log-details-container' });
-                for (const log of node.logs) {
+                for (const log of (node.logs ?? [])) {
                     const logEntryEl = logsContainer.createEl('div', { cls: 'log-entry' });
                     
                     logEntryEl.addEventListener('click', () => {
@@ -477,15 +487,15 @@ export class StatisticsView {
                     const date = moment(log.startTime);
                     const startTime = date.format('HH:mm');
                     const endTime = moment(log.endTime).format('HH:mm');
-                    const dayOfWeek = date.locale('es').format('dddd');
+                    const dayOfWeek = date.locale('es').format('dddd') || '';
                     
                     const dateLineEl = logEntryEl.createEl('div', { cls: 'log-entry-line log-entry-date-container' });
-
+                    
                     const dateBadge = dateLineEl.createEl('div', { cls: 'date-badge' });
                     dateBadge.createEl('span', { text: date.format('MMM'), cls: 'date-badge-month' });
                     dateBadge.createEl('span', { text: date.format('D'), cls: 'date-badge-day' });
 
-                    const dateContext = `${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}, ${date.format('YYYY')}`;
+                    const dateContext = `${(dayOfWeek.charAt(0) || '').toUpperCase() + dayOfWeek.slice(1)}, ${date.format('YYYY')}`;
                     dateLineEl.createEl('span', { text: dateContext, cls: 'date-context' });
 
                     const formattedDuration = formatDuration(log.durationMinutes);
@@ -587,11 +597,16 @@ export class StatisticsView {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Registros de Tiempo');
 
         // Auto-ajustar el ancho de las columnas
-        const colsWidth = Object.keys(dataForSheet[0]).map(key => {
-            const maxLength = Math.max(...dataForSheet.map(row => (row[key as keyof typeof row] ?? '').toString().length), key.length);
-            return { wch: maxLength + 2 }; // +2 para un poco de padding
-        });
-        worksheet['!cols'] = colsWidth;
+        if (dataForSheet.length > 0) {
+            const firstRow = dataForSheet[0];
+            if (firstRow) {
+                const colsWidth = Object.keys(firstRow).map(key => {
+                    const maxLength = Math.max(...dataForSheet.map(row => (row[key as keyof typeof row] ?? '').toString().length), key.length);
+                    return { wch: maxLength + 2 }; // +2 para un poco de padding
+                });
+                worksheet['!cols'] = colsWidth;
+            }
+        }
 
         const dateRangeText = this.getFilterDateRangeText();
         const fileName = `Exportación - ${node.name} - ${dateRangeText}.xlsx`;

@@ -173,9 +173,23 @@ export class FocoView extends ItemView {
 
             container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
                 const htmlTaskEl = taskEl as HTMLElement;
-                const taskContexts: string[] = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
-                const taskPeople: string[] = JSON.parse(htmlTaskEl.dataset['people'] || '[]');
+                let taskContexts: string[] = [];
+                let taskPeople: string[] = [];
                 const taskContent = (htmlTaskEl.dataset['content'] || '').toLowerCase();
+
+                try {
+                    const parsedContexts = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
+                    if (Array.isArray(parsedContexts)) taskContexts = parsedContexts as string[];
+                } catch (e) {
+                    // ignore malformed datasets
+                }
+
+                try {
+                    const parsedPeople = JSON.parse(htmlTaskEl.dataset['people'] || '[]');
+                    if (Array.isArray(parsedPeople)) taskPeople = parsedPeople as string[];
+                } catch (e) {
+                    // ignore malformed datasets
+                }
 
                 const contextMatch = selectedContext === '' || taskContexts.includes(selectedContext);
                 const personMatch = selectedPerson === '' || taskPeople.includes(selectedPerson);

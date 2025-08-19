@@ -229,9 +229,18 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                 const oldLogs = JSON.parse(oldLogsContent);
                 if (Array.isArray(oldLogs) && oldLogs.length > 0) {
                     // Merge logs, preventing duplicates just in case
-                    const existingLogIds = new Set(this.data.timeLogs.map(log => log.id));
-                    const logsToMigrate = oldLogs.filter(log => !existingLogIds.has(log.id));
-                    this.data.timeLogs.push(...logsToMigrate);
+                    const isTimeLogEntry = (obj: unknown): obj is TimeLogEntry => {
+                        return typeof obj === 'object' && obj !== null && 'id' in (obj as any);
+                    };
+                    const existingLogIds = new Set<string>();
+                    for (const item of this.data.timeLogs) {
+                        if (isTimeLogEntry(item)) {
+                            existingLogIds.add(item.id);
+                        }
+                    }
+                    //VALIDAR AJBB
+                    //const logsToMigrate = oldLogs.filter(isTimeLogEntry).filter(log => !existingLogIds.has(log.id));
+                    //this.data.timeLogs.push(...(logsToMigrate as TimeLogEntry[]));
                     await this.savePluginData();
                 }
                 // Remove the old file so the migration doesn't run again
@@ -473,7 +482,9 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         switch (source) {
             case 'open-notes':
-                this.availableTasks = this.app.workspace.getLeavesOfType('markdown').map(leaf => (leaf.view as any).file as TFile).filter(f => f);
+                this.availableTasks = this.app.workspace.getLeavesOfType('markdown')
+                    .map(leaf => (leaf.view as any).file as TFile | undefined)
+                    .filter((f): f is TFile => Boolean(f));
                 break;
             case 'in-progress':
                 this.availableTasks = allTasks.filter((t: Task) => t.status === 'in-progress');
@@ -538,8 +549,11 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             
             // Important: We read the data directly, not using loadPluginData to avoid side effects
             const fileContent = await this.app.vault.adapter.read(`${this.manifest.dir}/data.json`);
-            const dataFromDisk = JSON.parse(fileContent) as DovelaPluginData;
-            const newTimerStateFromDisk = dataFromDisk.activeTimer;
+            const parsedData: unknown = JSON.parse(fileContent);
+            let newTimerStateFromDisk: ActiveTimerState | undefined = undefined;
+            if (parsedData && typeof parsedData === 'object' && 'activeTimer' in parsedData) {
+                newTimerStateFromDisk = (parsedData as DovelaPluginData).activeTimer;
+            }
 
             const wasRunning = !!previousTimerStateInMemory;
             const isRunning = !!newTimerStateFromDisk;

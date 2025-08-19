@@ -177,8 +177,10 @@ export class GtdView extends ItemView {
 
             container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
                 const htmlTaskEl = taskEl as HTMLElement;
-                const taskContexts: string[] = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
-                const taskPeople: string[] = JSON.parse(htmlTaskEl.dataset['people'] || '[]');
+                const contextsRaw = htmlTaskEl.dataset['contexts'];
+                const taskContexts: string[] = contextsRaw ? (JSON.parse(contextsRaw) as string[]) : [];
+                const peopleRaw = htmlTaskEl.dataset['people'];
+                const taskPeople: string[] = peopleRaw ? (JSON.parse(peopleRaw) as string[]) : [];
                 const taskContent = (htmlTaskEl.dataset['content'] || '').toLowerCase();
 
                 const contextMatch = selectedContext === '' || taskContexts.includes(selectedContext);

@@ -58,7 +58,7 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
 
         const isPausedByDependency = task.dependencies.some(depId => {
             const depTask = allTaskMap.get(depId.replace(/^\^/, '')); // Handle IDs with or without '^'
-            return depTask && !depTask.completed;
+            return !!(depTask && !depTask.completed);
         });
 
         // Rule 1: Inbox (Highest priority for malformed/conflicting tasks)
