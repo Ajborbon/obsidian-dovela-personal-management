@@ -29,8 +29,11 @@ function renderInProgressTask(task: Task, breadcrumb: string): string {
     const contextsData = JSON.stringify(task.contexts);
     const peopleData = JSON.stringify(task.assignedPeople);
 
+    const displayClass = task.displayStatus ? ` task--${task.displayStatus}` : '';
+    const displayAttr = task.displayStatus ? `${task.displayStatus}` : '';
+
     return `
-        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
+        <li class="gtd-task${displayClass}" data-display-status="${displayAttr}" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
             <div class="gtd-task-content">
                 <input type="checkbox" />
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
@@ -141,8 +144,11 @@ function renderTask(task: Task, breadcrumb: string): string {
     const contextsData = JSON.stringify(task.contexts);
     const peopleData = JSON.stringify(task.assignedPeople);
 
+    const displayClass = task.displayStatus ? ` task--${task.displayStatus}` : '';
+    const displayAttr = task.displayStatus ? `${task.displayStatus}` : '';
+
     return `
-        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}' data-content="${task.content.replace(/"/g, '&quot;')}">
+        <li class="gtd-task${displayClass}" data-display-status="${displayAttr}" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}' data-content="${task.content.replace(/"/g, '"')}">
             <div class="gtd-task-content">
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
                 ${linkedContent}
@@ -198,20 +204,51 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         .map(item => `
             <a href="#${item.anchor}" class="gtd-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
         `).join(' | ');
-    
-    const subNavLinks = navigationItems
-        .filter(item => item.isSublist)
-        .map(item => `
-            <a href="#${item.anchor}" class="gtd-nav-link gtd-sub-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
-        `).join(' | ');
-    
+
+    // Build ordered sub-navigation groups: HopeToday -> NextActions -> Assigned.
+    const hopeParentId = `gtd-list-${createAnchorId(GtdList.HopeToday)}`;
+    const nextParentId = `gtd-list-${createAnchorId(GtdList.NextActions)}`;
+    const assignedParentId = `gtd-list-${createAnchorId(GtdList.Assigned)}`;
+
+    const subItemsForParent = (parentId: string) => navigationItems.filter(item => item.isSublist && item.parentList === parentId);
+
+    const renderSubNavItem = (it: any, isHope: boolean) => {
+        // For HopeToday we want the star before the type icon (rendered in nav), per UX
+        const iconHtml = isHope ? `🌟 ${it.icon}` : `${it.icon}`;
+        return `<a href="#${it.anchor}" class="gtd-nav-link gtd-sub-nav-link">${iconHtml} ${it.label} <span class="gtd-nav-count">${it.count}</span></a>`;
+    };
+
+    const hopeItems = subItemsForParent(hopeParentId);
+    const nextItems = subItemsForParent(nextParentId);
+    const assignedItems = subItemsForParent(assignedParentId);
+
+    // Build sub-navigation as collapsible groups (details), collapsed by default.
+    let subNavHtml = '<div class="gtd-sub-nav">';
+
+    if (hopeItems.length > 0) {
+        subNavHtml += `<details class="gtd-subgroup"><summary>Ojalá Hoy <span class="gtd-subgroup-count">${hopeItems.length}</span></summary><div class="gtd-subitems">${hopeItems.map((it: any) => renderSubNavItem(it, true)).join(' | ')}</div></details>`;
+    }
+
+    if (nextItems.length > 0) {
+        if (hopeItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
+        subNavHtml += `<details class="gtd-subgroup"><summary>Contextos <span class="gtd-subgroup-count">${nextItems.length}</span></summary><div class="gtd-subitems">${nextItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
+    }
+
+    if (assignedItems.length > 0) {
+        if (hopeItems.length > 0 || nextItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
+        subNavHtml += `<details class="gtd-subgroup"><summary>Asignadas <span class="gtd-subgroup-count">${assignedItems.length}</span></summary><div class="gtd-subitems">${assignedItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
+    }
+
+    subNavHtml += '</div>';
+
     html += `<nav class="gtd-quick-nav">
         <div class="gtd-main-nav">${mainNavLinks}</div>
-        ${subNavLinks ? `<div class="gtd-sub-nav">${subNavLinks}</div>` : ''}
+        ${subNavHtml}
     </nav>`;
 
+    // Reorder lists so Ojalá Hoy appears before Contexts (NextActions) and Assigned after contexts.
     const listOrder: GtdList[] = [
-        GtdList.Inbox, GtdList.NextActions, GtdList.Calendar, GtdList.HopeToday,
+        GtdList.Inbox, GtdList.HopeToday, GtdList.NextActions, GtdList.Calendar,
         GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
         GtdList.ThisWeekNot, GtdList.SomedayMaybe,
     ];
@@ -231,8 +268,14 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
 
         const listId = createAnchorId(`gtd-list-${listName}`);
 
+        // Add semantic classes so we can style separators/visual differences between HopeToday, NextActions and Assigned
+        let extraClass = '';
+        if (listName === GtdList.HopeToday) extraClass = ' gtd-list-hope-today';
+        else if (listName === GtdList.NextActions) extraClass = ' gtd-list-next-actions';
+        else if (listName === GtdList.Assigned) extraClass = ' gtd-list-assigned';
+
         html += `
-            <details class="gtd-list" open id="${listId}">
+            <details class="gtd-list${extraClass}" open id="${listId}">
                 <summary>${listName} <span class="gtd-list-count">(${totalTasksInList})</span></summary>
         `;
         

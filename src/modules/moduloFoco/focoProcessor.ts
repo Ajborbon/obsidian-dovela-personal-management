@@ -46,10 +46,11 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
     const uniqueContexts = new Set<string>();
     const uniquePeople = new Set<string>();
 
-    // Temporary arrays to hold tasks before grouping
-    const tempNextActions: Task[] = [];
-    const tempHopeTodayActions: Task[] = [];
-    const tempAssignedActions: Task[] = [];
+    // Helper to push into a Map<string, Task[]>
+    const pushToMap = (map: Map<string, Task[]>, key: string, task: Task) => {
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)?.push(task);
+    };
 
     for (const task of allTasks) {
         if (task.completed) continue;
@@ -63,82 +64,122 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
             return !!(depTask && !depTask.completed);
         });
 
-        // Rule 1: Inbox (Highest priority for malformed/conflicting tasks)
-        if (task.hasConflict || task.tags.includes('inbox') || 
-           (task.date && !task.contexts.length && !task.assignedPeople.length && (isDatePast(task.date) || isDateToday(task.date))) ||
-           (task.week && !task.contexts.length && !task.assignedPeople.length && (isWeekPast(task.week) || isWeekToday(task.week)))) {
-            gtdLists[GtdList.Inbox].push(task);
-        
-        // Rule 7: Someday/Maybe
-        } else if (task.tags.includes('GTD-AlgunDia')) {
-            gtdLists[GtdList.SomedayMaybe].push(task);
-        
-        // Rule 8: This Week Not
-        } else if (task.tags.includes('GTD-EstaSemanaNo')) {
-            gtdLists[GtdList.ThisWeekNot].push(task);
+        const hasDate = !!task.date;
+        const isOverdue = hasDate && (task.dateSymbol === '📅' || task.dateSymbol === '⏳') && isDatePast(task.date!);
+        const isToday = hasDate && isDateToday(task.date!);
+        const isFutureStart = task.dateSymbol === '🛫' && task.date && isDateFuture(task.date);
+        const isWeekFutureFlag = !!task.week && isWeekFuture(task.week!);
+        const isCalendarItem = task.dateSymbol === '📅' && task.date && task.startTime;
+        const isHopeTodayCandidate = (task.dateSymbol === '📅' || task.dateSymbol === '⏳') && task.date && isDateToday(task.date) && !task.startTime;
+        const hasContext = task.contexts.length > 0;
+        const hasAssigned = task.assignedPeople.length > 0;
 
-        // Rule 9: Paused
-        } else if (isPausedByDependency || (task.week && isWeekFuture(task.week)) || (task.dateSymbol === '🛫' && task.date && isDateFuture(task.date))) {
-            gtdLists[GtdList.Paused].push(task);
-
-        // Rule 3: Calendar
-        } else if (task.dateSymbol === '📅' && task.date && task.startTime) {
-            gtdLists[GtdList.Calendar].push(task);
-
-        // Rule 4: Overdue (Specific to 📅 and ⏳)
-        } else if ((task.dateSymbol === '📅' || task.dateSymbol === '⏳') && task.date && isDatePast(task.date) && (task.contexts.length > 0 || task.assignedPeople.length > 0)) {
-            gtdLists[GtdList.Overdue].push(task);
-        
-        // Rule 4: Hope Today
-        } else if ((task.dateSymbol === '📅' || task.dateSymbol === '⏳') && task.date && isDateToday(task.date) && !task.startTime) {
-            tempHopeTodayActions.push(task);
-
-        // Rule 6: Projects
-        } else if (task.contexts.includes('ProyectoGTD') || task.contexts.includes('Entregable')) {
-            gtdLists[GtdList.Projects].push(task);
-
-        // Rule 5: Assigned or Delegated
-        } else if (task.assignedPeople.length > 0 && task.contexts.length === 0) {
-            tempAssignedActions.push(task);
-
-        // Rule 2: Next Actions (Captures present, past 🛫, and future with context)
-        } else if (task.contexts.length > 0) {
-            tempNextActions.push(task); // Add to temporary list
-        
-        // Default to Inbox
+        // Compute displayStatus with priority:
+        // overdue > today > paused-by-dependency (orange) > paused-start (blue) > future
+        // Note: "future" visual styling should apply ONLY for tasks that are flagged as a future start (🛫).
+        // Due (📅) or scheduled (⏳) dates in the future should NOT receive the 'future' displayStatus.
+        if (isOverdue) {
+            task.displayStatus = 'overdue';
+        } else if (isToday) {
+            task.displayStatus = 'today';
+        } else if (isPausedByDependency) {
+            task.displayStatus = 'paused-dep';
+        } else if (isFutureStart) {
+            task.displayStatus = 'paused-start';
+        } else if (hasDate && isDateFuture(task.date!) && task.dateSymbol === '🛫') {
+            // Defensive: only assign 'future' when the dateSymbol explicitly indicates a start (🛫).
+            task.displayStatus = 'future';
         } else {
+            task.displayStatus = null;
+        }
+
+        // Exclusive lists: SomedayMaybe and ThisWeekNot per requirement
+        if (task.tags.includes('GTD-AlgunDia')) {
+            gtdLists[GtdList.SomedayMaybe].push(task);
+            continue;
+        }
+        if (task.tags.includes('GTD-EstaSemanaNo')) {
+            gtdLists[GtdList.ThisWeekNot].push(task);
+            continue;
+        }
+
+        // Inbox: keep adding to Inbox when conditions match but NOT exclusive (inbox items will also be shown in other lists)
+        if (task.hasConflict || task.tags.includes('inbox') ||
+            (task.date && !hasContext && !hasAssigned && (isDatePast(task.date) || isDateToday(task.date))) ||
+            (task.week && !hasContext && !hasAssigned && (isWeekPast(task.week!) || isWeekToday(task.week!)))
+        ) {
+            gtdLists[GtdList.Inbox].push(task);
+            // DO NOT continue; inbox entries should still appear in other relevant lists
+        }
+
+        // Paused (both dependency and future-start) - also not exclusive: show in Paused and in context/person lists
+        if (isPausedByDependency || isWeekFutureFlag || isFutureStart) {
+            gtdLists[GtdList.Paused].push(task);
+            // continue is intentionally omitted because paused tasks should also appear in context/assigned lists
+        }
+
+        // Calendar: scheduled items with start time
+        if (isCalendarItem) {
+            gtdLists[GtdList.Calendar].push(task);
+        }
+
+        // Overdue: specific to date symbols 📅 or ⏳ and must have context or assigned
+        if (isOverdue && (hasContext || hasAssigned)) {
+            gtdLists[GtdList.Overdue].push(task);
+        }
+
+        // Hope Today
+        if (isHopeTodayCandidate) {
+            // Use explicit prefixes so navigation and icons can unambiguously detect type
+            if (task.contexts[0]) {
+                const key = `cx-${task.contexts[0]}`;
+                pushToMap(gtdLists[GtdList.HopeToday] as Map<string, Task[]>, key, task);
+            } else if (task.assignedPeople[0]) {
+                const key = `px-${task.assignedPeople[0]}`;
+                pushToMap(gtdLists[GtdList.HopeToday] as Map<string, Task[]>, key, task);
+            } else {
+                const key = 'cx-Sin Contexto';
+                pushToMap(gtdLists[GtdList.HopeToday] as Map<string, Task[]>, key, task);
+            }
+        }
+
+        // Assigned: add to Assigned map (can co-exist with context)
+        if (hasAssigned) {
+            const person = task.assignedPeople[0] || 'Sin Asignar';
+            const key = `px-${person}`;
+            pushToMap(gtdLists[GtdList.Assigned] as Map<string, Task[]>, key, task);
+        }
+
+        // Next Actions: add by context (can co-exist with assigned and date-based lists)
+        if (hasContext) {
+            const context = task.contexts[0] || '(Sin Contexto)';
+            const key = `cx-${context}`;
+            pushToMap(gtdLists[GtdList.NextActions] as Map<string, Task[]>, key, task);
+        }
+
+        // Projects: keep a list of project-related tasks but not exclusive
+        if (task.contexts.includes('ProyectoGTD') || task.contexts.includes('Entregable')) {
+            gtdLists[GtdList.Projects].push(task);
+        }
+
+        // Fallback: if nothing matched (no context, no assigned, no date-based inclusion), put into Inbox
+        const inAnyList = (
+            gtdLists[GtdList.Calendar].includes(task) ||
+            gtdLists[GtdList.Overdue].includes(task) ||
+            Array.from((gtdLists[GtdList.HopeToday] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
+            Array.from((gtdLists[GtdList.Assigned] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
+            Array.from((gtdLists[GtdList.NextActions] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
+            gtdLists[GtdList.Projects].includes(task) ||
+            gtdLists[GtdList.Paused].includes(task) ||
+            gtdLists[GtdList.Inbox].includes(task)
+        );
+
+        if (!inAnyList) {
             gtdLists[GtdList.Inbox].push(task);
         }
     }
 
-    // Group Next Actions by context
-    for (const task of tempNextActions) {
-        const context = task.contexts[0] || '(Sin Contexto)';
-        if (!gtdLists[GtdList.NextActions].has(context)) {
-            gtdLists[GtdList.NextActions].set(context, []);
-        }
-        gtdLists[GtdList.NextActions].get(context)?.push(task);
-    }
-
-    // Group Hope Today by context or person
-    for (const task of tempHopeTodayActions) {
-        const key = task.contexts[0] || task.assignedPeople[0] || 'Sin Contexto';
-        if (!gtdLists[GtdList.HopeToday].has(key)) {
-            gtdLists[GtdList.HopeToday].set(key, []);
-        }
-        gtdLists[GtdList.HopeToday].get(key)?.push(task);
-    }
-
-    // Group Assigned tasks by person
-    for (const task of tempAssignedActions) {
-        const person = task.assignedPeople[0] || 'Sin Asignar';
-        if (!gtdLists[GtdList.Assigned].has(person)) {
-            gtdLists[GtdList.Assigned].set(person, []);
-        }
-        gtdLists[GtdList.Assigned].get(person)?.push(task);
-    }
-
-    // Generate navigation items
+    // Generar elementos de navegación
     const navigationItems = generateNavigationItems(gtdLists);
 
     return { 

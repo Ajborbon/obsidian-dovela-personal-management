@@ -40,6 +40,7 @@ export type HierarchicalItemType =
 
 export type DateSymbol = '🛫' | '⏳' | '📅';
 export type TaskStatus = 'incomplete' | 'completed' | 'in-progress';
+export type DisplayStatus = 'overdue' | 'today' | 'future' | 'paused-dep' | 'paused-start' | null;
 
 // Representa una tarea extraída de una nota de Obsidian.
 export interface Task {
@@ -62,6 +63,7 @@ export interface Task {
     sourceFile: TFile;
     lineNumber: number;
     hasConflict?: boolean; // True si la tarea tiene metadatos inconsistentes.
+    displayStatus?: DisplayStatus; // Estado derivado para la presentación (overdue, today, future, paused-dep, paused-start)
 }
 
 // Representa un elemento en la jerarquía del vault (una nota o un grupo de notas).

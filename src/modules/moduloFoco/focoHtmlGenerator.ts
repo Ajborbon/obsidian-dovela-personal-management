@@ -29,8 +29,12 @@ function renderInProgressTask(task: Task, breadcrumb: string): string {
     const contextsData = JSON.stringify(task.contexts);
     const peopleData = JSON.stringify(task.assignedPeople);
 
+    // Apply displayStatus class if present (overdue, today, future, paused-dep, paused-start)
+    const displayClass = (task as any).displayStatus ? ` task--${(task as any).displayStatus}` : '';
+    const displayAttr = (task as any).displayStatus ? `${(task as any).displayStatus}` : '';
+
     return `
-        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
+        <li class="gtd-task${displayClass}" data-display-status="${displayAttr}" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}'>
             <div class="gtd-task-content">
                 <input type="checkbox" />
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
@@ -141,8 +145,11 @@ function renderTask(task: Task, breadcrumb: string): string {
     const contextsData = JSON.stringify(task.contexts);
     const peopleData = JSON.stringify(task.assignedPeople);
 
+    const displayClass = (task as any).displayStatus ? ` task--${(task as any).displayStatus}` : '';
+    const displayAttr = (task as any).displayStatus ? `${(task as any).displayStatus}` : '';
+
     return `
-        <li class="gtd-task" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}' data-content="${task.content.replace(/"/g, '&quot;')}">
+        <li class="gtd-task${displayClass}" data-display-status="${displayAttr}" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}' data-content="${task.content.replace(/"/g, '"')}">
             <div class="gtd-task-content">
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
                 ${linkedContent}
@@ -204,16 +211,48 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         .map(item => `
             <a href="#${item.anchor}" class="gtd-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
         `).join(' | ');
-    
-    const subNavLinks = navigationItems
-        .filter(item => item.isSublist)
-        .map(item => `
-            <a href="#${item.anchor}" class="gtd-nav-link gtd-sub-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
-        `).join(' | ');
-    
+
+    // Build ordered sub-navigation groups: HopeToday -> NextActions -> Assigned.
+    const hopeParentId = `gtd-list-${createAnchorId(GtdList.HopeToday)}`;
+    const nextParentId = `gtd-list-${createAnchorId(GtdList.NextActions)}`;
+    const assignedParentId = `gtd-list-${createAnchorId(GtdList.Assigned)}`;
+
+    const subItemsForParent = (parentId: string) => navigationItems.filter(item => item.isSublist && item.parentList === parentId);
+
+    const renderSubNavItem = (it: any, isHope: boolean) => {
+        // For HopeToday we render the star before the type icon (navigation-specific)
+        const iconHtml = isHope ? `🌟 ${it.icon}` : `${it.icon}`;
+        // Strip internal prefixes cx-/px- from labels if present
+        const cleanLabel = (it.label || '').toString().replace(/^cx-/, '').replace(/^px-/, '').replace(/^#cx-/, '').replace(/^#px-/, '');
+        return `<a href="#${it.anchor}" class="gtd-nav-link gtd-sub-nav-link">${iconHtml} ${cleanLabel} <span class="gtd-nav-count">${it.count}</span></a>`;
+    };
+
+    const hopeItems = subItemsForParent(hopeParentId);
+    const nextItems = subItemsForParent(nextParentId);
+    const assignedItems = subItemsForParent(assignedParentId);
+
+    // Build sub-navigation as collapsible groups (details), collapsed by default.
+    let subNavHtml = '<div class="gtd-sub-nav">';
+
+    if (hopeItems.length > 0) {
+        subNavHtml += `<details class="gtd-subgroup" open><summary>Ojalá Hoy <span class="gtd-subgroup-count">${hopeItems.length}</span></summary><div class="gtd-subitems">${hopeItems.map((it: any) => renderSubNavItem(it, true)).join(' | ')}</div></details>`;
+    }
+
+    if (nextItems.length > 0) {
+        if (hopeItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
+        subNavHtml += `<details class="gtd-subgroup" open><summary>Contextos <span class="gtd-subgroup-count">${nextItems.length}</span></summary><div class="gtd-subitems">${nextItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
+    }
+
+    if (assignedItems.length > 0) {
+        if (hopeItems.length > 0 || nextItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
+        subNavHtml += `<details class="gtd-subgroup" open><summary>Asignadas <span class="gtd-subgroup-count">${assignedItems.length}</span></summary><div class="gtd-subitems">${assignedItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
+    }
+
+    subNavHtml += '</div>';
+
     html += `<nav class="gtd-quick-nav">
         <div class="gtd-main-nav">${mainNavLinks}</div>
-        ${subNavLinks ? `<div class="gtd-sub-nav">${subNavLinks}</div>` : ''}
+        ${subNavHtml}
     </nav>`;
 
         for (const listName of listOrder) {

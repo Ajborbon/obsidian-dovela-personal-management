@@ -73,6 +73,26 @@
     opacity: 0.9;
 }
 
+/* Separator used between sublist groups in the GTD navigation (HopeToday | NextActions | Assigned) */
+.gtd-sublist-sep {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: var(--background-modifier-border);
+    margin: 0 10px;
+    vertical-align: middle;
+}
+
+/* Horizontal rule used between sublist groups in the GTD navigation */
+.gtd-sublist-hr {
+    border: none;
+    border-top: 1px solid var(--background-modifier-border);
+    margin: 6px 8px;
+    width: 100%;
+    height: 0;
+    box-sizing: border-box;
+}
+
 /* Contadores en navegación */
 .gtd-nav-count {
     background: var(--background-modifier-border);
@@ -1738,4 +1758,82 @@ body.is-copying {
 .focus-view-title span {
     font-weight: bold;
     color: var(--text-normal);
+}
+
+/* --- Task display status colors (overdue / today / future / paused) --- */
+/* Use both background and text adjustments for legibility. These styles apply
+   to task rows; they also ensure nested metadata inherits readable color. */
+
+.gtd-task.task--overdue {
+    background-color: rgba(255, 69, 58, 0.06); /* soft red background */
+    color: var(--text-error); /* red text for emphasis */
+    border-left: 4px solid rgba(255, 69, 58, 0.22);
+}
+.gtd-task.task--overdue .gtd-task-content,
+.gtd-task.task--overdue .gtd-task-metadata {
+    color: inherit;
+}
+
+/* Today: green */
+.gtd-task.task--today {
+    background-color: rgba(40, 167, 69, 0.06); /* soft green */
+    color: var(--interactive-success); /* use theme success color for text */
+    border-left: 4px solid rgba(40, 167, 69, 0.22);
+}
+.gtd-task.task--today .gtd-task-content,
+.gtd-task.task--today .gtd-task-metadata {
+    color: inherit;
+}
+
+/* Future start (airplane) — blue */
+.gtd-task.task--future,
+.gtd-task.task--paused-start {
+    background-color: rgba(0, 122, 255, 0.06); /* soft blue */
+    color: var(--text-accent);
+    border-left: 4px solid rgba(0, 122, 255, 0.22);
+}
+.gtd-task.task--future .gtd-task-content,
+.gtd-task.task--future .gtd-task-metadata,
+.gtd-task.task--paused-start .gtd-task-content,
+.gtd-task.task--paused-start .gtd-task-metadata {
+    color: inherit;
+}
+
+/* Paused by dependency — orange */
+.gtd-task.task--paused-dep {
+    background-color: rgba(255, 159, 67, 0.10); /* soft orange */
+    color: #7a4500;
+    border-left: 4px solid rgba(255, 159, 67, 0.28);
+}
+.gtd-task.task--paused-dep .gtd-task-content,
+.gtd-task.task--paused-dep .gtd-task-metadata {
+    color: inherit;
+}
+
+/* Ensure checkboxes and priority icons contrast sufficiently */
+.gtd-task.task--overdue input[type="checkbox"],
+.gtd-task.task--today input[type="checkbox"],
+.gtd-task.task--future input[type="checkbox"],
+.gtd-task.task--paused-dep input[type="checkbox"],
+.gtd-task.task--paused-start input[type="checkbox"] {
+    accent-color: currentColor;
+}
+
+/* Slightly increase specificity for nested links to ensure legibility on colored backgrounds */
+.gtd-task.task--overdue a.internal-link,
+.gtd-task.task--today a.internal-link,
+.gtd-task.task--future a.internal-link,
+.gtd-task.task--paused-dep a.internal-link,
+.gtd-task.task--paused-start a.internal-link {
+    color: inherit;
+    text-decoration: underline dotted;
+}
+
+/* Small padding adjustment so colored rows stand out from separators */
+.gtd-task.task--overdue,
+.gtd-task.task--today,
+.gtd-task.task--future,
+.gtd-task.task--paused-dep,
+.gtd-task.task--paused-start {
+    padding-left: 12px;
 }
