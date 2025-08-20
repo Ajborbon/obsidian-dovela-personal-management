@@ -2653,3 +2653,163 @@ body.is-copying {
 .gtd-task.task--paused-start {
     padding-left: 12px;
 }
+
+/* === SOLUCIÓN PARA CONFLICTO DE Z-INDEX EN FILTROS MÓVILES === */
+
+/* Asegurar que los elementos de filtros no interfieran cuando están colapsados */
+@media (max-width: 768px) {
+    
+    /* === ESTADO COLAPSADO: DESACTIVAR INTERACCIONES === */
+    .gtd-filters:not(.expanded) .filters-content {
+        /* Hacer completamente invisible e intocable */
+        visibility: hidden !important;
+        pointer-events: none !important;
+        opacity: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        position: relative !important;
+        z-index: -1 !important; /* Z-index negativo para asegurar que esté detrás */
+    }
+    
+    /* Asegurar que los inputs y datalist no puedan interceptar clics cuando colapsados */
+    .gtd-filters:not(.expanded) .gtd-filter-group {
+        pointer-events: none !important;
+        visibility: hidden !important;
+        position: relative !important;
+        z-index: -1 !important;
+    }
+    
+    .gtd-filters:not(.expanded) input,
+    .gtd-filters:not(.expanded) datalist {
+        pointer-events: none !important;
+        visibility: hidden !important;
+        z-index: -1 !important;
+        opacity: 0 !important;
+    }
+    
+    /* === ESTADO EXPANDIDO: ACTIVAR INTERACCIONES === */
+    .gtd-filters.expanded .filters-content {
+        visibility: visible !important;
+        pointer-events: auto !important;
+        opacity: 1 !important;
+        max-height: 500px !important;
+        overflow: visible !important;
+        position: relative !important;
+        z-index: 50 !important; /* Z-index moderado para contenido de filtros */
+    }
+    
+    .gtd-filters.expanded .gtd-filter-group {
+        pointer-events: auto !important;
+        visibility: visible !important;
+        position: relative !important;
+        z-index: 100 !important; /* Z-index para grupos de filtros */
+    }
+    
+    .gtd-filters.expanded input {
+        pointer-events: auto !important;
+        visibility: visible !important;
+        z-index: 1000 !important; /* Z-index para inputs */
+        opacity: 1 !important;
+    }
+    
+    /* === DATALIST OPTIMIZADO PARA MÓVIL === */
+    .gtd-filters.expanded datalist {
+        pointer-events: auto !important;
+        visibility: visible !important;
+        z-index: 9999 !important; /* Z-index más alto para datalist */
+        position: absolute !important;
+        max-height: 180px !important;
+        min-height: 120px !important;
+        overflow-y: auto !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        background: var(--background-primary) !important;
+        border: 1px solid var(--background-modifier-border) !important;
+        width: 100% !important;
+        margin-top: 2px !important;
+    }
+    
+    /* === PRIORIDAD PARA NAVEGACIÓN PRINCIPAL === */
+    .gtd-main-nav,
+    .gtd-nav-link {
+        z-index: 200 !important; /* Z-index alto para navegación principal */
+        position: relative !important;
+    }
+    
+    /* === ASEGURAR QUE EL HEADER TENGA PRIORIDAD CORRECTA === */
+    .gtd-sticky-header {
+        z-index: 300 !important; /* Z-index alto pero no conflictivo */
+        position: sticky !important;
+    }
+    
+    /* === TRANSICIONES OPTIMIZADAS === */
+    .gtd-filters .filters-content {
+        transition: max-height 0.2s ease-out,
+                   opacity 0.2s ease-out,
+                   visibility 0.2s ease-out,
+                   z-index 0s linear 0.2s; /* Z-index cambia después de la animación */
+    }
+    
+    .gtd-filters.expanded .filters-content {
+        transition: max-height 0.2s ease-out,
+                   opacity 0.2s ease-out,
+                   visibility 0s ease-out,
+                   z-index 0s linear; /* Z-index cambia inmediatamente cuando se expande */
+    }
+    
+    /* === MEJORAS ADICIONALES PARA UX === */
+    
+    /* Indicador visual mejorado para filtros activos */
+    .gtd-filters:not(.expanded) .filters-toggle.has-active-filters {
+        border-color: var(--interactive-accent) !important;
+        background: rgba(0, 122, 204, 0.1) !important;
+        box-shadow: 0 0 0 1px var(--interactive-accent) !important;
+    }
+    
+    /* Mejorar área de toque del toggle */
+    .filters-toggle {
+        min-height: 44px !important; /* Área de toque mínima recomendada */
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    
+    /* Prevenir zoom en inputs (Safari iOS) */
+    .gtd-filter-group input {
+        font-size: 16px !important; /* Mínimo para prevenir zoom en iOS */
+        -webkit-appearance: none !important;
+        border-radius: 4px !important;
+    }
+    
+    /* === FALLBACK PARA CASOS EXTREMOS === */
+    
+    /* Si algo falla, asegurar que al menos la navegación funcione */
+    .gtd-quick-nav {
+        position: relative !important;
+        z-index: 400 !important;
+    }
+    
+    /* Emergency override para listas principales */
+    .gtd-lists-container {
+        position: relative !important;
+        z-index: 150 !important;
+    }
+    
+    .gtd-list {
+        position: relative !important;
+        z-index: 151 !important;
+    }
+}
+
+/* === MEJORAS GENERALES (TODAS LAS PANTALLAS) === */
+
+/* Asegurar que los datalist tengan el z-index correcto pero sin conflictos */
+datalist {
+    z-index: 9999 !important;
+    position: absolute !important;
+}
+
+/* Mejorar la jerarquía visual general */
+.gtd-view-container {
+    position: relative;
+    z-index: 1;
+}

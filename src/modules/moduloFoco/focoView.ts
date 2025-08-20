@@ -216,174 +216,7 @@ export class FocoView extends ItemView {
         // === TOGGLE DE FILTROS MEJORADO PARA MÓVIL ===
         if (filtersToggle && filters) {
             console.log('Configurando toggle de filtros mejorado para móvil en Vista de Foco');
-            
-            // Función para actualizar contador de filtros activos
-            const updateFiltersCounter = () => {
-                const inputs = filters.querySelectorAll('.gtd-filter-group input');
-                const activeFilters = Array.from(inputs).filter(input => 
-                    (input as HTMLInputElement).value.trim() !== ''
-                ).length;
-                
-                const counterSpan = filtersToggle.querySelector('span:first-child');
-                if (counterSpan) {
-                    const baseText = '🔍 Filtros';
-                    const finalText = activeFilters > 0 
-                        ? `${baseText} (${activeFilters})` 
-                        : `${baseText}`;
-                    counterSpan.textContent = finalText;
-                }
-                
-                // Añadir indicador visual si hay filtros activos
-                if (activeFilters > 0) {
-                    filtersToggle.classList.add('has-active-filters');
-                } else {
-                    filtersToggle.classList.remove('has-active-filters');
-                }
-            };
-            
-            // Función para actualizar el estado de los filtros
-            const updateFiltersState = () => {
-                const isMobile = window.innerWidth <= 768;
-                const isExpanded = filters.classList.contains('expanded');
-                const filtersContent = filters.querySelector('.filters-content') as HTMLElement;
-                
-                if (isMobile) {
-                    // Mostrar el toggle en móvil
-                    filtersToggle.style.display = 'flex';
-                    
-                    if (isExpanded) {
-                        // Calcular altura dinámica basada en el contenido
-                        const contentHeight = filtersContent.scrollHeight;
-                        const minRequiredHeight = 180; // Altura mínima para 3 filtros
-                        const calculatedHeight = Math.max(contentHeight + 20, minRequiredHeight); // Asegurar mínimo
-                        const maxAllowedHeight = Math.min(calculatedHeight, 500); // Máximo 500px
-                        
-                        filtersContent.style.maxHeight = maxAllowedHeight + 'px';
-                        filtersContent.style.minHeight = minRequiredHeight + 'px';
-                        filtersContent.style.opacity = '1';
-                        filtersContent.style.marginTop = '12px';
-                    } else {
-                        filtersContent.style.maxHeight = '0';
-                        filtersContent.style.minHeight = '0';
-                        filtersContent.style.opacity = '0';
-                        filtersContent.style.marginTop = '0';
-                    }
-                } else {
-                    // En desktop, ocultar toggle y mostrar filtros siempre
-                    filtersToggle.style.display = 'none';
-                    filtersContent.style.maxHeight = 'none';
-                    filtersContent.style.opacity = '1';
-                    filtersContent.style.marginTop = '0';
-                    filters.classList.remove('expanded');
-                }
-                
-                // Actualizar icono
-                const icon = filtersToggle.querySelector('span:last-child');
-                if (icon && isMobile) {
-                    icon.textContent = isExpanded ? '▲' : '▼';
-                }
-                
-                // Configurar accesibilidad
-                filtersToggle.setAttribute('aria-expanded', isExpanded.toString());
-                filtersToggle.setAttribute('aria-controls', 'filters-content');
-            };
-            
-            // Función para manejar optimizaciones móviles
-            const initializeMobileOptimizations = () => {
-                const isMobile = window.innerWidth <= 768;
-                
-                if (isMobile) {
-                    // Mejorar inputs para móvil
-                    const filterInputs = filters.querySelectorAll('input');
-                    filterInputs.forEach((input) => {
-                        // Reducir debounce en móvil para mejor responsividad
-                        input.setAttribute('autocomplete', 'off');
-                        input.setAttribute('autocorrect', 'off');
-                        input.setAttribute('spellcheck', 'false');
-                        
-                        // Manejar virtual keyboard
-                        input.addEventListener('focus', () => {
-                            // Pequeño delay para que el keyboard aparezca
-                            setTimeout(() => {
-                                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }, 300);
-                        }, { signal: this.eventAbortController.signal });
-                    });
-                    
-                    // Auto-colapsar filtros cuando se hace scroll (UX mejorada)
-                    let scrollTimer: NodeJS.Timeout;
-                    let lastScrollY = container.scrollTop;
-                    
-                    const smartScrollHandler = () => {
-                        clearTimeout(scrollTimer);
-                        
-                        const currentScrollY = container.scrollTop;
-                        const isScrollingDown = currentScrollY > lastScrollY;
-                        
-                        // Si está expandido y se está scrolleando hacia abajo, colapsar
-                        if (isScrollingDown && filters.classList.contains('expanded')) {
-                            scrollTimer = setTimeout(() => {
-                                filters.classList.remove('expanded');
-                                updateFiltersState();
-                            }, 100);
-                        }
-                        
-                        lastScrollY = currentScrollY;
-                    };
-                    
-                    container.addEventListener('scroll', smartScrollHandler, { signal: this.eventAbortController.signal });
-                }
-            };
-            
-            // Event listener para el toggle
-            filtersToggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Toggle de filtros clickeado en Vista de Foco');
-                
-                const isMobile = window.innerWidth <= 768;
-                if (isMobile) {
-                    filters.classList.toggle('expanded');
-                    updateFiltersState();
-                    console.log('Estado expandido:', filters.classList.contains('expanded'));
-                }
-            }, { signal: this.eventAbortController.signal });
-            
-            // Event listener para actualizar contador cuando cambian los filtros
-            filters.addEventListener('input', (e) => {
-                if ((e.target as HTMLElement).closest('.gtd-filter-group')) {
-                    updateFiltersCounter();
-                }
-            }, { signal: this.eventAbortController.signal });
-            
-            // Manejar cambios de orientación
-            const handleOrientationChange = () => {
-                setTimeout(() => {
-                    const isMobile = window.innerWidth <= 768;
-                    
-                    if (isMobile) {
-                        // Asegurar que los filtros estén colapsados en landscape
-                        // para maximizar espacio vertical
-                        if (window.innerHeight < window.innerWidth) {
-                            filters.classList.remove('expanded');
-                        }
-                    } else {
-                        // En desktop, mostrar filtros siempre
-                        filters.classList.add('expanded');
-                    }
-                    updateFiltersState();
-                }, 100);
-            };
-            
-            // Inicializar estado y optimizaciones
-            updateFiltersState();
-            updateFiltersCounter();
-            initializeMobileOptimizations();
-            
-            // Event listeners globales
-            window.addEventListener('resize', handleOrientationChange, { signal: this.eventAbortController.signal });
-            window.addEventListener('orientationchange', handleOrientationChange, { signal: this.eventAbortController.signal });
-            
+            this.initializeMobileFiltersOptimization(container);
         } else {
             console.log('No se encontraron elementos de filtros en Vista de Foco:', { filtersToggle, filters });
         }
@@ -421,6 +254,9 @@ export class FocoView extends ItemView {
             // Contar tareas visibles por lista y sublista
             const listCounts = new Map<string, number>();
             const groupCounts = new Map<string, number>();
+            
+            // NUEVO: Set para trackear IDs únicos de tareas visibles
+            const uniqueVisibleTaskIds = new Set<string>();
             let totalVisible = 0;
 
             container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
@@ -428,6 +264,11 @@ export class FocoView extends ItemView {
                 let taskContexts: string[] = [];
                 let taskPeople: string[] = [];
                 const taskContent = (htmlTaskEl.dataset['content'] || '').toLowerCase();
+                
+                // NUEVO: Obtener ID único de la tarea combinando path y línea
+                const taskPath = htmlTaskEl.dataset['taskPath'] || '';
+                const taskLine = htmlTaskEl.dataset['taskLine'] || '';
+                const taskId = taskPath && taskLine ? `${taskPath}:${taskLine}` : (htmlTaskEl.dataset['taskId'] || htmlTaskEl.dataset['taskLine'] || '');
 
                 try {
                     const parsedContexts = JSON.parse(htmlTaskEl.dataset['contexts'] || '[]');
@@ -451,16 +292,20 @@ export class FocoView extends ItemView {
                 htmlTaskEl.style.display = isVisible ? '' : 'none';
 
                 if (isVisible) {
-                    totalVisible++;
+                    // NUEVO: Solo contar para el total único si no hemos visto este ID antes
+                    if (taskId && !uniqueVisibleTaskIds.has(taskId)) {
+                        uniqueVisibleTaskIds.add(taskId);
+                        totalVisible++;
+                    }
                     
-                    // Contar para la lista principal
+                    // Mantener conteo por lista para navegación (esto sigue igual)
                     const listEl = htmlTaskEl.closest('.gtd-list');
                     if (listEl) {
                         const listId = listEl.id;
                         listCounts.set(listId, (listCounts.get(listId) || 0) + 1);
                     }
                     
-                    // Contar para sublistas/grupos
+                    // Mantener conteo por grupos para navegación (esto sigue igual)
                     const groupEl = htmlTaskEl.closest('.gtd-group');
                     if (groupEl) {
                         const groupId = groupEl.id;
@@ -523,14 +368,28 @@ export class FocoView extends ItemView {
                 }
             });
 
-            // Actualizar total general
+            // CAMBIO PRINCIPAL: Actualizar total general usando conteo único
             const totalTasksEl = container.querySelector('#gtd-total-tasks');
             if (totalTasksEl) {
                 const hasFilters = selectedContext || selectedPerson || contentSearchTerm;
+                
+                // NUEVO: Calcular total único sin filtros para la comparación
+                const allUniqueTaskIds = new Set<string>();
+                container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
+                    const htmlTaskEl = taskEl as HTMLElement;
+                    const taskPath = htmlTaskEl.dataset['taskPath'] || '';
+                    const taskLine = htmlTaskEl.dataset['taskLine'] || '';
+                    const taskId = taskPath && taskLine ? `${taskPath}:${taskLine}` : (htmlTaskEl.dataset['taskId'] || htmlTaskEl.dataset['taskLine'] || '');
+                    if (taskId) {
+                        allUniqueTaskIds.add(taskId);
+                    }
+                });
+                const totalUniqueCount = allUniqueTaskIds.size;
+                
                 if (hasFilters) {
-                    totalTasksEl.innerHTML = `<span>Tareas Filtradas: <strong>${totalVisible}</strong> (de ${container.querySelectorAll('.gtd-task').length} totales)</span>`;
+                    totalTasksEl.innerHTML = `<span>Tareas Filtradas: <strong>${totalVisible}</strong> (de ${totalUniqueCount} totales)</span>`;
                 } else {
-                    totalTasksEl.innerHTML = `<span>Total de Tareas Abiertas: <strong>${container.querySelectorAll('.gtd-task').length}</strong></span>`;
+                    totalTasksEl.innerHTML = `<span>Total de Tareas Abiertas: <strong>${totalUniqueCount}</strong></span>`;
                 }
             }
 
@@ -628,5 +487,301 @@ export class FocoView extends ItemView {
                 }
             }
         }, { signal: this.eventAbortController.signal });
+    }
+
+    private initializeMobileFiltersOptimization(container: HTMLElement): void {
+        const filtersToggle = container.querySelector('#filters-toggle') as HTMLElement;
+        const filters = container.querySelector('#gtd-filters') as HTMLElement;
+        
+        if (!filtersToggle || !filters) {
+            console.log('Elementos de filtros no encontrados en Vista de Foco');
+            return;
+        }
+
+        console.log('Inicializando optimización de filtros móviles en Vista de Foco');
+        
+        // === FUNCIONES AUXILIARES ===
+        
+        const isMobile = () => window.innerWidth <= 768;
+        
+        const updateFiltersState = () => {
+            const mobile = isMobile();
+            const isExpanded = filters.classList.contains('expanded');
+            const filtersContent = filters.querySelector('.filters-content') as HTMLElement;
+            
+            if (mobile) {
+                // Mostrar toggle en móvil
+                filtersToggle.style.display = 'flex';
+                
+                if (isExpanded) {
+                    // Estado expandido: hacer todo interactivo
+                    filters.classList.add('expanded');
+                    filtersContent.style.pointerEvents = 'auto';
+                    filtersContent.style.visibility = 'visible';
+                    filtersContent.style.zIndex = '50';
+                    
+                    // Activar inputs individualmente
+                    const inputs = filters.querySelectorAll('input');
+                    inputs.forEach(input => {
+                        (input as HTMLElement).style.pointerEvents = 'auto';
+                        (input as HTMLElement).style.visibility = 'visible';
+                        (input as HTMLElement).style.zIndex = '1000';
+                    });
+                    
+                    // Activar grupos de filtros
+                    const filterGroups = filters.querySelectorAll('.gtd-filter-group');
+                    filterGroups.forEach(group => {
+                        (group as HTMLElement).style.pointerEvents = 'auto';
+                        (group as HTMLElement).style.visibility = 'visible';
+                        (group as HTMLElement).style.zIndex = '100';
+                    });
+                    
+                } else {
+                    // Estado colapsado: hacer todo no interactivo
+                    filters.classList.remove('expanded');
+                    filtersContent.style.pointerEvents = 'none';
+                    filtersContent.style.visibility = 'hidden';
+                    filtersContent.style.zIndex = '-1';
+                    
+                    // Desactivar inputs individualmente
+                    const inputs = filters.querySelectorAll('input');
+                    inputs.forEach(input => {
+                        (input as HTMLElement).style.pointerEvents = 'none';
+                        (input as HTMLElement).style.visibility = 'hidden';
+                        (input as HTMLElement).style.zIndex = '-1';
+                        (input as HTMLInputElement).blur(); // Quitar foco si lo tiene
+                    });
+                    
+                    // Desactivar grupos de filtros
+                    const filterGroups = filters.querySelectorAll('.gtd-filter-group');
+                    filterGroups.forEach(group => {
+                        (group as HTMLElement).style.pointerEvents = 'none';
+                        (group as HTMLElement).style.visibility = 'hidden';
+                        (group as HTMLElement).style.zIndex = '-1';
+                    });
+                }
+            } else {
+                // En desktop: resetear todo y mostrar siempre
+                filtersToggle.style.display = 'none';
+                filters.classList.add('expanded'); // Siempre expandido en desktop
+                
+                // Resetear estilos inline
+                filtersContent.style.pointerEvents = '';
+                filtersContent.style.visibility = '';
+                filtersContent.style.zIndex = '';
+                
+                const inputs = filters.querySelectorAll('input');
+                inputs.forEach(input => {
+                    (input as HTMLElement).style.pointerEvents = '';
+                    (input as HTMLElement).style.visibility = '';
+                    (input as HTMLElement).style.zIndex = '';
+                });
+                
+                const filterGroups = filters.querySelectorAll('.gtd-filter-group');
+                filterGroups.forEach(group => {
+                    (group as HTMLElement).style.pointerEvents = '';
+                    (group as HTMLElement).style.visibility = '';
+                    (group as HTMLElement).style.zIndex = '';
+                });
+            }
+            
+            // Actualizar icono
+            const icon = filtersToggle.querySelector('span:last-child');
+            if (icon && mobile) {
+                icon.textContent = isExpanded ? '▲' : '▼';
+            }
+            
+            // Actualizar accesibilidad
+            filtersToggle.setAttribute('aria-expanded', isExpanded.toString());
+        };
+        
+        const updateFiltersCounter = () => {
+            const inputs = filters.querySelectorAll('.gtd-filter-group input');
+            const activeFilters = Array.from(inputs).filter(input => 
+                (input as HTMLInputElement).value.trim() !== ''
+            ).length;
+            
+            const counterSpan = filtersToggle.querySelector('span:first-child');
+            if (counterSpan) {
+                const baseText = '🔍 Filtros';
+                counterSpan.textContent = activeFilters > 0 
+                    ? `${baseText} (${activeFilters})` 
+                    : `${baseText}`;
+            }
+            
+            // Indicador visual de filtros activos
+            if (activeFilters > 0) {
+                filtersToggle.classList.add('has-active-filters');
+            } else {
+                filtersToggle.classList.remove('has-active-filters');
+            }
+        };
+        
+        // === OPTIMIZACIONES ESPECÍFICAS PARA MÓVIL ===
+        
+        const initializeMobileOptimizations = () => {
+            if (!isMobile()) return;
+            
+            // Mejorar inputs para móvil
+            const filterInputs = filters.querySelectorAll('input');
+            filterInputs.forEach((input) => {
+                // Atributos para mejor experiencia móvil
+                input.setAttribute('autocomplete', 'off');
+                input.setAttribute('autocorrect', 'off');
+                input.setAttribute('spellcheck', 'false');
+                
+                // Manejar teclado virtual
+                input.addEventListener('focus', () => {
+                    // Asegurar que el filtro esté expandido cuando se enfoca un input
+                    if (!filters.classList.contains('expanded')) {
+                        filters.classList.add('expanded');
+                        updateFiltersState();
+                    }
+                    
+                    // Scroll suave hacia el input después de que aparezca el teclado
+                    setTimeout(() => {
+                        input.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center',
+                            inline: 'nearest'
+                        });
+                    }, 300);
+                }, { signal: this.eventAbortController.signal });
+                
+                // Manejar pérdida de foco
+                input.addEventListener('blur', () => {
+                    // Permitir un pequeño delay antes de colapsar automáticamente
+                    setTimeout(() => {
+                        // Solo colapsar si ningún input tiene foco
+                        const focusedInput = filters.querySelector('input:focus');
+                        if (!focusedInput && isMobile()) {
+                            // No colapsar automáticamente para mejor UX
+                            // El usuario puede colapsar manualmente si lo desea
+                        }
+                    }, 100);
+                }, { signal: this.eventAbortController.signal });
+            });
+            
+            // Auto-colapsar en scroll (UX mejorada)
+            let scrollTimer: NodeJS.Timeout;
+            let lastScrollY = container.scrollTop;
+            
+            const smartScrollHandler = () => {
+                if (!isMobile()) return;
+                
+                clearTimeout(scrollTimer);
+                
+                const currentScrollY = container.scrollTop;
+                const isScrollingDown = currentScrollY > lastScrollY;
+                const scrollDelta = Math.abs(currentScrollY - lastScrollY);
+                
+                // Solo colapsar si se está scrolleando significativamente hacia abajo
+                if (isScrollingDown && scrollDelta > 30 && filters.classList.contains('expanded')) {
+                    scrollTimer = setTimeout(() => {
+                        // Verificar que ningún input tenga foco antes de colapsar
+                        const focusedInput = filters.querySelector('input:focus');
+                        if (!focusedInput) {
+                            filters.classList.remove('expanded');
+                            updateFiltersState();
+                        }
+                    }, 150);
+                }
+                
+                lastScrollY = currentScrollY;
+            };
+            
+            container.addEventListener('scroll', smartScrollHandler, { 
+                signal: this.eventAbortController.signal,
+                passive: true 
+            });
+        };
+        
+        // === EVENT LISTENERS ===
+        
+        // Toggle principal
+        filtersToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isMobile()) {
+                const wasExpanded = filters.classList.contains('expanded');
+                
+                if (wasExpanded) {
+                    filters.classList.remove('expanded');
+                } else {
+                    filters.classList.add('expanded');
+                }
+                
+                updateFiltersState();
+                
+                console.log('Toggle filtros en Vista de Foco:', filters.classList.contains('expanded') ? 'expandido' : 'colapsado');
+            }
+        }, { signal: this.eventAbortController.signal });
+        
+        // Actualizar contador cuando cambian los filtros
+        filters.addEventListener('input', (e) => {
+            if ((e.target as HTMLElement).closest('.gtd-filter-group')) {
+                updateFiltersCounter();
+            }
+        }, { signal: this.eventAbortController.signal });
+        
+        // Manejar cambios de tamaño de ventana y orientación
+        const handleOrientationChange = () => {
+            // Delay para que la orientación se complete
+            setTimeout(() => {
+                const mobile = isMobile();
+                
+                if (mobile) {
+                    // En móvil: permitir estado actual pero optimizar para landscape
+                    if (window.innerHeight < window.innerWidth) {
+                        // Landscape: colapsar para maximizar espacio vertical
+                        filters.classList.remove('expanded');
+                    }
+                } else {
+                    // En desktop: siempre expandido
+                    filters.classList.add('expanded');
+                }
+                
+                updateFiltersState();
+            }, 100);
+        };
+        
+        // === INICIALIZACIÓN ===
+        
+        // Estado inicial
+        updateFiltersState();
+        updateFiltersCounter();
+        initializeMobileOptimizations();
+        
+        // Listeners globales
+        window.addEventListener('resize', handleOrientationChange, { 
+            signal: this.eventAbortController.signal 
+        });
+        
+        window.addEventListener('orientationchange', handleOrientationChange, { 
+            signal: this.eventAbortController.signal 
+        });
+        
+        // Escuchar cambios en los inputs para indicadores de estado
+        const filterInputs = container.querySelectorAll('.gtd-filter-group input[type="text"]');
+        filterInputs.forEach(input => {
+            const updateFilterState = () => {
+                const filterGroup = input.closest('.gtd-filter-group');
+                if (filterGroup) {
+                    if ((input as HTMLInputElement).value.trim()) {
+                        filterGroup.classList.add('has-value');
+                    } else {
+                        filterGroup.classList.remove('has-value');
+                    }
+                }
+            };
+            
+            input.addEventListener('input', updateFilterState, { 
+                signal: this.eventAbortController.signal 
+            });
+            updateFilterState(); // Estado inicial
+        });
+        
+        console.log('Optimización de filtros móviles inicializada correctamente en Vista de Foco');
     }
 }

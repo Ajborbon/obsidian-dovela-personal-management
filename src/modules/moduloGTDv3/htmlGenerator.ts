@@ -175,12 +175,35 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
             .trim();
     };
 
-    // Reorder lists so Ojalá Hoy appears before Contexts (NextActions) and Assigned after contexts.
-    const listOrder: GtdList[] = [
-        GtdList.Inbox, GtdList.HopeToday, GtdList.NextActions, GtdList.Calendar,
-        GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
-        GtdList.ThisWeekNot, GtdList.SomedayMaybe,
-    ];
+    // === NUEVO: ORDENAMIENTO DINÁMICO CON "OJALÁ HOY" PRIMERA ===
+    // Función auxiliar para generar orden dinámico basado en existencia
+    const generateDynamicListOrder = (): GtdList[] => {
+        // Orden base sin "Ojalá hoy"
+        const baseOrder: GtdList[] = [
+            GtdList.Inbox, GtdList.NextActions, GtdList.Calendar,
+            GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
+            GtdList.ThisWeekNot, GtdList.SomedayMaybe,
+        ];
+        
+        // Verificar si "Ojalá hoy" existe y tiene tareas
+        const hopeToday = gtdLists[GtdList.HopeToday];
+        const hopeTodayExists = hopeToday && (
+            Array.isArray(hopeToday) 
+                ? hopeToday.length > 0
+                : (hopeToday instanceof Map && hopeToday.size > 0)
+        );
+        
+        // Si "Ojalá hoy" existe, ponerla primera. Si no, usar orden base.
+        if (hopeTodayExists) {
+            return [GtdList.HopeToday, ...baseOrder];
+        } else {
+            return baseOrder;
+        }
+    };
+    
+    // Usar orden dinámico
+    const listOrder = generateDynamicListOrder();
+    console.log('📋 GTD Order: Orden de listas dinámico:', listOrder.map(l => l.toString()));
 
     for (const listName of listOrder) {
         const tasks = gtdLists[listName];
@@ -331,14 +354,33 @@ function generateQuickNavHtml(data: ProcessedVaultData): string {
             .trim();
     };
 
-    // Generate navigation using navigationItems
-    const mainNavLinks = navigationItems
-        .filter(item => !item.isSublist)
+    // === NUEVO: ORDENAMIENTO DINÁMICO DE NAVEGACIÓN ===
+    // Filtrar y reordenar navigationItems para poner "Ojalá hoy" primera
+    const reorderNavigationItems = (items: any[]) => {
+        const mainItems = items.filter(item => !item.isSublist);
+        const hopeTodayItem = mainItems.find(item => 
+            item.label && item.label.toLowerCase().includes('ojalá')
+        );
+        const otherItems = mainItems.filter(item => 
+            !(item.label && item.label.toLowerCase().includes('ojalá'))
+        );
+        
+        // Si existe "Ojalá hoy", ponerla primera
+        if (hopeTodayItem) {
+            return [hopeTodayItem, ...otherItems];
+        }
+        return otherItems;
+    };
+    
+    const orderedMainItems = reorderNavigationItems(navigationItems);
+    
+    // Generate navigation using reordered navigationItems
+    const mainNavLinks = orderedMainItems
         .map(item => `
             <a href="#${item.anchor}" class="gtd-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
         `).join('');
 
-    // Build ordered sub-navigation groups
+    // Build ordered sub-navigation groups (mantenemos la lógica existente)
     const hopeParentId = `gtd-list-${createAnchorId('Ojalá Hoy')}`;
     const nextParentId = `gtd-list-${createAnchorId('Próximas Acciones')}`;
     const assignedParentId = `gtd-list-${createAnchorId('Asignadas o Delegadas')}`;
