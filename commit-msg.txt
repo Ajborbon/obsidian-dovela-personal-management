@@ -1,0 +1,26 @@
+feat(time-tracker): iniciar temporizador según selección de tarea y extraer comandos a clase dedicada
+
+Nueva funcionalidad:
+- Inicia el temporizador según la selección de una tarea en la nota activa.
+- Valida selección y contexto antes de iniciar:
+  - Sin selección válida → fallback al comportamiento original (usar nombre de la nota).
+  - Selección multi-línea → Notice con indicación al usuario.
+  - Selección que no es tarea → Notice con indicación al usuario.
+  - Tarea válida (- [ ] o - [/]) → inicia temporizador con el contenido y número de línea.
+- Se incorporan utilidades de análisis (TaskAnalysisResult y analyzeSelectedTask).
+
+Refactor:
+- Se extrae el registro de comandos y ribbon icons a una clase dedicada: TimeTrackerCommands.
+- En main.ts se importa e instancia la clase y se llama a:
+  - timeTrackerCommands.registerCommands()
+  - timeTrackerCommands.registerRibbonIcons()
+- Se cambia openEditActiveTimerModal de private a public para invocarla desde la nueva clase.
+
+Motivación:
+- Mejorar la precisión del seguimiento cuando el usuario selecciona explícitamente una tarea.
+- Separación de responsabilidades y reducción de complejidad en main.ts para futuras extensiones.
+
+Alcance de cambios (según diff actual):
+- src/main.ts: -51 / +8 (elimina lógica embebida y delega a la nueva clase)
+- src/modules/moduloGTDv3/timeTrackerCommands.ts: nuevo
+- src/modules/moduloGTDv3/taskSelectionAnalyzer.ts: nuevo

@@ -79,6 +79,17 @@ export interface HierarchicalItem {
     isNoteMissing?: boolean; // True si este item es un placeholder para una nota principal faltante.
 }
 
+// Representa un elemento de navegación para las listas GTD
+export interface NavigationItem {
+    id: string;           // ID único para el elemento (ej: "next-actions-cx-oficina")
+    label: string;        // Texto a mostrar (ej: "#cx-oficina")
+    count: number;        // Número de tareas
+    icon: string;         // Icono a mostrar (ej: "📋" para contextos, "👤" para personas)
+    isSublist: boolean;   // True si es una sublista, false si es lista principal
+    parentList?: string;  // ID de la lista padre (solo para sublistas)
+    anchor: string;       // Ancla para navegación (ej: "#cx-oficina")
+}
+
 // Contenedor para los datos procesados.
 export interface ProcessedVaultData {
     hierarchicalData: HierarchicalItem[];
@@ -87,6 +98,7 @@ export interface ProcessedVaultData {
     allTasks: Task[];
     uniqueContexts: string[];
     uniquePeople: string[];
+    navigationItems: NavigationItem[]; // Nueva propiedad para navegación
 }
 
 export interface InProgressData {

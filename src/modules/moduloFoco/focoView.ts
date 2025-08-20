@@ -107,7 +107,7 @@ export class FocoView extends ItemView {
             const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
 
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
-            const { gtdLists, uniqueContexts, uniquePeople } = processGtdLists(parsedData.allTasks, allTaskMap);
+            const { gtdLists, uniqueContexts, uniquePeople, navigationItems } = processGtdLists(parsedData.allTasks, allTaskMap);
             const inProgressData = processInProgressTasks(parsedData.allTasks, this.activeGrouping, this.activeSorting);
 
             const finalData: ProcessedVaultData = {
@@ -117,6 +117,7 @@ export class FocoView extends ItemView {
                 allTasks: parsedData.allTasks,
                 uniqueContexts: uniqueContexts,
                 uniquePeople: uniquePeople,
+                navigationItems: navigationItems
             };
 
             const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.activeFile?.basename);

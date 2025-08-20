@@ -249,6 +249,7 @@ export async function parseVault(vault: Vault, metadataCache: MetadataCache): Pr
         allTasks: allTasks,
         uniqueContexts: Array.from(uniqueContexts),
         uniquePeople: Array.from(uniquePeople),
-        inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } }
+        inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
+        navigationItems: [] // Agregamos navigationItems vacío ya que el parser no genera listas GTD
     };
 }

@@ -157,8 +157,17 @@ function renderTask(task: Task, breadcrumb: string): string {
 }
 
 function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
-    const { gtdLists, uniqueContexts, uniquePeople } = data;
+    const { gtdLists, uniqueContexts, uniquePeople, navigationItems = [] } = data;
     let html = '<div class="gtd-lists-container">';
+
+    // Función auxiliar para crear IDs consistentes (igual que en el processor)
+    const createAnchorId = (text: string): string => {
+        return text.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiales excepto espacios y guiones
+            .replace(/\s+/g, '-') // Reemplazar espacios con guiones
+            .replace(/-+/g, '-') // Remover guiones múltiples
+            .trim();
+    };
 
     html += `
         <div class="gtd-filters">
@@ -183,33 +192,31 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         </div>
     `;
 
+    // Generate navigation using navigationItems
+    const mainNavLinks = navigationItems
+        .filter(item => !item.isSublist)
+        .map(item => `
+            <a href="#${item.anchor}" class="gtd-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
+        `).join(' | ');
+    
+    const subNavLinks = navigationItems
+        .filter(item => item.isSublist)
+        .map(item => `
+            <a href="#${item.anchor}" class="gtd-nav-link gtd-sub-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
+        `).join(' | ');
+    
+    html += `<nav class="gtd-quick-nav">
+        <div class="gtd-main-nav">${mainNavLinks}</div>
+        ${subNavLinks ? `<div class="gtd-sub-nav">${subNavLinks}</div>` : ''}
+    </nav>`;
+
     const listOrder: GtdList[] = [
         GtdList.Inbox, GtdList.NextActions, GtdList.Calendar, GtdList.HopeToday,
         GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
         GtdList.ThisWeekNot, GtdList.SomedayMaybe,
     ];
 
-    const navLinks = listOrder
-        .filter(listName => {
-            const tasks = gtdLists[listName];
-            if (!tasks) return false;
-            const totalTasksInList = Array.isArray(tasks)
-                ? tasks.length
-                : (tasks && typeof (tasks as any).values === 'function'
-                    ? (() => {
-                        const vals = Array.from((tasks as any).values()) as Task[][];
-                        return vals.reduce((sum, arr) => sum + arr.length, 0);
-                    })()
-                    : 0);
-            return totalTasksInList > 0;
-        })
-        .map(listName => `
-            <a href="#gtd-list-${listName.replace(/[^a-zA-Z0-9-]/g, '-')}" class="gtd-nav-link">${listName}</a>
-        `).join(' | ');
-    
-    html += `<nav class="gtd-quick-nav">${navLinks}</nav>`;
-
-        for (const listName of listOrder) {
+    for (const listName of listOrder) {
         const tasks = gtdLists[listName];
         const totalTasksInList = Array.isArray(tasks)
             ? tasks.length
@@ -222,7 +229,7 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
 
         if (!tasks || totalTasksInList === 0) continue;
 
-        const listId = `gtd-list-${listName.replace(/[^a-zA-Z0-9-]/g, '-')}`;
+        const listId = createAnchorId(`gtd-list-${listName}`);
 
         html += `
             <details class="gtd-list" open id="${listId}">
@@ -231,76 +238,18 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         
         const renderTaskWithBreadcrumb = (task: Task) => renderTask(task, taskBreadcrumbMap.get(task.id) || '');
 
-        if (listName === GtdList.NextActions) {
-            const grouped = tasks as unknown as Map<string, Task[]>;
-            const sortedGroupNames = (Array.from(((grouped as any)?.keys?.() ?? []) as string[])).sort();
+        // Handle grouped lists (Maps) vs simple lists (Arrays)
+        if (tasks instanceof Map) {
+            const sortedGroupNames = Array.from(tasks.keys()).sort();
 
             for (const groupName of sortedGroupNames) {
-                const groupTasks = grouped.get(groupName);
-                if (groupTasks) {
+                const groupTasks = tasks.get(groupName);
+                if (groupTasks && groupTasks.length > 0) {
+                    // Usar la misma lógica de generación de ID que en el processor
+                    const groupId = createAnchorId(`${listName}-${groupName}`);
                     html += `
-                        <div class="gtd-group">
-                            <div class="gtd-group-title">${groupName}</div>
-                            <ul class="gtd-task-list">
-                                ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
-            }
-        } else if (listName === GtdList.HopeToday) {
-            (tasks as Task[]).sort((a, b) => {
-                const aIsCalendar = a.dateSymbol === '📅' ? 0 : 1;
-                const bIsCalendar = b.dateSymbol === '📅' ? 0 : 1;
-                if (aIsCalendar !== bIsCalendar) return aIsCalendar - bIsCalendar;
-                return a.priority.localeCompare(b.priority);
-            });
-
-            const grouped: Record<string, Task[]> = {};
-            for (const task of (tasks as Task[])) {
-                const key = task.contexts[0] || task.assignedPeople[0] || 'Sin Contexto';
-                if (!grouped[key]) grouped[key] = [];
-                grouped[key].push(task);
-            }
-
-            const sortedGroupNames = Object.keys(grouped).sort();
-
-            for (const groupName of sortedGroupNames) {
-                const groupTasks = grouped[groupName];
-                if (groupTasks) {
-                    html += `
-                        <div class="gtd-group">
-                            <div class="gtd-group-title">${groupName}</div>
-                            <ul class="gtd-task-list">
-                                ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
-            }
-        } else if (listName === GtdList.Overdue) {
-            (tasks as Task[]).sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
-            html += `
-                <ul class="gtd-task-list">
-                    ${(tasks as Task[]).map(renderTaskWithBreadcrumb).join('')}
-                </ul>
-            `;
-        } else if (listName === GtdList.Assigned) {
-            const grouped: Record<string, Task[]> = {};
-            for (const task of (tasks as Task[])) {
-                const key = task.assignedPeople[0] || 'Sin Asignar';
-                if (!grouped[key]) grouped[key] = [];
-                grouped[key].push(task);
-            }
-
-            const sortedGroupNames = Object.keys(grouped).sort();
-
-            for (const groupName of sortedGroupNames) {
-                const groupTasks = grouped[groupName];
-                if (groupTasks) {
-                    html += `
-                        <div class="gtd-group">
-                            <div class="gtd-group-title">${groupName}</div>
+                        <div class="gtd-group" id="${groupId}">
+                            <div class="gtd-group-title">${groupName} <span class="gtd-group-count">${groupTasks.length}</span></div>
                             <ul class="gtd-task-list">
                                 ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
                             </ul>
@@ -309,6 +258,11 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
                 }
             }
         } else {
+            // Handle special sorting for certain lists
+            if (listName === GtdList.Overdue) {
+                (tasks as Task[]).sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
+            }
+            
             html += `
                 <ul class="gtd-task-list">
                     ${(tasks as Task[]).map(renderTaskWithBreadcrumb).join('')}

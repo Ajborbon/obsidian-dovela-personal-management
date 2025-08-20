@@ -241,6 +241,7 @@ export async function parseFocus(activeFile: TFile, vault: Vault, metadataCache:
         allTasks: allTasks,
         uniqueContexts: Array.from(uniqueContexts),
         uniquePeople: Array.from(uniquePeople),
-        inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } }
+        inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
+        navigationItems: [] // Agregamos navigationItems vacío ya que se generará en el processor
     };
 }
