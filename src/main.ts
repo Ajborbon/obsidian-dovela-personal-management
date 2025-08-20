@@ -244,25 +244,42 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     }
 
     private async activateFocoView(activeFile: TFile): Promise<void> {
+        console.log('🔍 MAIN DEBUG: Iniciando activateFocoView');
+        console.log('🔍 MAIN DEBUG: activeFile:', activeFile.path);
+        console.log('🔍 MAIN DEBUG: activeFile.basename:', activeFile.basename);
+        console.log('🔍 MAIN DEBUG: isMobile:', (this.app as any).isMobile || 'unknown');
+        
         const leaves = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
+        console.log('🔍 MAIN DEBUG: Hojas existentes de tipo FOCO:', leaves.length);
+        
         let leaf: WorkspaceLeaf | undefined = leaves.find(l => (l.view as FocoView).getDisplayText().includes(activeFile.basename));
 
         if (!leaf) {
+            console.log('🔍 MAIN DEBUG: No se encontró hoja existente, creando nueva...');
             leaf = this.app.workspace.getLeaf('tab');
             if (!leaf) {
+                console.error('🔍 MAIN DEBUG: No se pudo crear una nueva pestaña');
                 new Notice('No se pudo crear una nueva pestaña');
                 return;
             }
+            console.log('🔍 MAIN DEBUG: Hoja creada, configurando view state...');
             await leaf.setViewState({
                 type: FOCO_VIEW_TYPE,
                 active: true,
                 state: { activeFile: activeFile.path } // Pass file path to the view state
             });
+            console.log('🔍 MAIN DEBUG: View state configurado, asignando activeFile...');
             (leaf.view as FocoView)['activeFile'] = activeFile; // Directly set the active file
+            console.log('🔍 MAIN DEBUG: Llamando a onOpen manualmente...');
             await (leaf.view as FocoView).onOpen(); // Manually trigger onOpen to render with the file
+            console.log('🔍 MAIN DEBUG: onOpen completado');
+        } else {
+            console.log('🔍 MAIN DEBUG: Hoja existente encontrada, reutilizando...');
         }
         
+        console.log('🔍 MAIN DEBUG: Revelando hoja...');
         this.app.workspace.revealLeaf(leaf);
+        console.log('🔍 MAIN DEBUG: activateFocoView completado');
     }
 
     private async activateView(switchToTimeTracker: boolean = false): Promise<void> {

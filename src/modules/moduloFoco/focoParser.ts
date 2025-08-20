@@ -150,21 +150,31 @@ export function parseTasks(content: string, sourceFile: TFile): Task[] {
 // --- NUEVA LÓGICA DE RECOLECCIÓN ---
 
 async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache: MetadataCache): Promise<Set<TFile>> {
+    console.log('🔍 COLLECT DEBUG: Iniciando collectFocusFiles');
+    console.log('🔍 COLLECT DEBUG: activeFile:', activeFile.path);
+    console.log('🔍 COLLECT DEBUG: parent folder:', activeFile.parent?.path);
+    
     const focusFiles = new Set<TFile>();
     const processedPaths = new Set<string>();
 
     // 1. Add the active file itself
+    console.log('🔍 COLLECT DEBUG: Añadiendo archivo activo');
     focusFiles.add(activeFile);
     processedPaths.add(activeFile.path);
 
     // 2. Get all files in the same folder and subfolders
+    console.log('🔍 COLLECT DEBUG: Recolectando archivos de carpeta...');
     const rootFolder = activeFile.parent;
     if (rootFolder) {
+        console.log('🔍 COLLECT DEBUG: Carpeta raíz encontrada:', rootFolder.path);
         const allDescendantFiles = (folder: TFolder): TFile[] => {
             let files: TFile[] = [];
             for (const child of folder.children) {
                 if (child instanceof TFile && child.extension === 'md') {
+                    console.log(`🔍 COLLECT DEBUG: Archivo MD encontrado: ${child.path}`);
                     files.push(child);
+                } else if (child instanceof TFile) {
+                    console.log(`🔍 COLLECT DEBUG: Archivo no-MD saltado (${child.extension}): ${child.path}`);
                 } else if (child instanceof TFolder) {
                     files = files.concat(allDescendantFiles(child));
                 }
@@ -172,13 +182,17 @@ async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache
             return files;
         };
         const folderFiles = allDescendantFiles(rootFolder);
+        console.log('🔍 COLLECT DEBUG: Archivos de carpeta encontrados:', folderFiles.length);
         folderFiles.forEach(file => {
             focusFiles.add(file);
             processedPaths.add(file.path);
         });
+    } else {
+        console.log('🔍 COLLECT DEBUG: No se encontró carpeta padre');
     }
 
     // 3. Get linked files recursively (2 levels)
+    console.log('🔍 COLLECT DEBUG: Recolectando archivos enlazados...');
     const getLinkedFiles = (fileSet: Set<TFile>): Set<TFile> => {
         const newFiles = new Set<TFile>();
         for (const file of fileSet) {
@@ -187,9 +201,14 @@ async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache
 
             for (const link of cache.links) {
                 const linkedFile = metadataCache.getFirstLinkpathDest(link.link, file.path);
-                if (linkedFile instanceof TFile && !processedPaths.has(linkedFile.path)) {
+                if (linkedFile instanceof TFile && 
+                    linkedFile.extension === 'md' && 
+                    !processedPaths.has(linkedFile.path)) {
+                    console.log(`🔍 COLLECT DEBUG: Archivo enlazado MD encontrado: ${linkedFile.path}`);
                     newFiles.add(linkedFile);
                     processedPaths.add(linkedFile.path);
+                } else if (linkedFile instanceof TFile && linkedFile.extension !== 'md') {
+                    console.log(`🔍 COLLECT DEBUG: Archivo enlazado no-MD saltado (${linkedFile.extension}): ${linkedFile.path}`);
                 }
             }
         }
@@ -197,51 +216,113 @@ async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache
     };
 
     const level1Files = getLinkedFiles(new Set(focusFiles));
+    console.log('🔍 COLLECT DEBUG: Archivos nivel 1:', level1Files.size);
     level1Files.forEach(file => focusFiles.add(file));
 
     const level2Files = getLinkedFiles(level1Files);
+    console.log('🔍 COLLECT DEBUG: Archivos nivel 2:', level2Files.size);
     level2Files.forEach(file => focusFiles.add(file));
 
+    console.log('🔍 COLLECT DEBUG: Total archivos recolectados:', focusFiles.size);
+    console.log('🔍 COLLECT DEBUG: Lista de archivos:', Array.from(focusFiles).map(f => f.path));
+    
     return focusFiles;
 }
 
 
 export async function parseFocus(activeFile: TFile, vault: Vault, metadataCache: MetadataCache): Promise<ProcessedVaultData> {
+    console.log('🔍 PARSER DEBUG: Iniciando parseFocus');
+    console.log('🔍 PARSER DEBUG: activeFile:', activeFile.path);
+    
     const processedItems: HierarchicalItem[] = [];
     let allTasks: Task[] = [];
     const uniqueContexts = new Set<string>();
     const uniquePeople = new Set<string>();
 
-    const filesToProcess = await collectFocusFiles(activeFile, vault, metadataCache);
+    try {
+        console.log('🔍 PARSER DEBUG: Recolectando archivos de foco...');
+        const filesToProcess = await collectFocusFiles(activeFile, vault, metadataCache);
+        console.log('🔍 PARSER DEBUG: Archivos recolectados:', filesToProcess.size);
+        console.log('🔍 PARSER DEBUG: Lista de archivos:', Array.from(filesToProcess).map(f => f.path));
+        
+        let processedCount = 0;
+        for (const file of filesToProcess) {
+            console.log(`🔍 PARSER DEBUG: Procesando archivo ${++processedCount}/${filesToProcess.size}: ${file.path}`);
+            
+            try {
+                // Verificar si el archivo existe primero
+                console.log(`🔍 PARSER DEBUG: Verificando existencia de: ${file.path}`);
+                const exists = await vault.adapter.exists(file.path);
+                console.log(`🔍 PARSER DEBUG: Archivo existe: ${exists}`);
+                
+                if (!exists) {
+                    console.warn(`🔍 PARSER DEBUG: Archivo no existe, saltando: ${file.path}`);
+                    continue;
+                }
+                
+                console.log(`🔍 PARSER DEBUG: Leyendo contenido de: ${file.path}`);
+                const content = await vault.cachedRead(file);
+                console.log(`🔍 PARSER DEBUG: Contenido leído exitosamente, longitud: ${content.length}`);
+                
+                console.log(`🔍 PARSER DEBUG: Obteniendo frontmatter y tipo de item...`);
+                const frontmatter = metadataCache.getCache(file.path)?.frontmatter || {};
+                const itemType = determineItemType(file, metadataCache);
+                console.log(`🔍 PARSER DEBUG: Tipo de item determinado: ${itemType}`);
+                
+                console.log(`🔍 PARSER DEBUG: Parseando tareas...`);
+                const tasks = parseTasks(content, file);
+                console.log(`🔍 PARSER DEBUG: Tareas parseadas: ${tasks.length}`);
+                
+                allTasks = allTasks.concat(tasks);
 
-    for (const file of filesToProcess) {
-        // We can skip explicit exclusion here if we want the focus view to be all-encompassing
-        // or add a lighter version of it. For now, let's process all collected files.
+                tasks.forEach(task => {
+                    task.contexts.forEach(context => uniqueContexts.add(context));
+                    task.assignedPeople.forEach(person => uniquePeople.add(person));
+                });
+                
+                console.log(`🔍 PARSER DEBUG: Creando item jerarquico...`);
+                processedItems.push({
+                    id: file.path, type: itemType, name: file.basename, file: file,
+                    children: [], tasks: tasks, ownTaskCount: tasks.filter(t => !t.completed).length, descendantTaskCount: 0, frontmatter: frontmatter,
+                });
+                
+                console.log(`🔍 PARSER DEBUG: Archivo procesado exitosamente: ${file.path}`);
+            } catch (fileError) {
+                console.error(`🔍 PARSER DEBUG: Error procesando archivo ${file.path}:`, fileError);
+                console.error(`🔍 PARSER DEBUG: Error type:`, typeof fileError);
+                console.error(`🔍 PARSER DEBUG: Error message:`, (fileError as any)?.message || 'No message available');
+                console.error(`🔍 PARSER DEBUG: Error code:`, (fileError as any)?.code);
+                console.error(`🔍 PARSER DEBUG: Error stack:`, (fileError as any)?.stack || 'No stack available');
+                // Continuar con el siguiente archivo en lugar de fallar completamente
+                console.log(`🔍 PARSER DEBUG: Continuando con el siguiente archivo...`);
+                continue;
+            }
+        }
 
-        const content = await vault.cachedRead(file);
-        const frontmatter = metadataCache.getCache(file.path)?.frontmatter || {};
-        const itemType = determineItemType(file, metadataCache);
-        const tasks = parseTasks(content, file);
-        allTasks = allTasks.concat(tasks);
-
-        tasks.forEach(task => {
-            task.contexts.forEach(context => uniqueContexts.add(context));
-            task.assignedPeople.forEach(person => uniquePeople.add(person));
-        });
-
-        processedItems.push({
-            id: file.path, type: itemType, name: file.basename, file: file,
-            children: [], tasks: tasks, ownTaskCount: tasks.filter(t => !t.completed).length, descendantTaskCount: 0, frontmatter: frontmatter,
-        });
+        console.log('🔍 PARSER DEBUG: Creando resultado final...');
+        console.log('🔍 PARSER DEBUG: Items procesados:', processedItems.length);
+        console.log('🔍 PARSER DEBUG: Total tareas:', allTasks.length);
+        console.log('🔍 PARSER DEBUG: Contextos únicos:', uniqueContexts.size);
+        console.log('🔍 PARSER DEBUG: Personas únicas:', uniquePeople.size);
+        
+        const result = {
+            hierarchicalData: processedItems,
+            gtdLists: {},
+            allTasks: allTasks,
+            uniqueContexts: Array.from(uniqueContexts),
+            uniquePeople: Array.from(uniquePeople),
+            inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
+            navigationItems: [] // Agregamos navigationItems vacío ya que se generará en el processor
+        };
+        
+        console.log('🔍 PARSER DEBUG: parseFocus completado exitosamente');
+        return result;
+        
+    } catch (error) {
+        console.error('🔍 PARSER DEBUG: Error general en parseFocus:', error);
+        console.error('🔍 PARSER DEBUG: Error type:', typeof error);
+        console.error('🔍 PARSER DEBUG: Error message:', (error as any)?.message || 'No message available');
+        console.error('🔍 PARSER DEBUG: Error stack:', (error as any)?.stack || 'No stack available');
+        throw error;
     }
-
-    return {
-        hierarchicalData: processedItems,
-        gtdLists: {},
-        allTasks: allTasks,
-        uniqueContexts: Array.from(uniqueContexts),
-        uniquePeople: Array.from(uniquePeople),
-        inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
-        navigationItems: [] // Agregamos navigationItems vacío ya que se generará en el processor
-    };
 }

@@ -9,6 +9,95 @@
     overflow: hidden; /* Evitamos overflow en el contenedor principal */
 }
 
+/* === BREAKPOINTS ESPECÍFICOS PARA FILTROS RESPONSIVOS === */
+
+/* Móvil muy pequeño: Stack vertical completo */
+@media (max-width: 400px) {
+    .gtd-filters .filters-content {
+        gap: 6px;
+    }
+    
+    .gtd-filter-group {
+        flex-direction: column !important; /* Label arriba, input abajo */
+        align-items: stretch !important;
+        flex: 1 1 100% !important; /* Un filtro por fila */
+        min-height: 60px !important; /* Más altura para layout vertical */
+        padding: 6px 0 !important;
+    }
+    
+    .gtd-filter-group label {
+        font-size: 10px !important;
+        min-width: auto !important;
+        max-width: none !important;
+        text-align: left !important;
+        margin-bottom: 2px;
+    }
+    
+    .gtd-filter-group input {
+        width: 100% !important;
+        padding: 3px 5px !important;
+        font-size: 11px !important;
+    }
+}
+
+/* Móvil medio: Row compacto apilado */
+@media (min-width: 401px) and (max-width: 600px) {
+    .gtd-filters .filters-content {
+        gap: 8px;
+    }
+    
+    .gtd-filter-group {
+        flex-direction: row !important; /* Label + input en línea */
+        flex: 1 1 100% !important; /* Un filtro por fila */
+        min-height: 50px !important;
+    }
+    
+    .gtd-filter-group label {
+        font-size: 11px !important;
+        min-width: 50px !important;
+        max-width: 70px !important;
+    }
+    
+    .gtd-filter-group input {
+        padding: 4px 6px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* Ventana reducida: Grid 2 columnas */
+@media (min-width: 601px) and (max-width: 768px) {
+    .gtd-filters .filters-content {
+        flex-direction: row !important; /* Cambiar a row para permitir 2 columnas */
+        flex-wrap: wrap !important;
+        gap: 10px;
+        align-items: flex-start !important;
+    }
+    
+    .gtd-filter-group {
+        flex: 1 1 calc(50% - 5px) !important; /* Dos filtros por fila con gap */
+        min-width: calc(50% - 5px) !important;
+        max-width: calc(50% - 5px) !important;
+        flex-direction: row !important;
+        min-height: 50px !important;
+    }
+    
+    .gtd-filter-group label {
+        font-size: 11px !important;
+        min-width: 45px !important;
+        max-width: 60px !important;
+    }
+    
+    .gtd-filter-group input {
+        padding: 4px 6px !important;
+        font-size: 12px !important;
+    }
+    
+    /* Ajustar altura mínima para 2 filas */
+    .gtd-filters.expanded .filters-content {
+        min-height: 120px !important; /* Menos altura ya que hay 2 columnas */
+    }
+}
+
 /* === HEADER PEGAJOSO UNIFICADO === */
 .gtd-sticky-header {
     position: sticky;
@@ -1896,51 +1985,108 @@ body.is-copying {
         font-size: 12px;
     }
 
+    /* === MEJORAS ESPECÍFICAS PARA FILTROS EN MÓVIL === */
     .gtd-filters {
-        padding: 8px 12px;
+        padding: 6px 10px; /* Reducir padding general */
     }
 
     /* Mostrar el toggle en móvil */
     .filters-toggle {
         display: flex !important;
+        padding: 8px 12px; /* Reducir padding del toggle */
+        font-size: 13px; /* Reducir tamaño de fuente */
+        min-height: 44px; /* Altura mínima para toque fácil */
+        touch-action: manipulation; /* Optimizar para toque */
     }
 
     /* Por defecto, ocultar contenido en móvil */
     .filters-content {
         max-height: 0;
         overflow: hidden;
+        overflow-x: hidden; /* Evitar scroll horizontal */
+        overflow-y: auto; /* Permitir scroll vertical si es necesario */
         opacity: 0;
         margin-top: 0;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
-                   opacity 0.3s ease,
-                   margin-top 0.3s ease;
+        display: flex; /* Usar flex para mejor control */
+        flex-direction: column; /* Layout vertical en móvil por defecto */
+        flex-wrap: wrap; /* Permitir wrap cuando sea necesario */
+        align-items: stretch; /* Estirar elementos */
+        gap: 8px; /* Reducir gap */
+        width: 100%; /* Usar todo el ancho disponible */
+        transition: max-height 0.2s ease-out, /* Animación más rápida */
+                   opacity 0.2s ease-out,
+                   margin-top 0.2s ease;
     }
 
     /* Cuando está expandido, mostrar contenido */
     .gtd-filters.expanded .filters-content {
-        max-height: 300px;
+        max-height: 500px; /* Aumentar de 300px a 500px */
+        min-height: 180px; /* Altura mínima garantizada para 3 filtros */
         opacity: 1;
         margin-top: 12px;
+        overflow-y: auto; /* Asegurar scroll si el contenido es muy alto */
     }
 
+    /* Grupos de filtros - mejorar para móvil */
     .gtd-filter-group {
-        min-width: 100%;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 4px;
+        display: flex;
+        width: 100%; /* Usar todo el ancho disponible por defecto */
+        flex: 1 1 100%; /* Grow, shrink, basis 100% - un filtro por fila por defecto */
+        flex-direction: row; /* Label + input en línea por defecto */
+        align-items: center;
+        gap: 6px;
+        box-sizing: border-box;
+        overflow: hidden;
+        position: relative;
+        padding: 4px 0;
+        min-height: 50px; /* Altura mínima garantizada por filtro */
     }
 
+    /* Labels más compactos */
     .gtd-filter-group label {
-        min-width: auto;
+        font-size: 11px; /* Reducir tamaño de fuente */
+        min-width: 50px; /* Reducir ancho mínimo */
+        max-width: 70px; /* Limitar ancho máximo */
+        flex-shrink: 0; /* No permitir que se reduzca */
         text-align: left;
     }
 
+    /* Inputs más compactos y responsivos */
     .gtd-filter-group input {
-        min-width: auto;
+        flex: 1; /* Tomar el espacio restante */
+        min-width: 0; /* Permitir que se reduzca */
+        max-width: none; /* Sin límite máximo */
+        min-height: 36px; /* Altura mínima para toque fácil */
+        padding: 4px 6px; /* Reducir padding interno */
+        font-size: 12px; /* Reducir tamaño de fuente */
+        border-radius: 4px; /* Reducir radio de borde */
+        -webkit-appearance: none;
+        appearance: none;
+        border: 1px solid var(--background-modifier-border);
+        background: var(--background-primary);
+    }
+
+    /* Específicamente para el filtro de tarea que se mueve */
+    .gtd-filter-group:last-of-type {
+        margin-left: 0 !important; /* Remover cualquier margen izquierdo */
+        margin-right: 0 !important; /* Remover cualquier margen derecho */
+    }
+
+    /* Asegurar que el tercer filtro no se desplace */
+    .gtd-filter-group:nth-child(4) { /* El cuarto hijo porque el toggle es el primero */
+        margin-top: 0;
         width: 100%;
+    }
+
+    /* Mejor indicador visual del toggle expandido */
+    .gtd-filters.expanded .filters-toggle {
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+    }
+
+    .gtd-filters.expanded .filters-toggle span:last-child {
+        transform: rotate(180deg);
+        transition: transform 0.3s ease;
     }
 
     .gtd-quick-nav {
@@ -1992,8 +2138,33 @@ body.is-copying {
         font-size: 11px;
     }
 
+    /* === MEJORAS ADICIONALES PARA PANTALLAS MUY PEQUEÑAS === */
     .gtd-filters {
+        padding: 4px 8px;
+    }
+
+    .filters-toggle {
         padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .filters-content {
+        gap: 6px;
+    }
+
+    .gtd-filter-group {
+        gap: 4px;
+    }
+
+    .gtd-filter-group label {
+        font-size: 10px;
+        min-width: 45px;
+        max-width: 60px;
+    }
+
+    .gtd-filter-group input {
+        padding: 3px 5px;
+        font-size: 11px;
     }
 
     .gtd-quick-nav {
@@ -2003,11 +2174,6 @@ body.is-copying {
     .gtd-view-content {
         padding: 8px;
         scroll-padding-top: 280px;
-    }
-
-    .gtd-filter-group input {
-        font-size: 12px;
-        padding: 5px 8px;
     }
 }
 
@@ -2084,6 +2250,92 @@ body.is-copying {
     }
 }
 
+/* === ESTILOS ADICIONALES PARA FILTROS MÓVILES === */
+
+/* === SOLUCIÓN OPTIMIZADA PARA DATALIST EN MÓVIL === */
+@media (max-width: 768px) {
+    /* Optimizar datalist para móvil */
+    datalist {
+        max-height: 180px !important;
+        min-height: 120px !important;
+        overflow-y: auto !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        background: var(--background-primary) !important;
+        border: 1px solid var(--background-modifier-border) !important;
+        z-index: 9999 !important;
+        position: absolute !important;
+        width: 100% !important;
+        margin-top: 2px !important;
+    }
+    
+    /* Optimizar opciones individuales */
+    option {
+        padding: 12px 16px !important;
+        min-height: 44px !important; /* Área de toque optimizada */
+        border-bottom: 1px solid var(--background-modifier-border) !important;
+        font-size: 14px !important;
+        color: var(--text-normal) !important;
+        background: var(--background-primary) !important;
+        cursor: pointer !important;
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Hover/focus states para opciones */
+    option:hover, option:focus {
+        background: var(--background-modifier-hover) !important;
+        color: var(--text-normal) !important;
+    }
+    
+    /* Mejorar inputs con datalist */
+    input[list] {
+        position: relative !important;
+        z-index: 1000 !important;
+    }
+    
+    /* Asegurar que contenedores no interfieran */
+    .gtd-filter-group {
+        position: relative !important;
+        overflow: visible !important;
+        z-index: 100 !important;
+    }
+    
+    .filters-content {
+        overflow: visible !important;
+        z-index: 50 !important;
+    }
+    
+    /* Reducir z-index del header para que no interfiera */
+    .gtd-sticky-header {
+        z-index: 10 !important;
+    }
+}
+
+/* Indicador de filtros activos */
+.filters-toggle.has-active-filters {
+    border-color: var(--interactive-accent) !important;
+    background: rgba(0, 122, 204, 0.1) !important;
+}
+
+.filters-toggle.has-active-filters span:first-child {
+    color: var(--interactive-accent) !important;
+    font-weight: 600 !important;
+}
+
+/* Mejorar contraste en modo oscuro */
+.theme-dark .gtd-filter-group input {
+    border-color: var(--background-modifier-border-hover);
+}
+
+/* Optimizaciones de performance para móvil */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+    .filters-content {
+        transition: max-height 0.2s ease-out, opacity 0.2s ease-out;
+    }
+}
+
 /* Reducir movimiento para accesibilidad */
 @media (prefers-reduced-motion: reduce) {
     .gtd-sticky-header,
@@ -2101,6 +2353,12 @@ body.is-copying {
     .gtd-refresh-button:hover,
     .gtd-nav-link:hover {
         transform: none;
+    }
+
+    /* Eliminar animaciones en modo reducido */
+    .gtd-filters .filters-content,
+    .gtd-filters.expanded .filters-toggle span:last-child {
+        transition: none;
     }
 }
 

@@ -98,11 +98,19 @@ export class FocoView extends ItemView {
     }
 
     private async drawView(activeFile: TFile): Promise<void> {
+        console.log('🔍 FOCO DEBUG: Iniciando drawView');
+        console.log('🔍 FOCO DEBUG: activeFile:', activeFile?.path);
+        console.log('🔍 FOCO DEBUG: isMobile:', (this.app as any).isMobile || 'unknown');
+        console.log('🔍 FOCO DEBUG: Platform:', (this.app as any).platform || 'unknown');
+        
         this.eventAbortController?.abort();
         this.eventAbortController = new AbortController();
 
         try {
+            console.log('🔍 FOCO DEBUG: Llamando a parseFocus...');
             const parsedData = await parseFocus(activeFile, this.app.vault, this.app.metadataCache);
+            console.log('🔍 FOCO DEBUG: parseFocus completado exitosamente');
+            console.log('🔍 FOCO DEBUG: Datos obtenidos - tareas:', parsedData.allTasks.length, 'items:', parsedData.hierarchicalData.length);
             const hierarchicalData = buildHierarchy(parsedData.hierarchicalData);
             const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
 
@@ -156,7 +164,13 @@ export class FocoView extends ItemView {
             this.addEventListeners();
 
         } catch (error) {
-            console.error('Error drawing Focus view:', error);
+            console.error('🔍 FOCO DEBUG: Error en drawView:', error);
+            console.error('🔍 FOCO DEBUG: Error type:', typeof error);
+            console.error('🔍 FOCO DEBUG: Error message:', (error as any)?.message || 'No message available');
+            console.error('🔍 FOCO DEBUG: Error stack:', (error as any)?.stack || 'No stack available');
+            console.error('🔍 FOCO DEBUG: Error code:', (error as any)?.code);
+            console.error('🔍 FOCO DEBUG: Error data:', (error as any)?.data);
+            console.error('🔍 FOCO DEBUG: Full error object:', error);
             this.contentEl.innerHTML = '<div class="gtd-error">Ocurrió un error al renderizar la Vista de Foco. Revisa la consola para más detalles.</div>';
         }
     }
@@ -199,9 +213,33 @@ export class FocoView extends ItemView {
             }, { signal: this.eventAbortController.signal });
         }
         
-        // === TOGGLE DE FILTROS MEJORADO ===
+        // === TOGGLE DE FILTROS MEJORADO PARA MÓVIL ===
         if (filtersToggle && filters) {
-            console.log('Configurando toggle de filtros mejorado en Vista de Foco');
+            console.log('Configurando toggle de filtros mejorado para móvil en Vista de Foco');
+            
+            // Función para actualizar contador de filtros activos
+            const updateFiltersCounter = () => {
+                const inputs = filters.querySelectorAll('.gtd-filter-group input');
+                const activeFilters = Array.from(inputs).filter(input => 
+                    (input as HTMLInputElement).value.trim() !== ''
+                ).length;
+                
+                const counterSpan = filtersToggle.querySelector('span:first-child');
+                if (counterSpan) {
+                    const baseText = '🔍 Filtros';
+                    const finalText = activeFilters > 0 
+                        ? `${baseText} (${activeFilters})` 
+                        : `${baseText}`;
+                    counterSpan.textContent = finalText;
+                }
+                
+                // Añadir indicador visual si hay filtros activos
+                if (activeFilters > 0) {
+                    filtersToggle.classList.add('has-active-filters');
+                } else {
+                    filtersToggle.classList.remove('has-active-filters');
+                }
+            };
             
             // Función para actualizar el estado de los filtros
             const updateFiltersState = () => {
@@ -214,11 +252,19 @@ export class FocoView extends ItemView {
                     filtersToggle.style.display = 'flex';
                     
                     if (isExpanded) {
-                        filtersContent.style.maxHeight = filtersContent.scrollHeight + 'px';
+                        // Calcular altura dinámica basada en el contenido
+                        const contentHeight = filtersContent.scrollHeight;
+                        const minRequiredHeight = 180; // Altura mínima para 3 filtros
+                        const calculatedHeight = Math.max(contentHeight + 20, minRequiredHeight); // Asegurar mínimo
+                        const maxAllowedHeight = Math.min(calculatedHeight, 500); // Máximo 500px
+                        
+                        filtersContent.style.maxHeight = maxAllowedHeight + 'px';
+                        filtersContent.style.minHeight = minRequiredHeight + 'px';
                         filtersContent.style.opacity = '1';
                         filtersContent.style.marginTop = '12px';
                     } else {
                         filtersContent.style.maxHeight = '0';
+                        filtersContent.style.minHeight = '0';
                         filtersContent.style.opacity = '0';
                         filtersContent.style.marginTop = '0';
                     }
@@ -236,6 +282,57 @@ export class FocoView extends ItemView {
                 if (icon && isMobile) {
                     icon.textContent = isExpanded ? '▲' : '▼';
                 }
+                
+                // Configurar accesibilidad
+                filtersToggle.setAttribute('aria-expanded', isExpanded.toString());
+                filtersToggle.setAttribute('aria-controls', 'filters-content');
+            };
+            
+            // Función para manejar optimizaciones móviles
+            const initializeMobileOptimizations = () => {
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isMobile) {
+                    // Mejorar inputs para móvil
+                    const filterInputs = filters.querySelectorAll('input');
+                    filterInputs.forEach((input) => {
+                        // Reducir debounce en móvil para mejor responsividad
+                        input.setAttribute('autocomplete', 'off');
+                        input.setAttribute('autocorrect', 'off');
+                        input.setAttribute('spellcheck', 'false');
+                        
+                        // Manejar virtual keyboard
+                        input.addEventListener('focus', () => {
+                            // Pequeño delay para que el keyboard aparezca
+                            setTimeout(() => {
+                                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 300);
+                        }, { signal: this.eventAbortController.signal });
+                    });
+                    
+                    // Auto-colapsar filtros cuando se hace scroll (UX mejorada)
+                    let scrollTimer: NodeJS.Timeout;
+                    let lastScrollY = container.scrollTop;
+                    
+                    const smartScrollHandler = () => {
+                        clearTimeout(scrollTimer);
+                        
+                        const currentScrollY = container.scrollTop;
+                        const isScrollingDown = currentScrollY > lastScrollY;
+                        
+                        // Si está expandido y se está scrolleando hacia abajo, colapsar
+                        if (isScrollingDown && filters.classList.contains('expanded')) {
+                            scrollTimer = setTimeout(() => {
+                                filters.classList.remove('expanded');
+                                updateFiltersState();
+                            }, 100);
+                        }
+                        
+                        lastScrollY = currentScrollY;
+                    };
+                    
+                    container.addEventListener('scroll', smartScrollHandler, { signal: this.eventAbortController.signal });
+                }
             };
             
             // Event listener para el toggle
@@ -252,15 +349,40 @@ export class FocoView extends ItemView {
                 }
             }, { signal: this.eventAbortController.signal });
             
-            // Inicializar estado
-            updateFiltersState();
+            // Event listener para actualizar contador cuando cambian los filtros
+            filters.addEventListener('input', (e) => {
+                if ((e.target as HTMLElement).closest('.gtd-filter-group')) {
+                    updateFiltersCounter();
+                }
+            }, { signal: this.eventAbortController.signal });
             
-            // Manejar redimensionamiento de ventana
-            const resizeHandler = () => {
-                updateFiltersState();
+            // Manejar cambios de orientación
+            const handleOrientationChange = () => {
+                setTimeout(() => {
+                    const isMobile = window.innerWidth <= 768;
+                    
+                    if (isMobile) {
+                        // Asegurar que los filtros estén colapsados en landscape
+                        // para maximizar espacio vertical
+                        if (window.innerHeight < window.innerWidth) {
+                            filters.classList.remove('expanded');
+                        }
+                    } else {
+                        // En desktop, mostrar filtros siempre
+                        filters.classList.add('expanded');
+                    }
+                    updateFiltersState();
+                }, 100);
             };
             
-            window.addEventListener('resize', resizeHandler, { signal: this.eventAbortController.signal });
+            // Inicializar estado y optimizaciones
+            updateFiltersState();
+            updateFiltersCounter();
+            initializeMobileOptimizations();
+            
+            // Event listeners globales
+            window.addEventListener('resize', handleOrientationChange, { signal: this.eventAbortController.signal });
+            window.addEventListener('orientationchange', handleOrientationChange, { signal: this.eventAbortController.signal });
             
         } else {
             console.log('No se encontraron elementos de filtros en Vista de Foco:', { filtersToggle, filters });

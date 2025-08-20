@@ -192,9 +192,33 @@ export class GtdView extends ItemView {
         
         container.addEventListener('scroll', scrollHandler, { signal: this.eventAbortController.signal });
         
-        // === TOGGLE DE FILTROS MEJORADO ===
+        // === TOGGLE DE FILTROS MEJORADO PARA MÓVIL ===
         if (filtersToggle && filters) {
-            console.log('Configurando toggle de filtros mejorado');
+            console.log('Configurando toggle de filtros mejorado para móvil');
+            
+            // Función para actualizar contador de filtros activos
+            const updateFiltersCounter = () => {
+                const inputs = filters.querySelectorAll('.gtd-filter-group input');
+                const activeFilters = Array.from(inputs).filter(input => 
+                    (input as HTMLInputElement).value.trim() !== ''
+                ).length;
+                
+                const counterSpan = filtersToggle.querySelector('span:first-child');
+                if (counterSpan) {
+                    const baseText = '🔍 Filtros';
+                    const finalText = activeFilters > 0 
+                        ? `${baseText} (${activeFilters})` 
+                        : `${baseText}`;
+                    counterSpan.textContent = finalText;
+                }
+                
+                // Añadir indicador visual si hay filtros activos
+                if (activeFilters > 0) {
+                    filtersToggle.classList.add('has-active-filters');
+                } else {
+                    filtersToggle.classList.remove('has-active-filters');
+                }
+            };
             
             // Función para actualizar el estado de los filtros
             const updateFiltersState = () => {
@@ -207,11 +231,19 @@ export class GtdView extends ItemView {
                     filtersToggle.style.display = 'flex';
                     
                     if (isExpanded) {
-                        filtersContent.style.maxHeight = filtersContent.scrollHeight + 'px';
+                        // Calcular altura dinámica basada en el contenido
+                        const contentHeight = filtersContent.scrollHeight;
+                        const minRequiredHeight = 180; // Altura mínima para 3 filtros
+                        const calculatedHeight = Math.max(contentHeight + 20, minRequiredHeight); // Asegurar mínimo
+                        const maxAllowedHeight = Math.min(calculatedHeight, 500); // Máximo 500px
+                        
+                        filtersContent.style.maxHeight = maxAllowedHeight + 'px';
+                        filtersContent.style.minHeight = minRequiredHeight + 'px';
                         filtersContent.style.opacity = '1';
                         filtersContent.style.marginTop = '12px';
                     } else {
                         filtersContent.style.maxHeight = '0';
+                        filtersContent.style.minHeight = '0';
                         filtersContent.style.opacity = '0';
                         filtersContent.style.marginTop = '0';
                     }
@@ -229,6 +261,57 @@ export class GtdView extends ItemView {
                 if (icon && isMobile) {
                     icon.textContent = isExpanded ? '▲' : '▼';
                 }
+                
+                // Configurar accesibilidad
+                filtersToggle.setAttribute('aria-expanded', isExpanded.toString());
+                filtersToggle.setAttribute('aria-controls', 'filters-content');
+            };
+            
+            // Función para manejar optimizaciones móviles
+            const initializeMobileOptimizations = () => {
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isMobile) {
+                    // Mejorar inputs para móvil
+                    const filterInputs = filters.querySelectorAll('input');
+                    filterInputs.forEach((input) => {
+                        // Reducir debounce en móvil para mejor responsividad
+                        input.setAttribute('autocomplete', 'off');
+                        input.setAttribute('autocorrect', 'off');
+                        input.setAttribute('spellcheck', 'false');
+                        
+                        // Manejar virtual keyboard
+                        input.addEventListener('focus', () => {
+                            // Pequeño delay para que el keyboard aparezca
+                            setTimeout(() => {
+                                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 300);
+                        }, { signal: this.eventAbortController.signal });
+                    });
+                    
+                    // Auto-colapsar filtros cuando se hace scroll (UX mejorada)
+                    let scrollTimer: NodeJS.Timeout;
+                    let lastScrollY = container.scrollTop;
+                    
+                    const smartScrollHandler = () => {
+                        clearTimeout(scrollTimer);
+                        
+                        const currentScrollY = container.scrollTop;
+                        const isScrollingDown = currentScrollY > lastScrollY;
+                        
+                        // Si está expandido y se está scrolleando hacia abajo, colapsar
+                        if (isScrollingDown && filters.classList.contains('expanded')) {
+                            scrollTimer = setTimeout(() => {
+                                filters.classList.remove('expanded');
+                                updateFiltersState();
+                            }, 100);
+                        }
+                        
+                        lastScrollY = currentScrollY;
+                    };
+                    
+                    container.addEventListener('scroll', smartScrollHandler, { signal: this.eventAbortController.signal });
+                }
             };
             
             // Event listener para el toggle
@@ -245,15 +328,40 @@ export class GtdView extends ItemView {
                 }
             }, { signal: this.eventAbortController.signal });
             
-            // Inicializar estado
-            updateFiltersState();
+            // Event listener para actualizar contador cuando cambian los filtros
+            filters.addEventListener('input', (e) => {
+                if ((e.target as HTMLElement).closest('.gtd-filter-group')) {
+                    updateFiltersCounter();
+                }
+            }, { signal: this.eventAbortController.signal });
             
-            // Manejar redimensionamiento de ventana
-            const resizeHandler = () => {
-                updateFiltersState();
+            // Manejar cambios de orientación
+            const handleOrientationChange = () => {
+                setTimeout(() => {
+                    const isMobile = window.innerWidth <= 768;
+                    
+                    if (isMobile) {
+                        // Asegurar que los filtros estén colapsados en landscape
+                        // para maximizar espacio vertical
+                        if (window.innerHeight < window.innerWidth) {
+                            filters.classList.remove('expanded');
+                        }
+                    } else {
+                        // En desktop, mostrar filtros siempre
+                        filters.classList.add('expanded');
+                    }
+                    updateFiltersState();
+                }, 100);
             };
             
-            window.addEventListener('resize', resizeHandler, { signal: this.eventAbortController.signal });
+            // Inicializar estado y optimizaciones
+            updateFiltersState();
+            updateFiltersCounter();
+            initializeMobileOptimizations();
+            
+            // Event listeners globales
+            window.addEventListener('resize', handleOrientationChange, { signal: this.eventAbortController.signal });
+            window.addEventListener('orientationchange', handleOrientationChange, { signal: this.eventAbortController.signal });
             
         } else {
             console.log('No se encontraron elementos de filtros:', { filtersToggle, filters });
