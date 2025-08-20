@@ -163,8 +163,104 @@ function renderTask(task: Task, breadcrumb: string): string {
     `;
 }
 
+// Función auxiliar para generar filtros HTML para Vista de Foco
+function generateFiltersHtml(data: ProcessedVaultData): string {
+    const { uniqueContexts, uniquePeople } = data;
+    return `
+        <div class="gtd-filters" id="gtd-filters">
+            <button class="filters-toggle" id="filters-toggle">
+                <span>🔍 Filtros (3)</span>
+                <span>▼</span>
+            </button>
+            <div class="filters-content">
+                <div class="gtd-filter-group">
+                    <label for="context-filter">Contexto:</label>
+                    <input type="text" id="context-filter" list="context-list" placeholder="Escribe para filtrar...">
+                    <datalist id="context-list">
+                        ${uniqueContexts.map(context => `<option value="${context}"></option>`).join('')}
+                    </datalist>
+                </div>
+                <div class="gtd-filter-group">
+                    <label for="person-filter">Persona:</label>
+                    <input type="text" id="person-filter" list="person-list" placeholder="Escribe para filtrar...">
+                    <datalist id="person-list">
+                        ${uniquePeople.map(person => `<option value="${person}"></option>`).join('')}
+                    </datalist>
+                </div>
+                <div class="gtd-filter-group">
+                    <label for="task-content-filter">Tarea:</label>
+                    <input type="text" id="task-content-filter" placeholder="Escribe para filtrar...">
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Función auxiliar para generar navegación rápida para Vista de Foco
+function generateQuickNavHtml(data: ProcessedVaultData): string {
+    const { navigationItems = [] } = data;
+    
+    // Función auxiliar para crear IDs consistentes
+    const createAnchorId = (text: string): string => {
+        return text.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim();
+    };
+
+    // Generate navigation using navigationItems
+    const mainNavLinks = navigationItems
+        .filter(item => !item.isSublist)
+        .map(item => `
+            <a href="#${item.anchor}" class="gtd-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
+        `).join('');
+
+    // Build ordered sub-navigation groups
+    const hopeParentId = `gtd-list-${createAnchorId('Ojalá Hoy')}`;
+    const nextParentId = `gtd-list-${createAnchorId('Próximas Acciones')}`;
+    const assignedParentId = `gtd-list-${createAnchorId('Asignadas o Delegadas')}`;
+
+    const subItemsForParent = (parentId: string) => navigationItems.filter(item => item.isSublist && item.parentList === parentId);
+
+    const renderSubNavItem = (it: any, isHope: boolean) => {
+        const iconHtml = isHope ? `🌟 ${it.icon}` : `${it.icon}`;
+        const cleanLabel = (it.label || '').toString().replace(/^cx-/, '').replace(/^px-/, '').replace(/^#cx-/, '').replace(/^#px-/, '');
+        return `<a href="#${it.anchor}" class="gtd-nav-link gtd-sub-nav-link">${iconHtml} ${cleanLabel} <span class="gtd-nav-count">${it.count}</span></a>`;
+    };
+
+    const hopeItems = subItemsForParent(hopeParentId);
+    const nextItems = subItemsForParent(nextParentId);
+    const assignedItems = subItemsForParent(assignedParentId);
+
+    let subNavHtml = '<div class="gtd-sub-nav">';
+
+    if (hopeItems.length > 0) {
+        subNavHtml += `<details class="gtd-subgroup"><summary>Ojalá Hoy <span class="gtd-subgroup-count">${hopeItems.length}</span></summary><div class="gtd-subitems">${hopeItems.map((it: any) => renderSubNavItem(it, true)).join(' | ')}</div></details>`;
+    }
+
+    if (nextItems.length > 0) {
+        if (hopeItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
+        subNavHtml += `<details class="gtd-subgroup"><summary>Contextos <span class="gtd-subgroup-count">${nextItems.length}</span></summary><div class="gtd-subitems">${nextItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
+    }
+
+    if (assignedItems.length > 0) {
+        if (hopeItems.length > 0 || nextItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
+        subNavHtml += `<details class="gtd-subgroup"><summary>Asignadas <span class="gtd-subgroup-count">${assignedItems.length}</span></summary><div class="gtd-subitems">${assignedItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
+    }
+
+    subNavHtml += '</div>';
+
+    return `
+        <div class="gtd-quick-nav">
+            <div class="gtd-main-nav">${mainNavLinks}</div>
+            ${subNavHtml}
+        </div>
+    `;
+}
+
 function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
-    const { gtdLists, uniqueContexts, uniquePeople, navigationItems = [] } = data;
+    const { gtdLists } = data;
     let html = '<div class="gtd-lists-container">';
 
     // Función auxiliar para crear IDs consistentes (igual que en el processor)
@@ -176,86 +272,13 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
             .trim();
     };
 
-    html += `
-        <div class="gtd-filters">
-            <div class="gtd-filter-group">
-                <label for="context-filter">Filtrar por Contexto:</label>
-                <input type="text" id="context-filter" list="context-list" placeholder="Escribe para filtrar...">
-                <datalist id="context-list">
-                    ${uniqueContexts.map(context => `<option value="${context}"></option>`).join('')}
-                </datalist>
-            </div>
-            <div class="gtd-filter-group">
-                <label for="person-filter">Filtrar por Persona:</label>
-                <input type="text" id="person-filter" list="person-list" placeholder="Escribe para filtrar...">
-                <datalist id="person-list">
-                    ${uniquePeople.map(person => `<option value="${person}"></option>`).join('')}
-                </datalist>
-            </div>
-            <div class="gtd-filter-group">
-                <label for="task-content-filter">Filtrar por Tarea:</label>
-                <input type="text" id="task-content-filter" placeholder="Escribe para filtrar...">
-            </div>
-        </div>
-    `;
-
     const listOrder: GtdList[] = [
         GtdList.Inbox, GtdList.NextActions, GtdList.Calendar, GtdList.HopeToday,
         GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
         GtdList.ThisWeekNot, GtdList.SomedayMaybe,
     ];
 
-    // Generate navigation using navigationItems
-    const mainNavLinks = navigationItems
-        .filter(item => !item.isSublist)
-        .map(item => `
-            <a href="#${item.anchor}" class="gtd-nav-link">${item.icon} ${item.label} <span class="gtd-nav-count">${item.count}</span></a>
-        `).join(' | ');
-
-    // Build ordered sub-navigation groups: HopeToday -> NextActions -> Assigned.
-    const hopeParentId = `gtd-list-${createAnchorId(GtdList.HopeToday)}`;
-    const nextParentId = `gtd-list-${createAnchorId(GtdList.NextActions)}`;
-    const assignedParentId = `gtd-list-${createAnchorId(GtdList.Assigned)}`;
-
-    const subItemsForParent = (parentId: string) => navigationItems.filter(item => item.isSublist && item.parentList === parentId);
-
-    const renderSubNavItem = (it: any, isHope: boolean) => {
-        // For HopeToday we render the star before the type icon (navigation-specific)
-        const iconHtml = isHope ? `🌟 ${it.icon}` : `${it.icon}`;
-        // Strip internal prefixes cx-/px- from labels if present
-        const cleanLabel = (it.label || '').toString().replace(/^cx-/, '').replace(/^px-/, '').replace(/^#cx-/, '').replace(/^#px-/, '');
-        return `<a href="#${it.anchor}" class="gtd-nav-link gtd-sub-nav-link">${iconHtml} ${cleanLabel} <span class="gtd-nav-count">${it.count}</span></a>`;
-    };
-
-    const hopeItems = subItemsForParent(hopeParentId);
-    const nextItems = subItemsForParent(nextParentId);
-    const assignedItems = subItemsForParent(assignedParentId);
-
-    // Build sub-navigation as collapsible groups (details), collapsed by default.
-    let subNavHtml = '<div class="gtd-sub-nav">';
-
-    if (hopeItems.length > 0) {
-        subNavHtml += `<details class="gtd-subgroup" open><summary>Ojalá Hoy <span class="gtd-subgroup-count">${hopeItems.length}</span></summary><div class="gtd-subitems">${hopeItems.map((it: any) => renderSubNavItem(it, true)).join(' | ')}</div></details>`;
-    }
-
-    if (nextItems.length > 0) {
-        if (hopeItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
-        subNavHtml += `<details class="gtd-subgroup" open><summary>Contextos <span class="gtd-subgroup-count">${nextItems.length}</span></summary><div class="gtd-subitems">${nextItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
-    }
-
-    if (assignedItems.length > 0) {
-        if (hopeItems.length > 0 || nextItems.length > 0) subNavHtml += '<hr class="gtd-sublist-hr" />';
-        subNavHtml += `<details class="gtd-subgroup" open><summary>Asignadas <span class="gtd-subgroup-count">${assignedItems.length}</span></summary><div class="gtd-subitems">${assignedItems.map((it: any) => renderSubNavItem(it, false)).join(' | ')}</div></details>`;
-    }
-
-    subNavHtml += '</div>';
-
-    html += `<nav class="gtd-quick-nav">
-        <div class="gtd-main-nav">${mainNavLinks}</div>
-        ${subNavHtml}
-    </nav>`;
-
-        for (const listName of listOrder) {
+    for (const listName of listOrder) {
         const tasks = gtdLists[listName];
         const totalTasksInList = Array.isArray(tasks)
             ? tasks.length
@@ -390,25 +413,59 @@ export function generateGtdViewHtml(
         viewContent = '<div id="timeline-container"></div>';
     }
 
-    const focusTitleHtml = focusFileName 
-        ? `<div class="focus-view-title">Foco: <span>${focusFileName}</span></div>` 
-        : '';
-
+    // Estructura HTML mejorada con header pegajoso y título de foco
     return `
         <div class="gtd-view-container">
-            <div class="gtd-view-controls">
-                <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">Vista Jerárquica</button>
-                <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">Listas GTD</button>
-                <button class="gtd-view-button ${inProgressActiveClass}" data-view="inProgress">En Progreso</button>
-                <button class="gtd-view-button ${timeTrackerActiveClass}" data-view="time-tracker">Seguimiento</button>
-                <button class="gtd-view-button ${statisticsActiveClass}" data-view="statistics">Estadísticas</button>
-                <button class="gtd-view-button ${timelineActiveClass}" data-view="timeline">Cronograma</button> 
-                <button class="gtd-refresh-button">Refrescar</button>
+            <!-- Header pegajoso unificado -->
+            <div class="gtd-sticky-header" id="gtd-sticky-header">
+                <!-- Controles de vista -->
+                <div class="gtd-view-controls" id="gtd-view-controls">
+                    <button class="gtd-view-button ${hierarchyActiveClass}" data-view="hierarchy">
+                        📊 Vista Jerárquica
+                    </button>
+                    <button class="gtd-view-button ${gtdActiveClass}" data-view="gtd">
+                        📋 Listas GTD
+                    </button>
+                    <button class="gtd-view-button ${inProgressActiveClass}" data-view="inProgress">
+                        ⚡ En Progreso
+                    </button>
+                    <button class="gtd-view-button ${timeTrackerActiveClass}" data-view="time-tracker">
+                        ⏱️ Seguimiento
+                    </button>
+                    <button class="gtd-view-button ${statisticsActiveClass}" data-view="statistics">
+                        📈 Estadísticas
+                    </button>
+                    <button class="gtd-view-button ${timelineActiveClass}" data-view="timeline">
+                        📅 Cronograma
+                    </button>
+                    <button class="gtd-refresh-button" title="Refrescar datos">
+                        🔄 Refrescar
+                    </button>
+                </div>
+
+                <!-- Título de foco colapsible -->
+                ${focusFileName ? `
+                <div class="focus-view-title" id="focus-view-title">
+                    <div class="focus-title-content">
+                        <span class="focus-title-icon">🎯</span>
+                        <span>Foco: <strong>${focusFileName}</strong></span>
+                    </div>
+                    <span style="font-size: 12px; color: var(--text-muted); opacity: 0.7;">👆 Click para colapsar</span>
+                </div>` : ''}
+
+                <!-- Total de tareas -->
+                <div class="gtd-total-tasks" id="gtd-total-tasks">
+                    <span>Total de Tareas Abiertas: <strong>${totalOpenTasks}</strong></span>
+                </div>
+
+                <!-- Filtros responsivos (solo para vista GTD) -->
+                ${activeView === 'gtd' ? generateFiltersHtml(data) : ''}
+
+                <!-- Navegación rápida (solo para vista GTD) -->
+                ${activeView === 'gtd' ? generateQuickNavHtml(data) : ''}
             </div>
-            ${focusTitleHtml}
-            <div class="gtd-total-tasks">
-                <span>Total de Tareas Abiertas: ${totalOpenTasks}</span>
-            </div>
+
+            <!-- Contenido principal -->
             <div class="gtd-view-content" data-active-view="${activeView}">
                 ${viewContent}
             </div>

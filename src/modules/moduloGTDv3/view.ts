@@ -25,7 +25,7 @@ export class GtdView extends ItemView {
     public statisticsView: StatisticsView | null = null; // Añadir la nueva vista de estadísticas
     private timelineView: TimelineView | null = null;
 
-    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'statistics' | 'timeline' = 'hierarchy'; // Añadir 'statistics'
+    private activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'statistics' | 'timeline' = 'gtd'; // Cambio: iniciar con 'gtd'
     private activeGrouping: 'none' | 'context' | 'person' | 'project' = 'none';
     private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
@@ -167,6 +167,119 @@ export class GtdView extends ItemView {
     private addEventListeners(): void {
         const container = this.contentEl;
 
+        // === MANEJO DEL HEADER PEGAJOSO ===
+        const stickyHeader = container.querySelector('#gtd-sticky-header') as HTMLElement;
+        const totalTasks = container.querySelector('#gtd-total-tasks') as HTMLElement;
+        const filtersToggle = container.querySelector('#filters-toggle') as HTMLElement;
+        const filters = container.querySelector('#gtd-filters') as HTMLElement;
+        
+        let isHeaderCompact = false;
+
+        // Scroll handler para efectos en header
+        const scrollHandler = () => {
+            const scrollY = container.scrollTop;
+            
+            if (scrollY > 50 && !isHeaderCompact) {
+                stickyHeader?.classList.add('scrolled');
+                totalTasks?.classList.add('compact');
+                isHeaderCompact = true;
+            } else if (scrollY <= 50 && isHeaderCompact) {
+                stickyHeader?.classList.remove('scrolled');
+                totalTasks?.classList.remove('compact');
+                isHeaderCompact = false;
+            }
+        };
+        
+        container.addEventListener('scroll', scrollHandler, { signal: this.eventAbortController.signal });
+        
+        // === TOGGLE DE FILTROS MEJORADO ===
+        if (filtersToggle && filters) {
+            console.log('Configurando toggle de filtros mejorado');
+            
+            // Función para actualizar el estado de los filtros
+            const updateFiltersState = () => {
+                const isMobile = window.innerWidth <= 768;
+                const isExpanded = filters.classList.contains('expanded');
+                const filtersContent = filters.querySelector('.filters-content') as HTMLElement;
+                
+                if (isMobile) {
+                    // Mostrar el toggle en móvil
+                    filtersToggle.style.display = 'flex';
+                    
+                    if (isExpanded) {
+                        filtersContent.style.maxHeight = filtersContent.scrollHeight + 'px';
+                        filtersContent.style.opacity = '1';
+                        filtersContent.style.marginTop = '12px';
+                    } else {
+                        filtersContent.style.maxHeight = '0';
+                        filtersContent.style.opacity = '0';
+                        filtersContent.style.marginTop = '0';
+                    }
+                } else {
+                    // En desktop, ocultar toggle y mostrar filtros siempre
+                    filtersToggle.style.display = 'none';
+                    filtersContent.style.maxHeight = 'none';
+                    filtersContent.style.opacity = '1';
+                    filtersContent.style.marginTop = '0';
+                    filters.classList.remove('expanded');
+                }
+                
+                // Actualizar icono
+                const icon = filtersToggle.querySelector('span:last-child');
+                if (icon && isMobile) {
+                    icon.textContent = isExpanded ? '▲' : '▼';
+                }
+            };
+            
+            // Event listener para el toggle
+            filtersToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Toggle de filtros clickeado');
+                
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) {
+                    filters.classList.toggle('expanded');
+                    updateFiltersState();
+                    console.log('Estado expandido:', filters.classList.contains('expanded'));
+                }
+            }, { signal: this.eventAbortController.signal });
+            
+            // Inicializar estado
+            updateFiltersState();
+            
+            // Manejar redimensionamiento de ventana
+            const resizeHandler = () => {
+                updateFiltersState();
+            };
+            
+            window.addEventListener('resize', resizeHandler, { signal: this.eventAbortController.signal });
+            
+        } else {
+            console.log('No se encontraron elementos de filtros:', { filtersToggle, filters });
+        }
+        
+        // === INDICADORES DE FILTROS ACTIVOS ===
+        const filterInputs = container.querySelectorAll('.gtd-filter-group input[type="text"]');
+        filterInputs.forEach(input => {
+            const updateFilterState = () => {
+                const filterGroup = input.closest('.gtd-filter-group');
+                if (filterGroup) {
+                    if ((input as HTMLInputElement).value.trim()) {
+                        filterGroup.classList.add('has-value');
+                    } else {
+                        filterGroup.classList.remove('has-value');
+                    }
+                }
+            };
+            
+            input.addEventListener('input', updateFilterState, { signal: this.eventAbortController.signal });
+            updateFilterState(); // Verificar estado inicial
+        });
+        
+
+
+        // === FILTROS ORIGINALES ===
         const contextFilter = container.querySelector('#context-filter') as HTMLInputElement;
         const personFilter = container.querySelector('#person-filter') as HTMLInputElement;
         const contentFilter = container.querySelector('#task-content-filter') as HTMLInputElement;
@@ -175,6 +288,11 @@ export class GtdView extends ItemView {
             const selectedContext = contextFilter.value.trim();
             const selectedPerson = personFilter.value.trim();
             const contentSearchTerm = contentFilter.value.trim().toLowerCase();
+
+            // Contar tareas visibles por lista y sublista
+            const listCounts = new Map<string, number>();
+            const groupCounts = new Map<string, number>();
+            let totalVisible = 0;
 
             container.querySelectorAll('.gtd-task').forEach((taskEl: Element) => {
                 const htmlTaskEl = taskEl as HTMLElement;
@@ -188,21 +306,104 @@ export class GtdView extends ItemView {
                 const personMatch = selectedPerson === '' || taskPeople.includes(selectedPerson);
                 const contentMatch = contentSearchTerm === '' || taskContent.includes(contentSearchTerm);
 
-                htmlTaskEl.style.display = (contextMatch && personMatch && contentMatch) ? '' : 'none';
+                const isVisible = contextMatch && personMatch && contentMatch;
+                htmlTaskEl.style.display = isVisible ? '' : 'none';
+
+                if (isVisible) {
+                    totalVisible++;
+                    
+                    // Contar para la lista principal
+                    const listEl = htmlTaskEl.closest('.gtd-list');
+                    if (listEl) {
+                        const listId = listEl.id;
+                        listCounts.set(listId, (listCounts.get(listId) || 0) + 1);
+                    }
+                    
+                    // Contar para sublistas/grupos
+                    const groupEl = htmlTaskEl.closest('.gtd-group');
+                    if (groupEl) {
+                        const groupId = groupEl.id;
+                        groupCounts.set(groupId, (groupCounts.get(groupId) || 0) + 1);
+                    }
+                }
             });
 
+            // Actualizar contadores y visibilidad de listas principales
             container.querySelectorAll('.gtd-list').forEach((listEl: Element) => {
                 const htmlListEl = listEl as HTMLElement;
-                const visibleTasks = htmlListEl.querySelectorAll('.gtd-task:not([style*="display: none;"])');
-                const allTasksHidden = visibleTasks.length === 0;
-
-                htmlListEl.style.display = allTasksHidden ? 'none' : '';
-
                 const listId = htmlListEl.id;
+                const visibleCount = listCounts.get(listId) || 0;
+                
+                // Mostrar/ocultar lista
+                const shouldShow = visibleCount > 0;
+                htmlListEl.style.display = shouldShow ? '' : 'none';
+                
+                // Actualizar contador en el summary
+                const countSpan = htmlListEl.querySelector('.gtd-list-count');
+                if (countSpan) {
+                    countSpan.textContent = `(${visibleCount})`;
+                }
+                
+                // Actualizar navegación rápida
                 const navLink = container.querySelector(`.gtd-quick-nav a[href="#${listId}"]`) as HTMLElement;
                 if (navLink) {
-                    navLink.style.display = allTasksHidden ? 'none' : '';
+                    navLink.style.display = shouldShow ? '' : 'none';
+                    const navCount = navLink.querySelector('.gtd-nav-count');
+                    if (navCount) {
+                        navCount.textContent = visibleCount.toString();
+                    }
                 }
+            });
+
+            // Actualizar contadores y visibilidad de sublistas/grupos
+            container.querySelectorAll('.gtd-group').forEach((groupEl: Element) => {
+                const htmlGroupEl = groupEl as HTMLElement;
+                const groupId = htmlGroupEl.id;
+                const visibleCount = groupCounts.get(groupId) || 0;
+                
+                // Mostrar/ocultar grupo
+                const shouldShow = visibleCount > 0;
+                htmlGroupEl.style.display = shouldShow ? '' : 'none';
+                
+                // Actualizar contador en el título del grupo
+                const countSpan = htmlGroupEl.querySelector('.gtd-group-count');
+                if (countSpan) {
+                    countSpan.textContent = visibleCount.toString();
+                }
+                
+                // Actualizar navegación rápida para sublistas
+                const navLink = container.querySelector(`.gtd-quick-nav a[href="#${groupId}"]`) as HTMLElement;
+                if (navLink) {
+                    navLink.style.display = shouldShow ? '' : 'none';
+                    const navCount = navLink.querySelector('.gtd-nav-count');
+                    if (navCount) {
+                        navCount.textContent = visibleCount.toString();
+                    }
+                }
+            });
+
+            // Actualizar total general
+            const totalTasksEl = container.querySelector('#gtd-total-tasks');
+            if (totalTasksEl) {
+                const hasFilters = selectedContext || selectedPerson || contentSearchTerm;
+                if (hasFilters) {
+                    totalTasksEl.innerHTML = `<span>Tareas Filtradas: <strong>${totalVisible}</strong> (de ${container.querySelectorAll('.gtd-task').length} totales)</span>`;
+                } else {
+                    totalTasksEl.innerHTML = `<span>Total de Tareas Abiertas: <strong>${container.querySelectorAll('.gtd-task').length}</strong></span>`;
+                }
+            }
+
+            // Actualizar contadores en subgrupos de navegación
+            container.querySelectorAll('.gtd-subgroup').forEach((subgroupEl: Element) => {
+                const subgroupHtml = subgroupEl as HTMLElement;
+                const visibleLinks = subgroupHtml.querySelectorAll('.gtd-sub-nav-link:not([style*="display: none"])');
+                const countSpan = subgroupHtml.querySelector('.gtd-subgroup-count');
+                if (countSpan) {
+                    countSpan.textContent = visibleLinks.length.toString();
+                }
+                
+                // Ocultar subgrupo si no tiene enlaces visibles
+                subgroupHtml.style.display = visibleLinks.length > 0 ? '' : 'none';
             });
         };
 

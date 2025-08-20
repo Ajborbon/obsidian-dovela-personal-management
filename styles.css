@@ -2,65 +2,211 @@
 
 /* --- General View Container --- */
 .gtd-view-container {
-    padding: 15px;
+    padding: 0; /* Removemos el padding para el nuevo layout */
     height: 100%;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evitamos overflow en el contenedor principal */
 }
 
-/* --- Controls, Filters, and Navigation --- */
-.gtd-view-controls,
-.gtd-filters,
-.gtd-quick-nav {
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-/* Sticky header for controls and filters */
-.gtd-view-controls, .gtd-filters, .gtd-quick-nav {
+/* === HEADER PEGAJOSO UNIFICADO === */
+.gtd-sticky-header {
     position: sticky;
     top: 0;
-    background-color: var(--background-primary);
-    z-index: 10;
+    z-index: 100;
+    background: var(--background-primary);
+    border-bottom: 2px solid var(--background-modifier-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
-.gtd-filters {
-    top: 40px; /* Adjust based on the height of gtd-view-controls */
+/* Efecto cuando hay scroll */
+.gtd-sticky-header.scrolled {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-bottom-color: var(--interactive-accent);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* === CONTROLES DE VISTA MEJORADOS === */
+.gtd-view-controls {
     display: flex;
-    gap: 20px;
+    gap: 6px;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+}
+
+.gtd-view-controls::-webkit-scrollbar {
+    display: none;
+}
+
+/* Gradiente para indicar scroll horizontal */
+.gtd-view-controls::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 100%;
+    background: linear-gradient(to left, var(--background-primary), transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gtd-view-controls.scrollable::after {
+    opacity: 1;
+}
+
+/* === FILTROS RESPONSIVOS === */
+.gtd-filters {
+    padding: 12px 15px;
+    background: var(--background-primary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+/* Toggle para móvil - OCULTO por defecto en desktop */
+.filters-toggle {
+    display: none;
     align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-accent);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.filters-toggle:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filters-toggle:active {
+    transform: translateY(0);
+}
+
+.filters-content {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
 }
 
 .gtd-filter-group {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 200px;
+    position: relative;
 }
 
+.gtd-filter-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 60px;
+}
+
+.gtd-filter-group input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    font-size: 13px;
+    min-width: 120px;
+    transition: all 0.2s ease;
+    background: var(--background-primary);
+}
+
+.gtd-filter-group input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+    transform: scale(1.02);
+}
+
+.gtd-filter-group input:not(:placeholder-shown) {
+    border-color: var(--interactive-accent);
+    background: rgba(0, 122, 204, 0.05);
+}
+
+/* === NAVEGACIÓN RÁPIDA MEJORADA === */
 .gtd-quick-nav {
-    top: 80px; /* Adjust based on the height of controls + filters */
-    padding-top: 10px;
+    padding: 12px 15px;
+    background: var(--background-primary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+.gtd-quick-nav::-webkit-scrollbar {
+    height: 4px;
+}
+
+.gtd-quick-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.gtd-quick-nav::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 2px;
+}
+
+.gtd-main-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    min-width: max-content;
 }
 
 .gtd-nav-link {
-    cursor: pointer;
-    margin: 0 5px;
-    color: var(--text-accent);
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: var(--background-secondary);
     text-decoration: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-}
-.gtd-nav-link:hover {
-    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--background-modifier-border);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin: 0;
 }
 
-/* Navegación principal */
-.gtd-main-nav {
-    margin-bottom: 8px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--background-modifier-border);
+.gtd-nav-link:hover {
+    background: var(--background-modifier-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
+
+
 
 /* Navegación de sublistas */
 .gtd-sub-nav {
@@ -71,6 +217,69 @@
 .gtd-sub-nav-link {
     font-size: 0.9em;
     opacity: 0.9;
+}
+
+/* Estilos para grupos colapsibles */
+.gtd-subgroup {
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.gtd-subgroup:hover {
+    border-color: var(--background-modifier-border);
+    background: var(--background-modifier-hover);
+}
+
+.gtd-subgroup summary {
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    list-style: none;
+}
+
+.gtd-subgroup summary::-webkit-details-marker {
+    display: none;
+}
+
+.gtd-subgroup summary::before {
+    content: '▶';
+    margin-right: 8px;
+    transition: transform 0.2s ease;
+    font-size: 0.8em;
+    color: var(--text-accent);
+}
+
+.gtd-subgroup[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.gtd-subgroup summary:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.gtd-subitems {
+    padding: 8px 12px 12px 12px;
+    border-top: 1px solid var(--background-modifier-border);
+    margin-top: 4px;
+}
+
+.gtd-subgroup-count {
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 8px;
 }
 
 /* Separator used between sublist groups in the GTD navigation (HopeToday | NextActions | Assigned) */
@@ -95,30 +304,22 @@
 
 /* Contadores en navegación */
 .gtd-nav-count {
-    background: var(--background-modifier-border);
-    color: var(--text-muted);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
     padding: 2px 6px;
     border-radius: 10px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    margin-left: 4px;
+    min-width: 16px;
+    text-align: center;
 }
 
-/* Contadores en grupos */
-.gtd-group-count {
-    background: var(--background-modifier-border);
-    color: var(--text-muted);
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    margin-left: 4px;
-}
+
 
 /* Estilos para grupos GTD */
 .gtd-group {
     margin-bottom: 15px;
-    scroll-margin-top: 160px; /* Offset para sticky header */
+    scroll-margin-top: 200px; /* Offset para sticky header */
 }
 
 .gtd-group-title {
@@ -132,14 +333,53 @@
     border-left: 3px solid var(--interactive-accent);
 }
 
+/* Contadores en grupos (usar el mismo estilo que subgrupos) */
+.gtd-group-count {
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* === TOTAL DE TAREAS COMPACTO === */
+.gtd-total-tasks {
+    padding: 8px 15px;
+    background: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
+}
+
+.gtd-total-tasks.compact {
+    padding: 4px 15px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* === CONTENIDO PRINCIPAL === */
+.gtd-view-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 15px;
+    scroll-behavior: smooth;
+    scroll-padding-top: 200px; /* Compensar por el header pegajoso */
+}
+
 /* --- Task Lists --- */
 .gtd-lists-container {
-    padding-top: 10px; /* Space below sticky nav */
+    padding-top: 0; /* Ya no necesitamos padding extra */
 }
 
 .gtd-list {
-    margin-bottom: 15px;
-    scroll-margin-top: 160px; /* Offset for sticky header */
+    margin-bottom: 20px;
+    scroll-margin-top: 200px; /* Offset para sticky header */
 }
 
 .gtd-list > summary {
@@ -1579,6 +1819,291 @@ body.is-copying {
 
 /* El tipo 'default' ya está cubierto por las reglas base */
 
+/* === MEJORAS PARA BOTONES DE VISTA === */
+.gtd-view-button {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.gtd-view-button:hover {
+    background: var(--background-modifier-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.gtd-view-button.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+    box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+}
+
+.gtd-refresh-button {
+    margin-left: auto;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.gtd-refresh-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
+}
+
+/* === RESPONSIVIDAD MEJORADA === */
+
+
+
+/* Móvil grande */
+@media (max-width: 768px) {
+    .gtd-view-controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 8px 12px;
+    }
+
+    .gtd-view-button {
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+
+    .gtd-refresh-button {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    .focus-view-title {
+        padding: 10px 12px;
+    }
+
+    .gtd-total-tasks {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .gtd-filters {
+        padding: 8px 12px;
+    }
+
+    /* Mostrar el toggle en móvil */
+    .filters-toggle {
+        display: flex !important;
+    }
+
+    /* Por defecto, ocultar contenido en móvil */
+    .filters-content {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        margin-top: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                   opacity 0.3s ease,
+                   margin-top 0.3s ease;
+    }
+
+    /* Cuando está expandido, mostrar contenido */
+    .gtd-filters.expanded .filters-content {
+        max-height: 300px;
+        opacity: 1;
+        margin-top: 12px;
+    }
+
+    .gtd-filter-group {
+        min-width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+
+    .gtd-filter-group label {
+        min-width: auto;
+        text-align: left;
+    }
+
+    .gtd-filter-group input {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .gtd-quick-nav {
+        padding: 8px 12px;
+    }
+
+    .gtd-main-nav {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .gtd-nav-link {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+
+    .gtd-view-content {
+        padding: 12px;
+        scroll-padding-top: 250px;
+    }
+}
+
+/* Móvil pequeño */
+@media (max-width: 480px) {
+    .gtd-view-controls {
+        padding: 6px 8px;
+    }
+
+    .gtd-view-button {
+        font-size: 10px;
+        padding: 5px 8px;
+    }
+
+    .gtd-refresh-button {
+        padding: 5px 10px;
+        font-size: 10px;
+    }
+
+    .focus-view-title {
+        padding: 8px 10px;
+    }
+
+    .focus-title-content {
+        font-size: 14px;
+    }
+
+    .gtd-total-tasks {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+
+    .gtd-filters {
+        padding: 6px 10px;
+    }
+
+    .gtd-quick-nav {
+        padding: 6px 10px;
+    }
+
+    .gtd-view-content {
+        padding: 8px;
+        scroll-padding-top: 280px;
+    }
+
+    .gtd-filter-group input {
+        font-size: 12px;
+        padding: 5px 8px;
+    }
+}
+
+/* === UTILIDADES Y MEJORAS === */
+.scroll-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: var(--interactive-accent);
+    z-index: 101;
+    transition: width 0.1s ease;
+    pointer-events: none;
+}
+
+/* Indicador de filtros activos */
+.gtd-filter-group.has-value input {
+    border-color: var(--interactive-accent);
+    background: rgba(0, 122, 204, 0.05);
+}
+
+.gtd-filter-group.has-value label::after {
+    content: '●';
+    color: var(--interactive-accent);
+    margin-left: 4px;
+}
+
+/* Mejoras adicionales para el toggle */
+.filters-toggle:focus {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+/* Estado de transición */
+.gtd-filters.transitioning .filters-content {
+    pointer-events: none;
+}
+
+/* Mejoras para tablet */
+@media (max-width: 1024px) {
+    .gtd-filter-group {
+        min-width: 160px;
+        flex: 1 1 200px;
+    }
+    
+    .gtd-filter-group input {
+        min-width: 100px;
+    }
+    
+    .filters-content {
+        gap: 12px;
+    }
+}
+
+/* === MEJORAS ESPECÍFICAS PARA OBSIDIAN === */
+.workspace-leaf-content[data-type="gtd-view"] .view-content,
+.workspace-leaf-content[data-type="foco-gtd-view"] .view-content {
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Asegurar que el contenedor principal use toda la altura disponible */
+.workspace-leaf-content[data-type="gtd-view"] .gtd-view-container,
+.workspace-leaf-content[data-type="foco-gtd-view"] .gtd-view-container {
+    height: 100%;
+    max-height: 100vh;
+}
+
+/* Mejorar modo oscuro */
+@media (prefers-color-scheme: dark) {
+    .gtd-sticky-header.scrolled {
+        background: rgba(24, 24, 27, 0.95);
+    }
+}
+
+/* Reducir movimiento para accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+    .gtd-sticky-header,
+    .gtd-view-button,
+    .gtd-refresh-button,
+    .focus-view-title,
+    .gtd-total-tasks,
+    .gtd-filters,
+    .gtd-filter-group input,
+    .gtd-nav-link {
+        transition: none;
+    }
+    
+    .gtd-view-button:hover,
+    .gtd-refresh-button:hover,
+    .gtd-nav-link:hover {
+        transform: none;
+    }
+}
+
 /* --- Date Picker Modal --- */
 .date-picker-modal .modal-content {
     padding: 0;
@@ -1745,14 +2270,47 @@ body.is-copying {
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
-/* --- Focus View Title --- */
+/* === TÍTULO DE FOCO COLAPSIBLE === */
 .focus-view-title {
-    text-align: center;
-    font-size: 1.1em;
-    color: var(--text-muted);
-    padding: 5px 0;
-    margin-bottom: 10px;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, var(--background-secondary), var(--background-primary));
     border-bottom: 1px solid var(--background-modifier-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.focus-view-title:hover {
+    background: linear-gradient(135deg, var(--background-modifier-hover), var(--background-secondary));
+}
+
+.focus-title-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+.focus-title-icon {
+    font-size: 18px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.focus-view-title.collapsed {
+    padding: 6px 15px;
+    opacity: 0.8;
+}
+
+.focus-view-title.collapsed .focus-title-icon {
+    transform: rotate(-90deg);
+}
+
+.focus-view-title.collapsed .focus-title-content {
+    font-size: 14px;
 }
 
 .focus-view-title span {
