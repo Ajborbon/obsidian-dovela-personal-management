@@ -241,6 +241,11 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         this.gtdContextTags = allTags.filter(tag => tag.startsWith('#cx-'));
         this.gtdPersonTags = allTags.filter(tag => tag.startsWith('#px-'));
+        
+        // Refrescar configuración del Smart Inbox si está inicializado
+        if (this.smartInboxView) {
+            this.smartInboxView.refreshCascadeMenuConfig();
+        }
     }
 
     private async activateFocoView(activeFile: TFile): Promise<void> {

@@ -3,6 +3,8 @@
 import { TFile, Notice, App } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import moment from 'moment';
+import { CascadeMenuManager } from './cascadeMenuManager.js';
+import { CalendarManager } from './calendarManager.js';
 
 export class SmartInboxView {
     private plugin: DovelaPersonalManagementPlugin;
@@ -13,6 +15,10 @@ export class SmartInboxView {
     private isOpen: boolean = false;
     private selectedSuggestionIndex: number = -1;
     private currentSuggestionContext: { prefix: string; match: RegExpMatchArray } | null = null;
+    private cascadeMenuManager: CascadeMenuManager | null = null;
+    private calendarManager: CalendarManager | null = null;
+    private useCascadeMenu: boolean = true; // Flag para alternar entre sistemas
+    private useCalendarPicker: boolean = true; // Flag para alternar sistema de fechas
 
     constructor(plugin: DovelaPersonalManagementPlugin) {
         this.plugin = plugin;
@@ -25,11 +31,19 @@ export class SmartInboxView {
         const inputContainer = this.viewEl.createDiv({ cls: 'smart-inbox-input-container' });
         this.inputEl = inputContainer.createEl('input', {
             type: 'text',
-            placeholder: 'Escribe una tarea... (@proyecto, #cx-contexto, #px-persona, !date, #gtd-estado)',
+            placeholder: 'Escribe una tarea... (@ para proyectos, # para tags, ! para fechas)',
         });
 
         this.suggestionsEl = this.viewEl.createDiv({ cls: 'smart-inbox-suggestions' });
         document.body.appendChild(this.viewEl);
+        
+        // Inicializar el sistema de menús en cascada
+        this.cascadeMenuManager = new CascadeMenuManager(this.plugin, this.inputEl, this.viewEl);
+        this.cascadeMenuManager.setSelectionCallback(this.handleCascadeSelection.bind(this));
+        
+        // Inicializar el sistema de calendario
+        this.calendarManager = new CalendarManager(this.inputEl, this.viewEl);
+        this.calendarManager.setSelectionCallback(this.handleCalendarSelection.bind(this));
         
         this.inputEl.addEventListener('keydown', this.handleKeyDown.bind(this));
         this.inputEl.addEventListener('input', this.handleInput.bind(this));
@@ -53,13 +67,48 @@ export class SmartInboxView {
         this.suggestionsEl.style.display = 'none';
         this.selectedSuggestionIndex = -1;
         this.currentSuggestionContext = null;
+        
+        // Cerrar menús en cascada y calendario
+        if (this.cascadeMenuManager) {
+            this.cascadeMenuManager.hideMenu();
+        }
+        if (this.calendarManager) {
+            this.calendarManager.hideCalendar();
+        }
     }
 
     public remove() {
+        // Limpiar el sistema de menús en cascada y calendario
+        if (this.cascadeMenuManager) {
+            this.cascadeMenuManager.destroy();
+            this.cascadeMenuManager = null;
+        }
+        if (this.calendarManager) {
+            this.calendarManager.destroy();
+            this.calendarManager = null;
+        }
+        
         document.body.removeChild(this.viewEl);
     }
 
     private handleKeyDown(event: KeyboardEvent) {
+        // Primero intentar con el sistema de calendario
+        if (this.useCalendarPicker && this.calendarManager) {
+            const handled = this.calendarManager.handleKeyDown(event);
+            if (handled) {
+                return;
+            }
+        }
+        
+        // Luego intentar con el sistema de menús en cascada
+        if (this.useCascadeMenu && this.cascadeMenuManager) {
+            const handled = this.cascadeMenuManager.handleKeyDown(event);
+            if (handled) {
+                return;
+            }
+        }
+        
+        // Fallback al sistema original
         if (this.suggestionsEl.style.display === 'block') {
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
@@ -84,6 +133,30 @@ export class SmartInboxView {
     }
 
     private handleInput() {
+        const text = this.inputEl.value;
+        const cursorPos = this.inputEl.selectionStart || 0;
+        
+        // Primero intentar con el sistema de calendario
+        if (this.useCalendarPicker && this.calendarManager) {
+            const handled = this.calendarManager.handleInput(text, cursorPos);
+            if (handled) {
+                return;
+            }
+        }
+        
+        // Luego intentar con el sistema de menús en cascada
+        if (this.useCascadeMenu && this.cascadeMenuManager) {
+            const handled = this.cascadeMenuManager.handleInput(text, cursorPos);
+            if (handled) {
+                return;
+            }
+        }
+        
+        // Fallback al sistema original
+        this.handleInputOriginal();
+    }
+    
+    private handleInputOriginal() {
         const text = this.inputEl.value;
         const cursorPos = this.inputEl.selectionStart || 0;
         const textBeforeCursor = text.substring(0, cursorPos);
@@ -133,6 +206,52 @@ export class SmartInboxView {
         
         this.suggestionsEl.style.display = 'none';
         this.currentSuggestionContext = null;
+    }
+    
+    // Callback para manejar selecciones del sistema de menús en cascada
+    private handleCascadeSelection(tag: string): void {
+        const text = this.inputEl.value;
+        const cursorPos = this.inputEl.selectionStart || 0;
+        
+        // Detectar si es un tag # o un proyecto @
+        const isProjectTag = tag.startsWith('@');
+        const triggerChar = isProjectTag ? '@' : '#';
+        
+        // Encontrar la posición del trigger más cercano al cursor
+        const textBeforeCursor = text.substring(0, cursorPos);
+        const triggerIndex = textBeforeCursor.lastIndexOf(triggerChar);
+        
+        if (triggerIndex === -1) {
+            // Si no hay trigger, simplemente agregar el tag al final
+            this.inputEl.value = text + tag + ' ';
+            this.inputEl.selectionStart = this.inputEl.selectionEnd = this.inputEl.value.length;
+        } else {
+            // Reemplazar desde el trigger hasta la posición actual del cursor
+            const beforeTrigger = text.substring(0, triggerIndex);
+            const afterCursor = text.substring(cursorPos);
+            const newText = beforeTrigger + tag + ' ' + afterCursor;
+            
+            this.inputEl.value = newText;
+            const newCursorPos = triggerIndex + tag.length + 1;
+            this.inputEl.selectionStart = this.inputEl.selectionEnd = newCursorPos;
+        }
+        
+        this.inputEl.focus();
+    }
+    
+    // Método público para refrescar la configuración del menú en cascada
+    public refreshCascadeMenuConfig(): void {
+        if (this.cascadeMenuManager) {
+            this.cascadeMenuManager.refreshConfig();
+        }
+    }
+    
+    // Método público para alternar entre el sistema de menús en cascada y el original
+    public toggleCascadeMenu(enabled: boolean): void {
+        this.useCascadeMenu = enabled;
+        if (!enabled && this.cascadeMenuManager) {
+            this.cascadeMenuManager.hideMenu();
+        }
     }
 
     private showSuggestions(suggestions: string[]) {
@@ -201,10 +320,19 @@ export class SmartInboxView {
         const contextTags = text.match(/#cx-[\w-]+/g) || [];
         const personTags = text.match(/#px-[\w-]+/g) || [];
         const gtdStatusTags = text.match(/#GTD-(AlgunDia|EstaSemanaNo)/gi) || [];
-        const dateMatch = text.match(/!([\w\s-]+)/);
+        
+        // Manejar diferentes tipos de fechas del nuevo sistema
+        const startDateMatch = text.match(/🛫\s+(\d{4}-\d{2}-\d{2})/);
+        const scheduleDateMatch = text.match(/⏳\s+(\d{4}-\d{2}-\d{2})/);
+        const dueDateMatch = text.match(/📅\s+(\d{4}-\d{2}-\d{2})/);
+        
+        // Fallback al sistema original de fechas
+        const legacyDateMatch = text.match(/!([\w\s-]+)/);
 
         let description = text;
         let projectFile: TFile | null = null;
+        let startDate = '';
+        let scheduleDate = '';
         let dueDate = '';
 
         if (projectMatch && projectMatch[1]) {
@@ -217,9 +345,26 @@ export class SmartInboxView {
         personTags.forEach(tag => description = description.replace(tag, '').trim());
         gtdStatusTags.forEach(tag => description = description.replace(tag, '').trim());
 
-        if (dateMatch && dateMatch[1]) {
-            const dateString = dateMatch[1].trim();
-            description = description.replace(dateMatch[0], '').trim();
+        // Procesar fechas del nuevo sistema
+        if (startDateMatch && startDateMatch[1]) {
+            startDate = startDateMatch[1];
+            description = description.replace(startDateMatch[0], '').trim();
+        }
+        
+        if (scheduleDateMatch && scheduleDateMatch[1]) {
+            scheduleDate = scheduleDateMatch[1];
+            description = description.replace(scheduleDateMatch[0], '').trim();
+        }
+        
+        if (dueDateMatch && dueDateMatch[1]) {
+            dueDate = dueDateMatch[1];
+            description = description.replace(dueDateMatch[0], '').trim();
+        }
+        
+        // Fallback al sistema original de fechas
+        if (!startDate && !scheduleDate && !dueDate && legacyDateMatch && legacyDateMatch[1]) {
+            const dateString = legacyDateMatch[1].trim();
+            description = description.replace(legacyDateMatch[0], '').trim();
             dueDate = this.parseDate(dateString);
         }
 
@@ -238,7 +383,13 @@ export class SmartInboxView {
         // 2. Add creation date
         taskString += ` ➕ ${creationDate}`;
 
-        // 3. Add due date last
+        // 3. Add dates in order: Start, Schedule, Due
+        if (startDate) {
+            taskString += ` 🛫 ${startDate}`;
+        }
+        if (scheduleDate) {
+            taskString += ` ⏳ ${scheduleDate}`;
+        }
         if (dueDate) {
             taskString += ` 📅 ${dueDate}`;
         }
@@ -346,6 +497,55 @@ export class SmartInboxView {
                 return content.trimEnd() + '\n\n' + tasksHeader + '\n' + task + '\n';
             }
         });
+    }
+    
+    // Callback para manejar selecciones del sistema de calendario
+    private handleCalendarSelection(dateString: string): void {
+        const text = this.inputEl.value;
+        const cursorPos = this.inputEl.selectionStart || 0;
+        
+        // Encontrar la posición del '!' más cercano al cursor
+        const textBeforeCursor = text.substring(0, cursorPos);
+        const exclamationIndex = textBeforeCursor.lastIndexOf('!');
+        
+        if (exclamationIndex === -1) {
+            // Si no hay !, simplemente agregar la fecha al final
+            this.inputEl.value = text + dateString + ' ';
+            this.inputEl.selectionStart = this.inputEl.selectionEnd = this.inputEl.value.length;
+        } else {
+            // Reemplazar desde el ! hasta la posición actual del cursor
+            const beforeExclamation = text.substring(0, exclamationIndex);
+            const afterCursor = text.substring(cursorPos);
+            const newText = beforeExclamation + dateString + ' ' + afterCursor;
+            
+            this.inputEl.value = newText;
+            const newCursorPos = exclamationIndex + dateString.length + 1;
+            this.inputEl.selectionStart = this.inputEl.selectionEnd = newCursorPos;
+        }
+        
+        this.inputEl.focus();
+    }
+    
+    // Método público para alternar entre el sistema de calendario y el original
+    public toggleCalendarPicker(enabled: boolean): void {
+        this.useCalendarPicker = enabled;
+        if (!enabled && this.calendarManager) {
+            this.calendarManager.hideCalendar();
+        }
+    }
+    
+    // Método público para validar fechas en el texto actual
+    public validateDatesInText(): void {
+        if (this.calendarManager) {
+            const validation = this.calendarManager.validateCurrentDates();
+            if (validation && !validation.isValid) {
+                console.warn('Advertencia de validación de fechas:', validation.warning);
+                if (validation.suggestion) {
+                    console.log('Sugerencia:', validation.suggestion);
+                }
+                // En una implementación real, podrías mostrar una notificación visual
+            }
+        }
     }
 }
 
