@@ -52,6 +52,7 @@ export interface Task {
     creationDate?: string; // Fecha de creación (formato YYYY-MM-DD)
     date?: string;         // Fecha asociada a la tarea (YYYY-MM-DD)
     dateSymbol?: DateSymbol; // Símbolo que precede a la fecha
+    additionalDates?: {symbol: DateSymbol, date: string}[]; // NUEVO: Fechas adicionales para validación
     startTime?: string;    // Hora de inicio ([hI:: HH:mm])
     endTime?: string;      // Hora de finalización ([hF:: HH:mm])
     duration?: string;     // Duración ([Xmin] o [Xh])

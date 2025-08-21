@@ -131,15 +131,29 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
             return [];
         };
         
+        // NUEVA LÓGICA: Extraer TODAS las fechas con sus símbolos para validación
+        const allDatesRegex = /(🛫|⏳|📅)\s*(\d{4}-\d{2}-\d{2})/g;
+        const allDatesMatches = Array.from(currentTaskContent.matchAll(allDatesRegex));
+        
+        // Tomar la primera fecha como fecha principal (comportamiento actual)
         const dateRegex = /(🛫|⏳|📅)\s*(\d{4}-\d{2}-\d{2})/;
         const dateMatch = currentTaskContent.match(dateRegex);
         let date: string | undefined;
         let dateSymbol: DateSymbol | undefined;
-
+        
+        // Agregar todas las fechas encontradas al contenido para validación posterior
+        let additionalDatesForValidation: {symbol: DateSymbol, date: string}[] = [];
+        
         if (dateMatch) {
             dateSymbol = dateMatch[1] as DateSymbol;
             date = dateMatch[2];
             currentTaskContent = currentTaskContent.replace(dateRegex, '').trim();
+            
+            // Guardar fechas adicionales para validación
+            additionalDatesForValidation = allDatesMatches.slice(1).map(match => ({
+                symbol: match[1] as DateSymbol,
+                date: match[2]!
+            }));
         }
 
         const id = extractAndClean(/\s*(?:\^|🆔)\s*([a-zA-Z0-9]+)/) || crypto.randomUUID();
@@ -206,6 +220,7 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
 
         if (date) task.date = date;
         if (dateSymbol) task.dateSymbol = dateSymbol;
+        if (additionalDatesForValidation.length > 0) task.additionalDates = additionalDatesForValidation;
         if (startTime) task.startTime = startTime;
         if (endTime) task.endTime = endTime;
         if (duration) task.duration = duration;
