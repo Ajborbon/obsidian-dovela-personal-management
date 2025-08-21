@@ -122,40 +122,6 @@ export class CascadeMenuManager {
         this.renderer.renderMenu(this.currentContext, this.inputEl);
     }
 
-    private showSubMenu(mainOption: MenuOption): void {
-        if (!this.currentContext) return;
-
-        let options: MenuOption[] = [];
-        let newState: MenuState;
-
-        switch (mainOption.id) {
-            case 'cx':
-                options = this.config.contextMenuOptions;
-                newState = MenuState.CONTEXT_MENU;
-                break;
-            case 'px':
-                options = this.config.personMenuOptions;
-                newState = MenuState.PERSON_MENU;
-                break;
-            case 'gtd':
-                options = this.config.gtdMenuOptions;
-                newState = MenuState.GTD_MENU;
-                break;
-            default:
-                this.hideMenu();
-                return;
-        }
-
-        this.currentContext = {
-            state: newState,
-            prefix: `#${mainOption.value}`,
-            triggerPosition: this.currentContext.triggerPosition,
-            options,
-            selectedIndex: 0
-        };
-
-        this.renderer.renderMenu(this.currentContext, this.inputEl);
-    }
 
     private handleMenuSelection(selectedIndex: number): void {
         if (!this.currentContext || selectedIndex >= this.currentContext.options.length) {

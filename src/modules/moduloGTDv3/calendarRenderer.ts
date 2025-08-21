@@ -2,7 +2,7 @@
 import { DateType, type CalendarContext, type DateTypeOption, type CalendarDate, type QuickDateOption } from './calendarTypes.js';
 
 export class CalendarRenderer {
-    private containerEl: HTMLElement;
+    public containerEl: HTMLElement;
     private calendarEl: HTMLElement | null = null;
     private isVisible: boolean = false;
 
@@ -42,13 +42,13 @@ export class CalendarRenderer {
         this.renderDateTypeSelector(context, dateTypeOptions);
 
         // Navegación del calendario
-        this.renderCalendarNavigation(context, monthName);
+        this.renderCalendarNavigation(monthName);
 
         // Grid del calendario
         this.renderCalendarGrid(context, calendarDates, weekdayNames);
 
         // Accesos rápidos
-        this.renderQuickDateOptions(context, quickDateOptions);
+        this.renderQuickDateOptions(quickDateOptions);
 
         // Posicionar y mostrar
         this.positionCalendar(inputEl);
@@ -120,7 +120,7 @@ export class CalendarRenderer {
         });
     }
 
-    private renderCalendarNavigation(context: CalendarContext, monthName: string): void {
+    private renderCalendarNavigation(monthName: string): void {
         if (!this.calendarEl) return;
 
         const navContainer = this.calendarEl.createDiv({ cls: 'calendar-navigation' });
@@ -256,7 +256,7 @@ export class CalendarRenderer {
         });
     }
 
-    private renderQuickDateOptions(context: CalendarContext, quickDateOptions: QuickDateOption[]): void {
+    private renderQuickDateOptions(quickDateOptions: QuickDateOption[]): void {
         if (!this.calendarEl) return;
 
         const quickContainer = this.calendarEl.createDiv({ cls: 'calendar-quick-dates' });

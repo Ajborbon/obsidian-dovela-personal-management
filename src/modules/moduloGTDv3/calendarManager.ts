@@ -20,17 +20,17 @@ export class CalendarManager {
 
     private setupEventListeners(): void {
         // Escuchar eventos del renderer
-        this.renderer.containerEl.addEventListener('calendar-date-type-change', (event: CustomEvent) => {
+        this.renderer.containerEl.addEventListener('calendar-date-type-change', ((event: CustomEvent) => {
             this.handleDateTypeChange(event.detail.dateType);
-        });
+        }) as EventListener);
 
-        this.renderer.containerEl.addEventListener('calendar-date-select', (event: CustomEvent) => {
+        this.renderer.containerEl.addEventListener('calendar-date-select', ((event: CustomEvent) => {
             this.handleDateSelection(event.detail.date);
-        });
+        }) as EventListener);
 
-        this.renderer.containerEl.addEventListener('calendar-month-change', (event: CustomEvent) => {
+        this.renderer.containerEl.addEventListener('calendar-month-change', ((event: CustomEvent) => {
             this.handleMonthChange(event.detail.direction);
-        });
+        }) as EventListener);
     }
 
     public setSelectionCallback(callback: (dateString: string) => void): void {
@@ -44,14 +44,14 @@ export class CalendarManager {
         
         if (exclamationMatch) {
             const triggerPosition = exclamationMatch.index! + exclamationMatch[0].length - 1;
-            this.showCalendar(triggerPosition, text);
+            this.showCalendar(triggerPosition);
             return true;
         }
         
         return false;
     }
 
-    private showCalendar(triggerPosition: number, currentText: string): void {
+    private showCalendar(triggerPosition: number): void {
         const now = new Date();
         
         this.currentContext = {
@@ -183,7 +183,7 @@ export class CalendarManager {
         const currentIndex = dateTypes.indexOf(this.currentContext.selectedDateType);
         const nextIndex = (currentIndex + 1) % dateTypes.length;
         
-        this.currentContext.selectedDateType = dateTypes[nextIndex];
+        this.currentContext.selectedDateType = dateTypes[nextIndex] as DateType;
         this.renderCalendar();
     }
 

@@ -42,8 +42,24 @@ export class TimeTrackerCommands {
         const taskDescription = analysis.taskContent!;
         const lineNumber = analysis.lineNumber!;
         
+        // Intentar cambiar el estado de la tarea si está abierta
+        let stateChanged = false;
+        if (analysis.taskState === 'open' && analysis.fullLine) {
+            stateChanged = TaskSelectionAnalyzer.changeTaskStateToInProgress(
+                activeView.editor, 
+                lineNumber, 
+                analysis.fullLine
+            );
+        }
+        
         await this.plugin.startTracking(taskNotePath, taskDescription, lineNumber);
-        new Notice(`Temporizador iniciado para: ${taskDescription}`);
+        
+        // Mostrar notice apropiado según si se cambió el estado
+        if (stateChanged) {
+            new Notice(`Temporizador iniciado para: ${taskDescription} (tarea marcada como en progreso)`);
+        } else {
+            new Notice(`Temporizador iniciado para: ${taskDescription}`);
+        }
     }
 
     /**
@@ -89,7 +105,7 @@ export class TimeTrackerCommands {
      * Registra los ribbon icons relacionados con el time tracker
      */
     registerRibbonIcons(): void {
-        this.plugin.addRibbonIcon('play-circle', 'Control de Tiempo: Iniciar temporizador para la nota activa', () => {
+        this.plugin.addRibbonIcon('play-circle', 'Iniciar temporizador', () => {
             const activeFile = this.plugin.app.workspace.getActiveFile();
             if (this.plugin.activeTimer) {
                 new Notice('Ya hay un temporizador en curso.');

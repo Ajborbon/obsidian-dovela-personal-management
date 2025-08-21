@@ -28,12 +28,12 @@ export class CascadeSuggestionProvider {
             const cache = this.plugin.app.metadataCache.getFileCache(file);
             const frontmatter = cache?.frontmatter;
             
-            if (!frontmatter || !frontmatter.estado) {
+            if (!frontmatter || !frontmatter['estado']) {
                 return false;
             }
             
             // Verificar si el estado es activo (🟢)
-            const estado = frontmatter.estado;
+            const estado = frontmatter['estado'];
             return estado === '🟢';
         });
         

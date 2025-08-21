@@ -3386,3 +3386,27 @@ datalist {
     position: relative;
     z-index: 1;
 }
+
+/* === ESTILOS SIMPLES PARA LABEL DEL TOGGLE === */
+
+.task-close-label {
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-normal);
+    user-select: none;
+}
+
+.task-close-label:hover {
+    color: var(--text-accent);
+}
+
+/* Ajustes para móvil */
+@media (max-width: 768px) {
+    .task-close-label {
+        font-size: 16px;
+        margin-left: 10px;
+    }
+}
+
+
