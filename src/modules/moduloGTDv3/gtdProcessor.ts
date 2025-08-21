@@ -31,6 +31,149 @@ type GtdListsData = {
 };
 
 
+// Función removida - no se usa actualmente
+
+/**
+ * Verifica si una tarea tiene dependencias sin resolver
+ */
+function hasUnresolvedDependencies(task: Task, allTaskMap: Map<string, Task>): boolean {
+    return task.dependencies.some(depId => {
+        const cleanDepId = depId.replace(/^\^/, '');
+        const depTask = allTaskMap.get(cleanDepId);
+        return !!(depTask && !depTask.completed);
+    });
+}
+
+/**
+ * Determina el estado de display para tareas regulares (sin dependencias)
+ */
+function getRegularTaskDisplayStatus(task: Task): Task['displayStatus'] {
+    const hasDate = !!task.date;
+    
+    if (!hasDate) {
+        return null; // Sin fecha, estado neutro
+    }
+
+    // Colección de todas las fechas presentes en la tarea
+    let allTaskDates: {symbol: DateSymbol, date: string, isPrimary: boolean}[] = [];
+    
+    if (task.dateSymbol) {
+        // Agregar fecha principal
+        allTaskDates.push({
+            symbol: task.dateSymbol,
+            date: task.date!,
+            isPrimary: true
+        });
+        
+        // Agregar fechas adicionales si existen
+        if (task.additionalDates && task.additionalDates.length > 0) {
+            allTaskDates.push(...task.additionalDates.map(ad => ({
+                symbol: ad.symbol,
+                date: ad.date,
+                isPrimary: false
+            })));
+        }
+    }
+
+    // Analizar todas las fechas para determinar estado
+    let hasAnyOverdueDate = false;
+    let hasAnyTodayDate = false;
+    let hasActiveFutureStart = false;
+
+    for (const dateInfo of allTaskDates) {
+        const isDateOverdue = isDatePast(dateInfo.date);
+        const isDateTodayMatch = isDateToday(dateInfo.date);
+        const isDateFutureStart = dateInfo.symbol === '🛫' && isDateFuture(dateInfo.date);
+
+        // Para ROJOS: cualquier fecha vencida (Schedule o Due)
+        if (isDateOverdue && (dateInfo.symbol === '⏳' || dateInfo.symbol === '📅')) {
+            hasAnyOverdueDate = true;
+        }
+        
+        // Para VERDES: cualquier fecha que coincida con hoy
+        if (isDateTodayMatch) {
+            hasAnyTodayDate = true;
+        }
+        
+        // Para AZULES: Start date futuro
+        if (isDateFutureStart) {
+            hasActiveFutureStart = true;
+        }
+    }
+
+    // Asignar estados con prioridades: overdue > today > paused-start > null
+    if (hasAnyOverdueDate) {
+        return 'overdue';
+    } else if (hasAnyTodayDate) {
+        return 'today';
+    } else if (hasActiveFutureStart) {
+        return 'paused-start';
+    } else {
+        return null;
+    }
+}
+
+/**
+ * Determina el estado de display para tareas con dependencias
+ */
+function getDependentTaskDisplayStatus(task: Task, allTaskMap: Map<string, Task>): Task['displayStatus'] {
+    const hasUnresolvedDeps = hasUnresolvedDependencies(task, allTaskMap);
+    
+    if (!hasUnresolvedDeps) {
+        // Si no hay dependencias sin resolver, procesar como tarea normal
+        return getRegularTaskDisplayStatus(task);
+    }
+
+    // Para tareas con dependencias sin resolver, verificar fechas para determinar color
+    const hasDate = !!task.date;
+    if (!hasDate) {
+        return 'paused-dep'; // Sin fecha: naranja por dependencia
+    }
+
+    // Analizar fechas para tareas dependientes
+    let allTaskDates: {symbol: DateSymbol, date: string, isPrimary: boolean}[] = [];
+    
+    if (task.dateSymbol) {
+        allTaskDates.push({
+            symbol: task.dateSymbol,
+            date: task.date!,
+            isPrimary: true
+        });
+        
+        if (task.additionalDates && task.additionalDates.length > 0) {
+            allTaskDates.push(...task.additionalDates.map(ad => ({
+                symbol: ad.symbol,
+                date: ad.date,
+                isPrimary: false
+            })));
+        }
+    }
+
+    // Verificar si hay fechas vencidas (Due/Scheduled)
+    let hasOverdueDependentDate = false;
+    // let hasTodayDependentDate = false; // Variable removida - no se usa
+
+    for (const dateInfo of allTaskDates) {
+        const isDateOverdue = isDatePast(dateInfo.date);
+        // const isDateTodayMatch = isDateToday(dateInfo.date); // Variable removida - no se usa
+        
+        // Solo considerar fechas Due/Scheduled para dependencias
+        if (dateInfo.symbol === '⏳' || dateInfo.symbol === '📅') {
+            if (isDateOverdue) {
+                hasOverdueDependentDate = true;
+            }
+            // hasTodayDependentDate ya no se usa - removido
+        }
+    }
+
+    // Para dependencias: rojo si vencida, naranja si hoy o futura
+    if (hasOverdueDependentDate) {
+        return 'overdue'; // Rojo para dependencias vencidas
+    } else {
+        return 'paused-dep'; // Naranja para dependencias activas
+    }
+}
+
 export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>): Omit<ProcessedVaultData, 'hierarchicalData' | 'allTasks'> {
     const gtdLists: GtdListsData = {
         [GtdList.Inbox]: [],
@@ -61,53 +204,26 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
         task.contexts.forEach(context => uniqueContexts.add(context));
         task.assignedPeople.forEach(person => uniquePeople.add(person));
 
-        const isPausedByDependency = task.dependencies.some(depId => {
-            const depTask = allTaskMap.get(depId.replace(/^\^/, '')); // Handle IDs with or without '^'
-            return !!(depTask && !depTask.completed);
-        });
+        const isPausedByDependency = hasUnresolvedDependencies(task, allTaskMap);
 
         const hasDate = !!task.date;
         const hasContext = task.contexts.length > 0;
         const hasAssigned = task.assignedPeople.length > 0;
 
-        // NUEVA LÓGICA MEJORADA: Detección de fechas y estados para colores
+        // NUEVA LÓGICA: Validación de fechas y determinación de estados
         let hasInvalidDateConfiguration = false;
         let isStartDate = false;
         let isDueDate = false;
-        let isOverdue = false;
-        let isToday = false;
-        let isFutureStart = false;
         let isCalendarItem = false;
         let isHopeTodayCandidate = false;
-
-        // Colección de todas las fechas presentes en la tarea para análisis de colores
-        let allTaskDates: {symbol: DateSymbol, date: string, isPrimary: boolean}[] = [];
 
         if (hasDate && task.dateSymbol) {
             isStartDate = task.dateSymbol === '🛫';
             isDueDate = task.dateSymbol === '📅';
-
-            // Agregar fecha principal
-            allTaskDates.push({
-                symbol: task.dateSymbol,
-                date: task.date!,
-                isPrimary: true
-            });
-
-            // Agregar fechas adicionales si existen
-            if (task.additionalDates && task.additionalDates.length > 0) {
-                allTaskDates.push(...task.additionalDates.map(ad => ({
-                    symbol: ad.symbol,
-                    date: ad.date,
-                    isPrimary: false
-                })));
-            }
-
             const taskDate = task.date!;
             
             // Validar coherencia de fechas: Start date no puede ser posterior a Schedule/Due dates
             if (isStartDate) {
-                // NUEVA LÓGICA: Validar coherencia usando fechas adicionales capturadas por el parser
                 if (task.additionalDates && task.additionalDates.length > 0) {
                     for (const additionalDate of task.additionalDates) {
                         if (additionalDate.symbol === '⏳' || additionalDate.symbol === '📅') {
@@ -118,7 +234,7 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
                         }
                     }
                 } else {
-                    // Fallback: buscar en el contenido de la tarea (método anterior)
+                    // Fallback: buscar en el contenido de la tarea
                     const scheduleMatch = task.content.match(/⏳\s*(\d{4}-\d{2}-\d{2})/);
                     const dueMatch = task.content.match(/📅\s*(\d{4}-\d{2}-\d{2})/);
                     
@@ -130,75 +246,43 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
                     }
                 }
             }
-
-            // NUEVA LÓGICA: Análisis de fechas para colores mejorado
-            let hasAnyOverdueDate = false;
-            let hasAnyTodayDate = false;
-            let hasActiveFutureStart = false;
-
-            // Analizar TODAS las fechas presentes en la tarea
-            for (const dateInfo of allTaskDates) {
-                const isDateOverdue = isDatePast(dateInfo.date);
-                const isDateTodayMatch = isDateToday(dateInfo.date);
-                const isDateFutureStart = dateInfo.symbol === '🛫' && isDateFuture(dateInfo.date);
-
-                // Para ROJOS: cualquier fecha vencida (Schedule o Due)
-                if (isDateOverdue && (dateInfo.symbol === '⏳' || dateInfo.symbol === '📅')) {
-                    hasAnyOverdueDate = true;
-                }
-                
-                // Para VERDES: cualquier fecha que coincida con hoy
-                if (isDateTodayMatch) {
-                    hasAnyTodayDate = true;
-                }
-                
-                // Para AZULES: Start date futuro
-                if (isDateFutureStart) {
-                    hasActiveFutureStart = true;
-                }
-            }
-
-            // Asignar estados basados en análisis de todas las fechas
-            isOverdue = hasAnyOverdueDate;
-            isToday = hasAnyTodayDate;
-            isFutureStart = hasActiveFutureStart;
             
-            // Mantener lógica específica para algunos casos
+            // Detectar Calendar items
             isCalendarItem = isDueDate && !!task.startTime;
             
-            // NUEVA LÓGICA MEJORADA: Hope Today - Detectar cualquier fecha Schedule/Due = hoy
-            // Incluye tanto fecha principal como fechas adicionales
-            let hasScheduleOrDueToday = false;
-            
-            // Verificar en TODAS las fechas de la tarea
-            for (const dateInfo of allTaskDates) {
-                if ((dateInfo.symbol === '⏳' || dateInfo.symbol === '📅') && 
-                    isDateToday(dateInfo.date) && 
-                    !task.startTime) { // Sin hora de inicio para evitar Calendar items
-                    hasScheduleOrDueToday = true;
-                    break;
+            // Detectar candidatos para Hope Today - fechas Schedule/Due = hoy sin hora
+            if (!task.startTime) {
+                // Verificar fecha principal
+                if ((task.dateSymbol === '⏳' || task.dateSymbol === '📅') && isDateToday(task.date!)) {
+                    isHopeTodayCandidate = true;
+                }
+                
+                // Verificar fechas adicionales
+                if (task.additionalDates && task.additionalDates.length > 0) {
+                    for (const additionalDate of task.additionalDates) {
+                        if ((additionalDate.symbol === '⏳' || additionalDate.symbol === '📅') && 
+                            isDateToday(additionalDate.date)) {
+                            isHopeTodayCandidate = true;
+                            break;
+                        }
+                    }
                 }
             }
-            
-            isHopeTodayCandidate = hasScheduleOrDueToday;
         }
 
         const isWeekFutureFlag = !!task.week && isWeekFuture(task.week!);
 
-        // NUEVA LÓGICA: Compute displayStatus con prioridades mejoradas
-        // Orden de prioridad: invalid > overdue > today > paused-dep > paused-start > future
+        // NUEVA LÓGICA: Compute displayStatus usando las funciones especializadas
         if (hasInvalidDateConfiguration) {
             task.displayStatus = null; // Las tareas inválidas no tienen estado especial, van a Inbox
-        } else if (isOverdue) {
-            task.displayStatus = 'overdue';
-        } else if (isToday) {
-            task.displayStatus = 'today';
         } else if (isPausedByDependency) {
-            task.displayStatus = 'paused-dep';
-        } else if (isFutureStart || isWeekFutureFlag) {
+            // Para tareas con dependencias, usar la lógica especializada
+            task.displayStatus = getDependentTaskDisplayStatus(task, allTaskMap);
+        } else if (isWeekFutureFlag) {
             task.displayStatus = 'paused-start';
         } else {
-            task.displayStatus = null;
+            // Para tareas sin dependencias, usar la lógica regular
+            task.displayStatus = getRegularTaskDisplayStatus(task);
         }
 
         // Exclusive lists: SomedayMaybe y ThisWeekNot per requirement
@@ -224,14 +308,15 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
             // Para otras condiciones de Inbox, continúa el procesamiento normal
         }
 
-        // NUEVA LÓGICA: Paused - Incluir tareas con start date futuro
-        if (isPausedByDependency || isWeekFutureFlag || isFutureStart) {
+        // NUEVA LÓGICA MEJORADA: Paused - Sistema de doble/triple listado para dependencias
+        if (isPausedByDependency || isWeekFutureFlag || task.displayStatus === 'paused-start') {
             gtdLists[GtdList.Paused].push(task);
+            
             // Las tareas pausadas por start date futuro NO deben aparecer en otras listas activas
-            if (isFutureStart) {
+            if (task.displayStatus === 'paused-start' && !isPausedByDependency) {
                 continue;
             }
-            // Para otras pausas (dependencias, semana futura), continúa el procesamiento
+            // Para dependencias y semana futura, continúa el procesamiento para permitir doble listado
         }
 
         // Calendar: scheduled items with start time
@@ -239,41 +324,20 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
             gtdLists[GtdList.Calendar].push(task);
         }
 
-        // NUEVA LÓGICA CONSOLIDADA: Overdue - Incluir tareas vencidas una sola vez
-        // Verificar si debe ir a Overdue por cualquier razón y agregarlo solo una vez
-        let shouldAddToOverdue = false;
-        
-        // Caso 1: Tareas vencidas normales (Schedule/Due vencidas con contexto o asignación)
-        if (isOverdue && (hasContext || hasAssigned)) {
-            shouldAddToOverdue = true;
-        }
-        
-        // Caso 2: Start dates vencidas con fechas adicionales vencidas
-        if (isStartDate && task.date && isDatePast(task.date)) {
-            if (task.additionalDates && task.additionalDates.length > 0) {
-                for (const additionalDate of task.additionalDates) {
-                    if ((additionalDate.symbol === '⏳' || additionalDate.symbol === '📅') && 
-                        isDatePast(additionalDate.date)) {
-                        shouldAddToOverdue = true;
-                        break;
-                    }
-                }
-            } else {
-                // Fallback al método anterior
-                const hasOtherOverdueDate = task.content.match(/(⏳|📅)\s*(\d{4}-\d{2}-\d{2})/);
-                if (hasOtherOverdueDate && hasOtherOverdueDate[2] && isDatePast(hasOtherOverdueDate[2])) {
-                    shouldAddToOverdue = true;
-                }
-            }
-        }
-        
-        // Agregar a Overdue solo una vez si cumple cualquier condición
-        if (shouldAddToOverdue) {
+        // NUEVA LÓGICA: Overdue - Incluir tareas vencidas (incluyendo dependencias vencidas)
+        if (task.displayStatus === 'overdue') {
             gtdLists[GtdList.Overdue].push(task);
         }
 
-        // CAMBIO PRINCIPAL: Hope Today - Agregar a TODOS los contextos y personas
-        if (isHopeTodayCandidate) {
+        // NUEVA LÓGICA MEJORADA: Hope Today - Incluir dependencias con fechas de hoy
+        if (isHopeTodayCandidate || 
+            (isPausedByDependency && task.displayStatus === 'paused-dep' && 
+             ((hasDate && isDateToday(task.date!)) || 
+              (task.additionalDates && task.additionalDates.some(ad => 
+                  (ad.symbol === '⏳' || ad.symbol === '📅') && isDateToday(ad.date)
+              ))
+             )
+            )) {
             // Agregar a todos los contextos
             if (task.contexts.length > 0) {
                 task.contexts.forEach(context => {

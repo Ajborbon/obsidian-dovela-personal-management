@@ -1,5 +1,5 @@
 
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
 import { TimeTrackerView } from './timeTrackerView.js';
@@ -70,6 +70,36 @@ export class GtdView extends ItemView {
     public async refreshStatistics(): Promise<void> {
         if (this.statisticsView) {
             await this.statisticsView.renderStatistics(this.statisticsView.activeDateFilter);
+        }
+    }
+
+    /**
+     * Maneja los clics en enlaces de dependencias para navegar a la tarea dependiente
+     */
+    private async handleDependencyLinkClick(dependencyId: string): Promise<void> {
+        try {
+            // Buscar la tarea dependiente en todas las tareas cargadas
+            const parsedData = await parseVault(this.app.vault, this.app.metadataCache);
+            const targetTask = parsedData.allTasks.find(task => task.id === dependencyId);
+            
+            if (!targetTask) {
+                new Notice(`No se encontró la tarea dependiente: ${dependencyId}`);
+                return;
+            }
+            
+            // Navegar al archivo de la tarea
+            const file = targetTask.sourceFile;
+            if (file) {
+                await this.app.workspace.openLinkText(file.path, '', false, {
+                    eState: { line: targetTask.lineNumber }
+                });
+                new Notice(`Navegando a la tarea dependiente: ${dependencyId}`);
+            } else {
+                new Notice(`El archivo de la tarea dependiente ${dependencyId} no se encuentra disponible`);
+            }
+        } catch (error) {
+            console.error('Error al navegar a la tarea dependiente:', error);
+            new Notice(`Error al abrir la tarea dependiente: ${dependencyId}`);
         }
     }
 
@@ -437,6 +467,17 @@ export class GtdView extends ItemView {
                         this.activeSorting = 'priority';
                     }
                     this.drawView();
+                }
+                return;
+            }
+
+            // Manejar clics en enlaces de dependencias
+            const dependencyLink = target.closest('.dependency-link') as HTMLElement;
+            if (dependencyLink) {
+                event.preventDefault();
+                const dependencyId = dependencyLink.dataset['dependencyId'];
+                if (dependencyId) {
+                    this.handleDependencyLinkClick(dependencyId);
                 }
                 return;
             }

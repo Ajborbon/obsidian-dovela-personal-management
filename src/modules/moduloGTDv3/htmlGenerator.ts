@@ -5,6 +5,20 @@ import { isDatePast } from './dateUtils.js';
 type Grouping = 'none' | 'context' | 'person' | 'project';
 type Sorting = 'priority' | 'duration-asc' | 'duration-desc';
 
+/**
+ * Procesa el contenido de una tarea para agregar enlaces interactivos a las dependencias
+ */
+function processDependencyLinks(content: string): string {
+    // Patrón para detectar dependencias: ⛔ seguido de ID (opcionalmente con ^)
+    const dependencyPattern = /⛔\s*(\^?[a-zA-Z0-9-_]+)/g;
+    
+    return content.replace(dependencyPattern, (_match: string, ...args: any[]) => {
+        const depId = args[0] as string;
+        const cleanDepId = depId.replace(/^\^/, '');
+        return `⛔ ${depId} <span class="dependency-link" data-dependency-id="${cleanDepId}" title="Ir a la tarea dependiente: ${cleanDepId}">🔗</span>`;
+    });
+}
+
 function renderInProgressTask(task: Task, breadcrumb: string): string {
     const prioritySymbols: Record<Task['priority'], string> = {
         Highest: '⏫', High: '🔼', Medium: '🔽', Low: '⏬', None: ''
@@ -22,9 +36,13 @@ function renderInProgressTask(task: Task, breadcrumb: string): string {
     if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
     metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>';
 
-    const linkedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
+    // Procesar enlaces internos de Obsidian
+    let processedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
         '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
     );
+    
+    // Procesar enlaces de dependencias
+    processedContent = processDependencyLinks(processedContent);
 
     const contextsData = JSON.stringify(task.contexts);
     const peopleData = JSON.stringify(task.assignedPeople);
@@ -37,7 +55,7 @@ function renderInProgressTask(task: Task, breadcrumb: string): string {
             <div class="gtd-task-content">
                 <input type="checkbox" />
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
-                ${linkedContent}
+                ${processedContent}
             </div>
             <div class="gtd-task-metadata">${metadataHtml}</div>
             <div class="gtd-breadcrumb-container">
@@ -137,9 +155,13 @@ function renderTask(task: Task, breadcrumb: string): string {
     if (task.assignedPeople.length > 0) metadataHtml += `<span>${task.assignedPeople.join(' ')}</span>`;
     metadataHtml += '<span class="gtd-breadcrumb-toggle">📄</span>';
 
-    const linkedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
+    // Procesar enlaces internos de Obsidian
+    let processedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
         '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
     );
+    
+    // Procesar enlaces de dependencias
+    processedContent = processDependencyLinks(processedContent);
 
     const contextsData = JSON.stringify(task.contexts);
     const peopleData = JSON.stringify(task.assignedPeople);
@@ -151,7 +173,7 @@ function renderTask(task: Task, breadcrumb: string): string {
         <li class="gtd-task${displayClass}" data-display-status="${displayAttr}" data-task-path="${task.sourceFile.path}" data-task-line="${task.lineNumber}" data-contexts='${contextsData}' data-people='${peopleData}' data-content="${task.content.replace(/"/g, '"')}">
             <div class="gtd-task-content">
                 <span class="gtd-task-priority">${prioritySymbols[task.priority]}</span>
-                ${linkedContent}
+                ${processedContent}
             </div>
             <div class="gtd-task-metadata">${metadataHtml}</div>
             <div class="gtd-breadcrumb-container">

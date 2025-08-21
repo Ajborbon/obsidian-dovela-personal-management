@@ -131,6 +131,13 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
             return [];
         };
         
+        // NUEVA FUNCIÓN: Extraer dependencias SIN limpiar el contenido
+        const extractDependenciesWithoutCleaning = (content: string): string[] => {
+            const dependencyRegex = /⛔\s*(\^?[a-zA-Z0-9]+)/g;
+            const matches = Array.from(content.matchAll(dependencyRegex));
+            return matches.map(match => match[1] || '').filter(id => id.length > 0);
+        };
+        
         // NUEVA LÓGICA: Extraer TODAS las fechas con sus símbolos para validación
         const allDatesRegex = /(🛫|⏳|📅)\s*(\d{4}-\d{2}-\d{2})/g;
         const allDatesMatches = Array.from(currentTaskContent.matchAll(allDatesRegex));
@@ -161,7 +168,7 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
         const endTime = extractAndClean(/ \[hF::\s*([^\]]+)\]/);
         const duration = extractAndClean(/ \[([0-9]+h|[0-9]+min)\]/);
         const week = extractAndClean(/ \[w::\s*(\[\[\d{4}-W\d{2}\]\])\]/);
-        const dependencies = extractAndCleanAll(/⛔\s*(\^?[a-zA-Z0-9]+)/g);
+        const dependencies = extractDependenciesWithoutCleaning(currentTaskContent);
         const contexts = extractAndCleanAll(/#cx-([\w-]+)/g);
         const assignedPeople = extractAndCleanAll(/#px-([\w-]+)/g);
         const tags = extractAndCleanAll(/#(GTD-AlgunDia|GTD-EstaSemanaNo|inbox)/g);

@@ -2626,6 +2626,89 @@ body.is-copying {
     color: inherit;
 }
 
+/* === ESTILOS PARA ENLACES DE DEPENDENCIAS === */
+
+/* Enlace de dependencia interactivo */
+.dependency-link {
+    display: inline-block;
+    margin-left: 4px;
+    cursor: pointer;
+    color: var(--text-accent);
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    vertical-align: middle;
+}
+
+.dependency-link:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dependency-link:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Animación de clic */
+.dependency-link:focus {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+/* Mejores colores para dependencias según estado */
+
+/* Dependencias activas (naranja) */
+.gtd-task.task--paused-dep .dependency-link {
+    color: #d97706; /* naranja más fuerte */
+    border-color: rgba(217, 119, 6, 0.3);
+}
+
+.gtd-task.task--paused-dep .dependency-link:hover {
+    background: #d97706;
+    border-color: #d97706;
+}
+
+/* Dependencias vencidas (rojo) */
+.gtd-task.task--overdue .dependency-link {
+    color: #dc2626; /* rojo más fuerte */
+    border-color: rgba(220, 38, 38, 0.3);
+}
+
+.gtd-task.task--overdue .dependency-link:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+/* Estado de carga/loading para dependencias */
+.dependency-link.loading {
+    opacity: 0.6;
+    cursor: wait;
+    pointer-events: none;
+}
+
+/* Estilo para dependencias no encontradas */
+.dependency-link.not-found {
+    color: var(--text-muted);
+    background: var(--background-modifier-error);
+    border-color: var(--background-modifier-error);
+    cursor: not-allowed;
+}
+
+.dependency-link.not-found:hover {
+    background: var(--background-modifier-error);
+    color: var(--text-muted);
+    transform: none;
+    box-shadow: none;
+}
+
 /* Ensure checkboxes and priority icons contrast sufficiently */
 .gtd-task.task--overdue input[type="checkbox"],
 .gtd-task.task--today input[type="checkbox"],
