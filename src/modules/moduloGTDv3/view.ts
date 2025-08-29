@@ -29,6 +29,7 @@ export class GtdView extends ItemView {
     private activeGrouping: 'none' | 'context' | 'person' | 'project' = 'none';
     private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
+    private overdueGroupingMode: 'date-first' | 'context-first' = 'date-first'; // Modo de organización de Vencidas
 
     constructor(leaf: WorkspaceLeaf, plugin: DovelaPersonalManagementPlugin) {
         super(leaf);
@@ -137,7 +138,7 @@ export class GtdView extends ItemView {
             const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
 
             const allTaskMap = new Map(parsedData.allTasks.map(task => [task.id, task]));
-            const { gtdLists, uniqueContexts, uniquePeople, navigationItems } = processGtdLists(parsedData.allTasks, allTaskMap);
+            const { gtdLists, uniqueContexts, uniquePeople, navigationItems } = processGtdLists(parsedData.allTasks, allTaskMap, this.overdueGroupingMode);
             const inProgressData = processInProgressTasks(parsedData.allTasks, this.activeGrouping, this.activeSorting);
 
             const finalData: ProcessedVaultData = {
@@ -501,6 +502,44 @@ export class GtdView extends ItemView {
                 }
             }
         }, { signal: this.eventAbortController.signal });
+
+        // === EVENT LISTENER PARA BOTÓN TOGGLE DE VENCIDAS ===
+        container.addEventListener('click', (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const toggleButton = target.closest('.gtd-overdue-toggle') as HTMLElement;
+            
+            if (toggleButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleOverdueGroupingMode();
+            }
+        }, { signal: this.eventAbortController.signal });
+    }
+
+    private toggleOverdueGroupingMode(): void {
+        // Cambiar el modo
+        this.overdueGroupingMode = this.overdueGroupingMode === 'date-first' ? 'context-first' : 'date-first';
+        
+        // Actualizar el visual del botón
+        this.updateOverdueToggleButton();
+        
+        // Recargar la vista
+        this.drawView();
+    }
+
+    private updateOverdueToggleButton(): void {
+        const toggleButton = this.contentEl.querySelector('.gtd-overdue-toggle') as HTMLElement;
+        if (toggleButton) {
+            if (this.overdueGroupingMode === 'date-first') {
+                toggleButton.textContent = '📅→📋';
+                toggleButton.setAttribute('data-mode', 'date-first');
+                toggleButton.title = 'Modo: Por fecha primero. Click para cambiar a contexto/persona primero';
+            } else {
+                toggleButton.textContent = '📋→📅';
+                toggleButton.setAttribute('data-mode', 'context-first');
+                toggleButton.title = 'Modo: Por contexto/persona primero. Click para cambiar a fecha primero';
+            }
+        }
     }
 
     private initializeMobileFiltersOptimization(container: HTMLElement): void {

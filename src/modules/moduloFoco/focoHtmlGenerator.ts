@@ -231,25 +231,9 @@ function generateQuickNavHtml(data: ProcessedVaultData): string {
             .trim();
     };
 
-    // === NUEVO: ORDENAMIENTO DINÁMICO DE NAVEGACIÓN PARA VISTA DE FOCO ===
-    // Filtrar y reordenar navigationItems para poner "Ojalá hoy" primera
-    const reorderNavigationItems = (items: any[]) => {
-        const mainItems = items.filter(item => !item.isSublist);
-        const hopeTodayItem = mainItems.find(item => 
-            item.label && item.label.toLowerCase().includes('ojalá')
-        );
-        const otherItems = mainItems.filter(item => 
-            !(item.label && item.label.toLowerCase().includes('ojalá'))
-        );
-        
-        // Si existe "Ojalá hoy", ponerla primera
-        if (hopeTodayItem) {
-            return [hopeTodayItem, ...otherItems];
-        }
-        return otherItems;
-    };
-    
-    const orderedMainItems = reorderNavigationItems(navigationItems);
+    // === NAVEGACIÓN YA ORDENADA POR focoProcessor ===
+    // Los navigationItems ya vienen en el orden correcto desde generateNavigationItems
+    const orderedMainItems = navigationItems.filter(item => !item.isSublist);
     
     // Generate navigation using reordered navigationItems
     const mainNavLinks = orderedMainItems
@@ -300,6 +284,112 @@ function generateQuickNavHtml(data: ProcessedVaultData): string {
     `;
 }
 
+/**
+ * Renderiza las tareas vencidas con agrupación dual jerárquica
+ */
+function renderOverdueGroupedTasks(
+    overdueMap: Map<string, Task[]>, 
+    renderTaskWithBreadcrumb: (task: Task) => string,
+    createAnchorId: (text: string) => string,
+    listName: string
+): string {
+    let html = '';
+    
+    // Procesar las claves agrupadas para organizarlas jerárquicamente
+    const groupedData = new Map<string, Map<string, Task[]>>();
+    
+    for (const [key, tasks] of overdueMap.entries()) {
+        if (key.includes('|')) {
+            // Clave compuesta: "📅 2024-01-15|cx-Trabajo" o "📋 cx-Trabajo|2024-01-15"
+            const splitResult = key.split('|');
+            const primaryKey = splitResult[0];
+            const secondaryKey = splitResult[1];
+            
+            if (primaryKey && secondaryKey && !groupedData.has(primaryKey)) {
+                groupedData.set(primaryKey, new Map());
+            }
+            if (primaryKey && secondaryKey) {
+                groupedData.get(primaryKey)!.set(secondaryKey, tasks);
+            }
+        } else {
+            // Clave simple (no debería ocurrir con la nueva lógica, pero por seguridad)
+            if (!groupedData.has(key)) {
+                groupedData.set(key, new Map());
+            }
+            groupedData.get(key)!.set('', tasks);
+        }
+    }
+    
+    // Ordenar las claves primarias
+    const sortedPrimaryKeys = Array.from(groupedData.keys()).sort((a, b) => {
+        // Si es por fechas primero, ordenar por fecha (más antigua primero = más urgente)
+        if (a.startsWith('📅') && b.startsWith('📅')) {
+            const dateA = a.replace('📅 ', '');
+            const dateB = b.replace('📅 ', '');
+            return dateA.localeCompare(dateB);
+        }
+        // Si es por contexto/persona primero, ordenar alfabéticamente
+        return a.localeCompare(b);
+    });
+    
+    // Renderizar la jerarquía
+    for (const primaryKey of sortedPrimaryKeys) {
+        const secondaryGroups = groupedData.get(primaryKey)!;
+        const totalTasksInPrimary = Array.from(secondaryGroups.values()).reduce((sum, tasks) => sum + tasks.length, 0);
+        
+        // Limpiar la clave primaria para mostrar
+        let displayPrimaryKey = primaryKey.replace(/^📅 /, '').replace(/^📋 /, '').replace(/^👤 /, '');
+        
+        const primaryGroupId = createAnchorId(`${listName}-${primaryKey}`);
+        
+        html += `
+            <div class="gtd-group gtd-overdue-primary-group" id="${primaryGroupId}">
+                <div class="gtd-group-title gtd-overdue-primary-title">${displayPrimaryKey} <span class="gtd-group-count">${totalTasksInPrimary}</span></div>
+        `;
+        
+        // Ordenar las claves secundarias
+        const sortedSecondaryKeys = Array.from(secondaryGroups.keys()).sort((a, b) => {
+            // Si las claves secundarias son fechas, ordenar por fecha (más antigua primero)
+            if (a.match(/^\d{4}-\d{2}-\d{2}$/) && b.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return a.localeCompare(b);
+            }
+            // Si son contextos/personas, ordenar alfabéticamente
+            return a.localeCompare(b);
+        });
+        
+        for (const secondaryKey of sortedSecondaryKeys) {
+            const tasks = secondaryGroups.get(secondaryKey)!;
+            if (tasks.length > 0) {
+                // Limpiar la clave secundaria para mostrar
+                let displaySecondaryKey = secondaryKey.replace(/^cx-/, '').replace(/^px-/, '');
+                
+                // Si la clave secundaria está vacía, no mostrar sublista
+                if (secondaryKey === '') {
+                    html += `
+                        <ul class="gtd-task-list">
+                            ${tasks.map(renderTaskWithBreadcrumb).join('')}
+                        </ul>
+                    `;
+                } else {
+                    const secondaryGroupId = createAnchorId(`${listName}-${primaryKey}-${secondaryKey}`);
+                    html += `
+                        <div class="gtd-subgroup gtd-overdue-secondary-group" id="${secondaryGroupId}">
+                            <div class="gtd-subgroup-title gtd-overdue-secondary-title">${displaySecondaryKey} <span class="gtd-subgroup-count">${tasks.length}</span></div>
+                            <ul class="gtd-task-list">
+                                ${tasks.map(renderTaskWithBreadcrumb).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        html += `</div>`;
+    }
+    
+    return html;
+}
+
 function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
     const { gtdLists } = data;
     let html = '<div class="gtd-lists-container">';
@@ -318,8 +408,8 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
     const generateDynamicListOrder = (): GtdList[] => {
         // Orden base sin "Ojalá hoy"
         const baseOrder: GtdList[] = [
-            GtdList.Inbox, GtdList.NextActions, GtdList.Calendar,
-            GtdList.Overdue, GtdList.Assigned, GtdList.Projects, GtdList.Paused,
+            GtdList.Overdue, GtdList.Inbox, GtdList.Calendar,
+            GtdList.Projects, GtdList.NextActions, GtdList.Assigned, GtdList.Paused,
             GtdList.ThisWeekNot, GtdList.SomedayMaybe,
         ];
         
@@ -358,38 +448,52 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
 
         const listId = createAnchorId(`gtd-list-${listName}`);
 
+        // Generar botón de toggle para lista Vencidas
+        let toggleButton = '';
+        if (listName === GtdList.Overdue) {
+            toggleButton = `
+                <button class="gtd-overdue-toggle" 
+                        data-mode="date-first" 
+                        title="Alternar entre organización por fecha o por contexto/persona">
+                    📅→📋 
+                </button>
+            `;
+        }
+
         html += `
             <details class="gtd-list" open id="${listId}">
-                <summary>${listName} <span class="gtd-list-count">(${totalTasksInList})</span></summary>
+                <summary>${listName} <span class="gtd-list-count">(${totalTasksInList})</span>${toggleButton}</summary>
         `;
         
         const renderTaskWithBreadcrumb = (task: Task) => renderTask(task, taskBreadcrumbMap.get(task.id) || '');
 
         // Handle grouped lists (Maps) vs simple lists (Arrays)
         if (tasks instanceof Map) {
-            const sortedGroupNames = Array.from(tasks.keys()).sort();
+            if (listName === GtdList.Overdue) {
+                // Renderizado especial para lista de vencidas con agrupación dual
+                html += renderOverdueGroupedTasks(tasks, renderTaskWithBreadcrumb, createAnchorId, listName);
+            } else {
+                // Renderizado normal para otras listas agrupadas
+                const sortedGroupNames = Array.from(tasks.keys()).sort();
 
-            for (const groupName of sortedGroupNames) {
-                const groupTasks = tasks.get(groupName);
-                if (groupTasks && groupTasks.length > 0) {
-                    // Usar la misma lógica de generación de ID que en el processor
-                    const groupId = createAnchorId(`${listName}-${groupName}`);
-                    html += `
-                        <div class="gtd-group" id="${groupId}">
-                            <div class="gtd-group-title">${groupName} <span class="gtd-group-count">${groupTasks.length}</span></div>
-                            <ul class="gtd-task-list">
-                                ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
-                            </ul>
-                        </div>
-                    `;
+                for (const groupName of sortedGroupNames) {
+                    const groupTasks = tasks.get(groupName);
+                    if (groupTasks && groupTasks.length > 0) {
+                        // Usar la misma lógica de generación de ID que en el processor
+                        const groupId = createAnchorId(`${listName}-${groupName}`);
+                        html += `
+                            <div class="gtd-group" id="${groupId}">
+                                <div class="gtd-group-title">${groupName} <span class="gtd-group-count">${groupTasks.length}</span></div>
+                                <ul class="gtd-task-list">
+                                    ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
                 }
             }
         } else {
-            // Handle special sorting for certain lists
-            if (listName === GtdList.Overdue) {
-                (tasks as Task[]).sort((a, b) => (a.date && b.date) ? a.date.localeCompare(b.date) : 0);
-            }
-            
+            // Handle arrays (simple lists without grouping)
             html += `
                 <ul class="gtd-task-list">
                     ${(tasks as Task[]).map(renderTaskWithBreadcrumb).join('')}

@@ -16,6 +16,12 @@ export enum GtdList {
     Overdue = 'Vencidas',
 }
 
+// Configuración para la organización de tareas vencidas
+export type OverdueGroupingMode = 'date-first' | 'context-first';
+
+// Configuración temporal (TODO: hacer persistente)
+const OVERDUE_GROUPING_MODE: OverdueGroupingMode = 'date-first';
+
 // Define a type for the gtdLists object
 type GtdListsData = {
     [GtdList.Inbox]: Task[];
@@ -27,7 +33,7 @@ type GtdListsData = {
     [GtdList.SomedayMaybe]: Task[];
     [GtdList.ThisWeekNot]: Task[];
     [GtdList.Paused]: Task[];
-    [GtdList.Overdue]: Task[];
+    [GtdList.Overdue]: Map<string, Task[]>; // Cambiar a Map para agrupación dual
 };
 
 
@@ -114,6 +120,82 @@ function getRegularTaskDisplayStatus(task: Task): Task['displayStatus'] {
 }
 
 /**
+ * Agrega una tarea a la lista de vencidas con agrupación dual
+ */
+function addTaskToOverdueWithGrouping(task: Task, overdueMap: Map<string, Task[]>, mode: OverdueGroupingMode): void {
+    // Helper to push into a Map<string, Task[]>
+    const pushToMap = (map: Map<string, Task[]>, key: string, task: Task) => {
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)?.push(task);
+    };
+    
+    // Determinar la fecha de vencimiento (puede ser la principal o alguna adicional)
+    let overdueDate = task.date || '';
+    
+    // Buscar la fecha vencida más importante (Due > Schedule)
+    if (task.additionalDates && task.additionalDates.length > 0) {
+        const dueDates = task.additionalDates.filter(ad => ad.symbol === '📅' && isDatePast(ad.date));
+        const scheduledDates = task.additionalDates.filter(ad => ad.symbol === '⏳' && isDatePast(ad.date));
+        
+        if (dueDates.length > 0) {
+            // Usar la fecha Due más reciente
+            const sortedDueDates = dueDates.sort((a, b) => b.date.localeCompare(a.date));
+            if (sortedDueDates[0]) {
+                overdueDate = sortedDueDates[0].date;
+            }
+        } else if (scheduledDates.length > 0) {
+            // Usar la fecha Schedule más reciente
+            const sortedScheduledDates = scheduledDates.sort((a, b) => b.date.localeCompare(a.date));
+            if (sortedScheduledDates[0]) {
+                overdueDate = sortedScheduledDates[0].date;
+            }
+        }
+    }
+    
+    if (mode === 'date-first') {
+        // OPCIÓN A: Por fecha primero, luego cx-/px-
+        const dateKey = `📅 ${overdueDate}`;
+        
+        if (task.contexts.length > 0) {
+            task.contexts.forEach(context => {
+                const subKey = `${dateKey}|cx-${context}`;
+                pushToMap(overdueMap, subKey, task);
+            });
+        } else if (task.assignedPeople.length > 0) {
+            task.assignedPeople.forEach(person => {
+                const subKey = `${dateKey}|px-${person}`;
+                pushToMap(overdueMap, subKey, task);
+            });
+        } else {
+            // Sin contexto ni persona asignada
+            const subKey = `${dateKey}|cx-Sin Contexto`;
+            pushToMap(overdueMap, subKey, task);
+        }
+        
+    } else {
+        // OPCIÓN B: Por cx-/px- primero, luego por fecha
+        if (task.contexts.length > 0) {
+            task.contexts.forEach(context => {
+                const contextKey = `📋 cx-${context}`;
+                const subKey = `${contextKey}|${overdueDate}`;
+                pushToMap(overdueMap, subKey, task);
+            });
+        } else if (task.assignedPeople.length > 0) {
+            task.assignedPeople.forEach(person => {
+                const personKey = `👤 px-${person}`;
+                const subKey = `${personKey}|${overdueDate}`;
+                pushToMap(overdueMap, subKey, task);
+            });
+        } else {
+            // Sin contexto ni persona asignada
+            const contextKey = `📋 cx-Sin Contexto`;
+            const subKey = `${contextKey}|${overdueDate}`;
+            pushToMap(overdueMap, subKey, task);
+        }
+    }
+}
+
+/**
  * Determina el estado de display para tareas con dependencias
  */
 function getDependentTaskDisplayStatus(task: Task, allTaskMap: Map<string, Task>): Task['displayStatus'] {
@@ -174,7 +256,9 @@ function getDependentTaskDisplayStatus(task: Task, allTaskMap: Map<string, Task>
     }
 }
 
-export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>): Omit<ProcessedVaultData, 'hierarchicalData' | 'allTasks'> {
+export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>, overdueGroupingMode?: OverdueGroupingMode): Omit<ProcessedVaultData, 'hierarchicalData' | 'allTasks'> {
+    // Usar el modo pasado como parámetro o el valor por defecto
+    const currentOverdueMode = overdueGroupingMode || OVERDUE_GROUPING_MODE;
     const gtdLists: GtdListsData = {
         [GtdList.Inbox]: [],
         [GtdList.NextActions]: new Map(),
@@ -185,7 +269,7 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
         [GtdList.SomedayMaybe]: [],
         [GtdList.ThisWeekNot]: [],
         [GtdList.Paused]: [],
-        [GtdList.Overdue]: [],
+        [GtdList.Overdue]: new Map(),
     };
 
     const uniqueContexts = new Set<string>();
@@ -324,9 +408,9 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
             gtdLists[GtdList.Calendar].push(task);
         }
 
-        // NUEVA LÓGICA: Overdue - Incluir tareas vencidas (incluyendo dependencias vencidas)
+        // NUEVA LÓGICA: Overdue - Incluir tareas vencidas con agrupación dual
         if (task.displayStatus === 'overdue') {
-            gtdLists[GtdList.Overdue].push(task);
+            addTaskToOverdueWithGrouping(task, gtdLists[GtdList.Overdue] as Map<string, Task[]>, currentOverdueMode);
         }
 
         // NUEVA LÓGICA MEJORADA: Hope Today - Incluir dependencias con fechas de hoy
@@ -390,7 +474,7 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>)
         // Fallback: if nothing matched (no context, no assigned, no date-based inclusion), put into Inbox
         const inAnyList = (
             gtdLists[GtdList.Calendar].includes(task) ||
-            gtdLists[GtdList.Overdue].includes(task) ||
+            Array.from((gtdLists[GtdList.Overdue] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
             Array.from((gtdLists[GtdList.HopeToday] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
             Array.from((gtdLists[GtdList.Assigned] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
             Array.from((gtdLists[GtdList.NextActions] as Map<string, Task[]>).values()).some(arr => arr.includes(task)) ||
@@ -431,8 +515,38 @@ function generateNavigationItems(gtdLists: GtdListsData): NavigationItem[] {
             .trim();
     };
     
-    // Procesar cada lista GTD con tipos correctos
-    for (const [listName, tasks] of Object.entries(gtdLists) as [string, Task[] | Map<string, Task[]>][]) {
+    // === USAR EL MISMO ORDEN DINÁMICO QUE EL RENDERIZADO ===
+    // Función auxiliar para generar orden dinámico basado en existencia
+    const generateDynamicListOrder = (): GtdList[] => {
+        // Orden base sin "Ojalá hoy"
+        const baseOrder: GtdList[] = [
+            GtdList.Overdue, GtdList.Inbox, GtdList.Calendar,
+            GtdList.Projects, GtdList.NextActions, GtdList.Assigned, GtdList.Paused,
+            GtdList.ThisWeekNot, GtdList.SomedayMaybe,
+        ];
+        
+        // Verificar si "Ojalá hoy" existe y tiene tareas
+        const hopeToday = gtdLists[GtdList.HopeToday];
+        const hopeTodayExists = hopeToday && (
+            Array.isArray(hopeToday) 
+                ? hopeToday.length > 0
+                : (hopeToday instanceof Map && hopeToday.size > 0)
+        );
+        
+        // Si "Ojalá hoy" existe, ponerla primera. Si no, usar orden base.
+        if (hopeTodayExists) {
+            return [GtdList.HopeToday, ...baseOrder];
+        } else {
+            return baseOrder;
+        }
+    };
+    
+    // Usar orden dinámico para generar navegación
+    const listOrder = generateDynamicListOrder();
+    
+    // Procesar cada lista GTD en el orden correcto
+    for (const listName of listOrder) {
+        const tasks = gtdLists[listName];
         let totalTasksInList = 0;
         const listId = createAnchorId(listName);
         
