@@ -31,28 +31,45 @@ export class StalledProjectService {
      * @returns Una promesa que se resuelve con una lista de proyectos estancados.
      */
     public async findStalledProjects(): Promise<StalledProject[]> {
+        console.log('🔍 StalledProjectService: Iniciando búsqueda de proyectos estancados');
         const stalledProjects: StalledProject[] = [];
         const allFolders = this.vault.getAllLoadedFiles().filter(f => f instanceof TFolder) as TFolder[];
         const projectFolders = allFolders.filter(folder => folder.name.startsWith('PGTD '));
+        
+        console.log(`📁 StalledProjectService: Encontradas ${projectFolders.length} carpetas PGTD`);
 
         for (const folder of projectFolders) {
+            console.log(`🔍 StalledProjectService: Procesando carpeta ${folder.name}`);
             const projectFile = this.vault.getAbstractFileByPath(`${folder.path}/${folder.name}.md`);
 
             if (projectFile instanceof TFile) {
-                const isActive = await this.isProjectActive(projectFile);
-                if (isActive) {
-                    const hasOpenTasks = await this.projectHasOpenTasks(projectFile);
-                    if (!hasOpenTasks) {
-                        stalledProjects.push({
-                            path: folder.path,
-                            file: projectFile,
-                            name: folder.name,
-                        });
+                console.log(`📄 StalledProjectService: Archivo encontrado ${projectFile.path}`);
+                try {
+                    const isActive = await this.isProjectActive(projectFile);
+                    console.log(`📊 StalledProjectService: ${projectFile.path} está activo: ${isActive}`);
+                    
+                    if (isActive) {
+                        const hasOpenTasks = await this.projectHasOpenTasks(projectFile);
+                        console.log(`✅ StalledProjectService: ${projectFile.path} tiene tareas abiertas: ${hasOpenTasks}`);
+                        
+                        if (!hasOpenTasks) {
+                            stalledProjects.push({
+                                path: folder.path,
+                                file: projectFile,
+                                name: folder.name,
+                            });
+                            console.log(`⚠️ StalledProjectService: ${projectFile.path} agregado como estancado`);
+                        }
                     }
+                } catch (error) {
+                    console.error(`❌ StalledProjectService: Error procesando ${projectFile.path}:`, error);
                 }
+            } else {
+                console.log(`⚠️ StalledProjectService: No se encontró archivo para ${folder.name}`);
             }
         }
 
+        console.log(`🎯 StalledProjectService: Encontrados ${stalledProjects.length} proyectos estancados`);
         return stalledProjects;
     }
 
@@ -72,15 +89,44 @@ export class StalledProjectService {
      * @returns `true` si se encuentra al menos una tarea abierta, `false` en caso contrario.
      */
     private async projectHasOpenTasks(projectFile: TFile): Promise<boolean> {
-        const hierarchyFiles = await this.collectProjectHierarchyFiles(projectFile);
-        for (const file of hierarchyFiles) {
-            const content = await this.vault.cachedRead(file);
-            const tasks = parseTasks(content, file);
-            if (tasks.some((task: any) => !task.completed)) {
-                return true; // Encontramos una tarea abierta, no necesitamos seguir buscando.
+        console.log(`🔍 StalledProjectService: Verificando tareas en jerarquía de ${projectFile.path}`);
+        
+        try {
+            const hierarchyFiles = await this.collectProjectHierarchyFiles(projectFile);
+            console.log(`📄 StalledProjectService: Encontrados ${hierarchyFiles.size} archivos en la jerarquía`);
+            
+            for (const file of hierarchyFiles) {
+                // SOLO procesar archivos .md
+                if (!file.path.endsWith('.md')) {
+                    console.log(`⚠️ StalledProjectService: Omitiendo archivo no-markdown: ${file.path}`);
+                    continue;
+                }
+                
+                console.log(`📖 StalledProjectService: Procesando archivo ${file.path}`);
+                
+                try {
+                    const content = await this.vault.cachedRead(file);
+                    const tasks = parseTasks(content, file);
+                    console.log(`✅ StalledProjectService: ${file.path} contiene ${tasks.length} tareas`);
+                    
+                    if (tasks.some((task: any) => !task.completed)) {
+                        console.log(`🎯 StalledProjectService: Encontrada tarea abierta en ${file.path}`);
+                        return true; // Encontramos una tarea abierta, no necesitamos seguir buscando.
+                    }
+                } catch (fileError) {
+                    console.error(`❌ StalledProjectService: Error procesando archivo ${file.path}:`, fileError);
+                    // Continuar con el siguiente archivo en lugar de fallar completamente
+                    continue;
+                }
             }
+            
+            console.log(`📝 StalledProjectService: No se encontraron tareas abiertas en ${projectFile.path}`);
+            return false;
+        } catch (error) {
+            console.error(`❌ StalledProjectService: Error general en projectHasOpenTasks para ${projectFile.path}:`, error);
+            // En caso de error, asumimos que el proyecto tiene tareas (comportamiento conservador)
+            return true;
         }
-        return false;
     }
 
     /**
@@ -123,7 +169,10 @@ export class StalledProjectService {
 
                 for (const link of cache.links) {
                     const linkedFile = this.metadataCache.getFirstLinkpathDest(link.link, file.path);
-                    if (linkedFile instanceof TFile && !processedPaths.has(linkedFile.path)) {
+                    // SOLO procesar archivos .md y que no hayan sido procesados antes
+                    if (linkedFile instanceof TFile && 
+                        linkedFile.extension === 'md' && 
+                        !processedPaths.has(linkedFile.path)) {
                         newFiles.add(linkedFile);
                         processedPaths.add(linkedFile.path);
                     }

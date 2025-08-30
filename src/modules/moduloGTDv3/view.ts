@@ -152,7 +152,7 @@ export class GtdView extends ItemView {
             };
 
             // Generate the main HTML structure including headers and an empty content area
-            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting);
+            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.overdueGroupingMode);
 
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
@@ -520,26 +520,8 @@ export class GtdView extends ItemView {
         // Cambiar el modo
         this.overdueGroupingMode = this.overdueGroupingMode === 'date-first' ? 'context-first' : 'date-first';
         
-        // Actualizar el visual del botón
-        this.updateOverdueToggleButton();
-        
-        // Recargar la vista
+        // Recargar la vista - ahora el HTML se generará con el estado correcto
         this.drawView();
-    }
-
-    private updateOverdueToggleButton(): void {
-        const toggleButton = this.contentEl.querySelector('.gtd-overdue-toggle') as HTMLElement;
-        if (toggleButton) {
-            if (this.overdueGroupingMode === 'date-first') {
-                toggleButton.textContent = '📅→📋';
-                toggleButton.setAttribute('data-mode', 'date-first');
-                toggleButton.title = 'Modo: Por fecha primero. Click para cambiar a contexto/persona primero';
-            } else {
-                toggleButton.textContent = '📋→📅';
-                toggleButton.setAttribute('data-mode', 'context-first');
-                toggleButton.title = 'Modo: Por contexto/persona primero. Click para cambiar a fecha primero';
-            }
-        }
     }
 
     private initializeMobileFiltersOptimization(container: HTMLElement): void {

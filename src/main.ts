@@ -119,6 +119,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.addCommand({
             id: 'open-gtd-review-panel',
             name: 'Revisión GTD: Encontrar proyectos estancados',
+            icon: 'clipboard-check',
             callback: () => {
                 this.activateReviewPanelView();
             }

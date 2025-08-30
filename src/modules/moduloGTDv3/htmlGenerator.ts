@@ -141,12 +141,187 @@ function renderInProgressView(
     return html;
 }
 
+/**
+ * Calcula la hora de finalización de una tarea
+ */
+function calculateEndTime(task: Task): string | null {
+    if (!task.startTime) return null;
+    
+    // Si tiene hora de finalización explícita (hF), convertir a 24h
+    if (task.endTime) return convertTo24Hour(task.endTime);
+    
+    // Si tiene duración, calcular fin = inicio + duración
+    if (task.duration) {
+        return addDurationToTime(task.startTime, task.duration);
+    }
+    
+    // Por defecto, 30 minutos
+    return addMinutesToTime(task.startTime, 30);
+}
+
+/**
+ * Convierte duración en formato "30min" o "2h" a minutos (sin corchetes)
+ */
+function parseDurationToMinutes(duration: string): number {
+    // Primero, limpiar corchetes si los tiene
+    const cleanDuration = duration.replace(/[\[\]]/g, '');
+    
+    // Buscar patrón: número seguido de "min" o "h"
+    const match = cleanDuration.match(/(\d+)(min|h)/);
+    if (!match) return 30; // default
+    
+    const value = parseInt(match[1] || '');
+    const unit = match[2] || '';
+    
+    if (isNaN(value)) return 30;
+    
+    return unit === 'h' ? value * 60 : value;
+}
+
+/**
+ * Suma duración a una hora de inicio
+ */
+function addDurationToTime(startTime: string, duration: string): string {
+    const minutes = parseDurationToMinutes(duration);
+    return addMinutesToTime(startTime, minutes);
+}
+
+/**
+ * Convierte tiempo de formato 12h (10am, 2:30pm) a formato 24h (10:00, 14:30)
+ */
+function convertTo24Hour(time12: string): string {
+    // Si ya está en formato 24h (HH:MM), devolverlo tal como está
+    if (time12.match(/^\d{1,2}:\d{2}$/)) {
+        return time12;
+    }
+    
+    // Limpiar espacios y convertir a minúsculas
+    const cleanTime = time12.trim().toLowerCase();
+    
+    // Extraer am/pm
+    const isAM = cleanTime.includes('am');
+    const isPM = cleanTime.includes('pm');
+    
+    if (!isAM && !isPM) {
+        // Si no tiene am/pm, asumir formato 24h y agregar :00 si es necesario
+        if (cleanTime.match(/^\d{1,2}$/)) {
+            return `${cleanTime.padStart(2, '0')}:00`;
+        }
+        return cleanTime;
+    }
+    
+    // Extraer la parte numérica (remover am/pm)
+    const timeOnly = cleanTime.replace(/am|pm/g, '').trim();
+    
+    // Separar horas y minutos
+    let hours: number, minutes: number;
+    if (timeOnly.includes(':')) {
+        const parts = timeOnly.split(':');
+        if (parts.length >= 2) {
+            hours = parseInt(parts[0] || '0') || 0;
+            minutes = parseInt(parts[1] || '0') || 0;
+        } else {
+            hours = 0;
+            minutes = 0;
+        }
+    } else {
+        hours = parseInt(timeOnly) || 0;
+        minutes = 0;
+    }
+    
+    // Convertir a formato 24h
+    if (isAM) {
+        if (hours === 12) hours = 0; // 12am = 00:xx
+    } else { // isPM
+        if (hours !== 12) hours += 12; // 1pm = 13:xx, pero 12pm = 12:xx
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Suma minutos a una hora en formato HH:MM
+ */
+function addMinutesToTime(time: string, minutesToAdd: number): string {
+    // Primero convertir a formato 24h si es necesario
+    const time24 = convertTo24Hour(time);
+    const timeParts = time24.split(':');
+    if (timeParts.length !== 2) {
+        return '00:00'; // Fallback si el formato es inválido
+    }
+    
+    const hoursNum = parseInt(timeParts[0] || '0');
+    const minutesNum = parseInt(timeParts[1] || '0');
+    if (isNaN(hoursNum) || isNaN(minutesNum)) {
+        return '00:00'; // Fallback si la conversión falla
+    }
+    
+    const totalMinutes = hoursNum * 60 + minutesNum + minutesToAdd;
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMinutes = totalMinutes % 60;
+    return `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Calcula el tiempo total de las tareas de la agenda y formatea el título
+ */
+function calculateAgendaTotalTime(tasks: Task[]): string {
+    let totalMinutes = 0;
+    
+    for (const task of tasks) {
+        if (task.endTime && task.startTime) {
+            // Convertir ambos tiempos a formato 24h antes de calcular
+            const startTime24 = convertTo24Hour(task.startTime);
+            const endTime24 = convertTo24Hour(task.endTime);
+            
+            // Calcular duración basada en hora fin - hora inicio
+            const startParts = startTime24.split(':');
+            const endParts = endTime24.split(':');
+            
+            if (startParts.length === 2 && endParts.length === 2) {
+                const startH = parseInt(startParts[0] || '0');
+                const startM = parseInt(startParts[1] || '0');
+                const endH = parseInt(endParts[0] || '0');
+                const endM = parseInt(endParts[1] || '0');
+                
+                if (!isNaN(startH) && !isNaN(startM) && !isNaN(endH) && !isNaN(endM)) {
+                    const startTotalMin = startH * 60 + startM;
+                    const endTotalMin = endH * 60 + endM;
+                    
+                    // Manejar casos donde la hora de fin es al día siguiente
+                    let duration = endTotalMin - startTotalMin;
+                    if (duration < 0) {
+                        duration += 24 * 60; // Agregar 24 horas
+                    }
+                    totalMinutes += duration;
+                }
+            }
+        } else if (task.duration) {
+            // Usar duración explícita
+            totalMinutes += parseDurationToMinutes(task.duration);
+        } else {
+            // Por defecto 30 minutos
+            totalMinutes += 30;
+        }
+    }
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    
+    if (hours > 0) {
+        return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+    } else {
+        return `${mins}min`;
+    }
+}
+
 function renderTask(task: Task, breadcrumb: string): string {
     const prioritySymbols: Record<Task['priority'], string> = {
         Highest: '⏫', High: '🔼', Medium: '🔽', Low: '⏬', None: ''
     };
 
     let metadataHtml = '';
+    
     if (task.date) {
         const dateClass = isDatePast(task.date) ? 'is-overdue' : '';
         metadataHtml += `<span class="${dateClass}">${task.dateSymbol} ${task.date}</span>`;
@@ -159,6 +334,14 @@ function renderTask(task: Task, breadcrumb: string): string {
     let processedContent = task.content.replace(/\[\[(.*?)\]\]/g, 
         '<a href="$1" class="internal-link" data-link-path="$1">$1</a>'
     );
+    
+    // NUEVA LÓGICA: Mostrar hora ANTES del contenido si es tarea del calendario
+    if (task.startTime) {
+        const startTime24 = convertTo24Hour(task.startTime);
+        const endTime = calculateEndTime(task);
+        const timeRange = endTime ? `${startTime24}-${endTime}` : startTime24;
+        processedContent = `<span class="gtd-time-range">⏰ ${timeRange}</span> ${processedContent}`;
+    }
     
     // Procesar enlaces de dependencias
     processedContent = processDependencyLinks(processedContent);
@@ -290,7 +473,7 @@ function renderOverdueGroupedTasks(
     return html;
 }
 
-function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
+function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>, overdueGroupingMode: 'date-first' | 'context-first' = 'date-first'): string {
     const { gtdLists } = data;
     let html = '<div class="gtd-lists-container">';
 
@@ -358,11 +541,17 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         // Generar botón de toggle para lista Vencidas
         let toggleButton = '';
         if (listName === GtdList.Overdue) {
+            const mode = overdueGroupingMode;
+            const buttonText = mode === 'date-first' ? '📅→📋' : '📋→📅';
+            const titleText = mode === 'date-first' 
+                ? 'Modo: Por fecha primero. Click para cambiar a contexto/persona primero'
+                : 'Modo: Por contexto/persona primero. Click para cambiar a fecha primero';
+                
             toggleButton = `
                 <button class="gtd-overdue-toggle" 
-                        data-mode="date-first" 
-                        title="Alternar entre organización por fecha o por contexto/persona">
-                    📅→📋 
+                        data-mode="${mode}" 
+                        title="${titleText}">
+                    ${buttonText} 
                 </button>
             `;
         }
@@ -381,16 +570,34 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
                 html += renderOverdueGroupedTasks(tasks, renderTaskWithBreadcrumb, createAnchorId, listName);
             } else {
                 // Renderizado normal para otras listas agrupadas
-                const sortedGroupNames = Array.from(tasks.keys()).sort();
+                // Ordenamiento especial: "📅 Agenda de Hoy" siempre primera
+                const groupNames = Array.from(tasks.keys());
+                const sortedGroupNames = groupNames.sort((a, b) => {
+                    // "📅 Agenda de Hoy" siempre primera
+                    if (a === '📅 Agenda de Hoy') return -1;
+                    if (b === '📅 Agenda de Hoy') return 1;
+                    // Resto alfabéticamente
+                    return a.localeCompare(b);
+                });
 
                 for (const groupName of sortedGroupNames) {
                     const groupTasks = tasks.get(groupName);
                     if (groupTasks && groupTasks.length > 0) {
                         // Usar la misma lógica de generación de ID que en el processor
                         const groupId = createAnchorId(`${listName}-${groupName}`);
+                        
+                        // Título especial para "Agenda de Hoy" con tiempo total y "citas"
+                        let groupTitle = '';
+                        if (groupName === '📅 Agenda de Hoy') {
+                            const totalTime = calculateAgendaTotalTime(groupTasks);
+                            groupTitle = `${groupName} <span class="gtd-group-count">${groupTasks.length} citas - ${totalTime}</span>`;
+                        } else {
+                            groupTitle = `${groupName} <span class="gtd-group-count">${groupTasks.length}</span>`;
+                        }
+                        
                         html += `
                             <div class="gtd-group" id="${groupId}">
-                                <div class="gtd-group-title">${groupName} <span class="gtd-group-count">${groupTasks.length}</span></div>
+                                <div class="gtd-group-title">${groupTitle}</div>
                                 <ul class="gtd-task-list">
                                     ${groupTasks.map(renderTaskWithBreadcrumb).join('')}
                                 </ul>
@@ -555,7 +762,8 @@ export function generateGtdViewHtml(
     activeView: 'hierarchy' | 'gtd' | 'inProgress' | 'time-tracker' | 'statistics' | 'timeline', 
     taskBreadcrumbMap: Map<string, string>,
     activeGrouping: Grouping,
-    activeSorting: Sorting
+    activeSorting: Sorting,
+    overdueGroupingMode: 'date-first' | 'context-first' = 'date-first'
 ): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
@@ -576,7 +784,7 @@ export function generateGtdViewHtml(
         `;
         viewContent = hierarchyControls + data.hierarchicalData.map(root => renderHierarchyViewRecursive(root, 0)).join('');
     } else if (activeView === 'gtd') {
-        viewContent = renderGtdListsView(data, taskBreadcrumbMap);
+        viewContent = renderGtdListsView(data, taskBreadcrumbMap, overdueGroupingMode);
     } else if (activeView === 'inProgress') {
         viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap, activeGrouping, activeSorting);
     } else if (activeView === 'time-tracker') {

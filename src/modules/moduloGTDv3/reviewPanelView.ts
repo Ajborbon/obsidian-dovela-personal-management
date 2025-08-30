@@ -84,19 +84,29 @@ export class ReviewPanelView extends ItemView {
             info.createEl('div', { text: project.path, cls: 'project-path' });
 
             const actions = item.createDiv({ cls: 'project-actions' });
-            actions.createEl('button', { text: '+ Añadir Tarea' }).onClickEvent(() => {
+            
+            const addTaskBtn = actions.createEl('button', { text: '+ Añadir Tarea' });
+            addTaskBtn.addEventListener('click', () => {
                 this.plugin.app.workspace.openLinkText(project.file.path, '', false);
                 new Notice(`Abriendo ${project.name} para añadir una tarea.`);
             });
-            actions.createEl('button', { text: '🔵 Archivar' }).onClickEvent(async () => {
+            
+            const archiveBtn = actions.createEl('button', { text: '🔵 Archivar' });
+            archiveBtn.addEventListener('click', async () => {
                 await this.archiveProject(project.file);
                 new Notice(`Proyecto ${project.name} archivado.`);
                 this.render(); // Re-render para actualizar la lista
             });
-            actions.createEl('button', { text: '📂 Abrir Carpeta' }).onClickEvent(() => {
-                // @ts-ignore
-                this.plugin.app.openWithDefaultApp(project.file.parent.path);
-                new Notice(`Abriendo la carpeta ${project.path}`);
+            
+            const openFolderBtn = actions.createEl('button', { text: '📂 Abrir Carpeta' });
+            openFolderBtn.addEventListener('click', () => {
+                // Solo intentar abrir la carpeta en desktop
+                if ((this.plugin.app as any).openWithDefaultApp) {
+                    (this.plugin.app as any).openWithDefaultApp(project.file.parent?.path);
+                    new Notice(`Abriendo la carpeta ${project.path}`);
+                } else {
+                    new Notice('Esta función no está disponible en móvil');
+                }
             });
         });
     }

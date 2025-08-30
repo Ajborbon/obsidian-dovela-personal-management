@@ -331,8 +331,8 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
                 }
             }
             
-            // Detectar Calendar items
-            isCalendarItem = isDueDate && !!task.startTime;
+            // Detectar Calendar items - SOLO las de HOY con hora de inicio
+            isCalendarItem = isDueDate && !!task.startTime && isDateToday(task.date!);
             
             // Detectar candidatos para Hope Today - fechas Schedule/Due = hoy sin hora
             if (!task.startTime) {
@@ -413,8 +413,13 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
             addTaskToOverdueWithGrouping(task, gtdLists[GtdList.Overdue] as Map<string, Task[]>, currentOverdueMode);
         }
 
-        // NUEVA LÓGICA MEJORADA: Hope Today - Incluir dependencias con fechas de hoy
-        if (isHopeTodayCandidate || 
+        // NUEVA LÓGICA: Tareas del calendario de hoy van a "Agenda de Hoy"
+        if (isCalendarItem) {
+            const agendaKey = '📅 Agenda de Hoy';
+            pushToMap(gtdLists[GtdList.HopeToday] as Map<string, Task[]>, agendaKey, task);
+        }
+        // NUEVA LÓGICA MEJORADA: Hope Today - Incluir dependencias con fechas de hoy (NO tareas del calendario)
+        else if (isHopeTodayCandidate ||
             (isPausedByDependency && task.displayStatus === 'paused-dep' && 
              ((hasDate && isDateToday(task.date!)) || 
               (task.additionalDates && task.additionalDates.some(ad => 
@@ -488,6 +493,9 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
         }
     }
 
+    // NUEVA FUNCIÓN: Ordenar tareas en "Ojalá Hoy" poniendo las del calendario primero por hora
+    sortHopeTodayTasksByTime(gtdLists[GtdList.HopeToday] as Map<string, Task[]>);
+
     // Generar elementos de navegación
     const navigationItems = generateNavigationItems(gtdLists);
 
@@ -498,6 +506,35 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
         inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
         navigationItems
     };
+}
+
+/**
+ * Ordena las tareas en "Ojalá Hoy" poniendo "Agenda de Hoy" primero,
+ * y dentro de cada grupo ordena por hora cuando corresponde
+ */
+function sortHopeTodayTasksByTime(hopeTodayMap: Map<string, Task[]>): void {
+    // 1. Ordenar las tareas dentro de "Agenda de Hoy" por hora
+    const agendaKey = '📅 Agenda de Hoy';
+    if (hopeTodayMap.has(agendaKey)) {
+        const agendaTasks = hopeTodayMap.get(agendaKey)!;
+        if (agendaTasks.length > 1) {
+            agendaTasks.sort((a, b) => {
+                // Todas las tareas de agenda deberían tener hora, pero por seguridad
+                const timeA = a.startTime || '00:00';
+                const timeB = b.startTime || '00:00';
+                return timeA.localeCompare(timeB);
+            });
+            console.log(`📅 Agenda de Hoy: ${agendaTasks.length} tareas ordenadas por hora`);
+        }
+    }
+    
+    // 2. Para otros grupos, mantener lógica existente si es necesaria
+    for (const [groupKey, tasks] of hopeTodayMap.entries()) {
+        if (groupKey === agendaKey || tasks.length <= 1) continue;
+        
+        // Ordenar otros grupos normalmente (sin cambios significativos)
+        console.log(`📋 Ojalá Hoy: Grupo "${groupKey}" con ${tasks.length} tareas`);
+    }
 }
 
 /**

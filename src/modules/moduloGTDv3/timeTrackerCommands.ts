@@ -70,6 +70,7 @@ export class TimeTrackerCommands {
         this.plugin.addCommand({
             id: 'time-tracker-start-for-active-note',
             name: 'Control de Tiempo: Iniciar temporizador para la nota activa',
+            icon: 'play-circle',
             checkCallback: (checking: boolean) => {
                 const activeFile = this.plugin.app.workspace.getActiveFile();
                 const isTimerRunning = !!this.plugin.activeTimer;
