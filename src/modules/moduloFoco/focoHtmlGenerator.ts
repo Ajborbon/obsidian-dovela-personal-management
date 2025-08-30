@@ -572,7 +572,7 @@ function renderOverdueGroupedTasks(
     return html;
 }
 
-function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>): string {
+function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<string, string>, overdueGroupingMode: 'date-first' | 'context-first' = 'date-first'): string {
     const { gtdLists } = data;
     let html = '<div class="gtd-lists-container">';
 
@@ -633,11 +633,17 @@ function renderGtdListsView(data: ProcessedVaultData, taskBreadcrumbMap: Map<str
         // Generar botón de toggle para lista Vencidas
         let toggleButton = '';
         if (listName === GtdList.Overdue) {
+            const mode = overdueGroupingMode;
+            const buttonText = mode === 'date-first' ? '📅→📋' : '📋→📅';
+            const titleText = mode === 'date-first' 
+                ? 'Modo: Por fecha primero. Click para cambiar a contexto/persona primero'
+                : 'Modo: Por contexto/persona primero. Click para cambiar a fecha primero';
+                
             toggleButton = `
                 <button class="gtd-overdue-toggle" 
-                        data-mode="date-first" 
-                        title="Alternar entre organización por fecha o por contexto/persona">
-                    📅→📋 
+                        data-mode="${mode}" 
+                        title="${titleText}">
+                    ${buttonText} 
                 </button>
             `;
         }
@@ -750,6 +756,7 @@ export function generateGtdViewHtml(
     taskBreadcrumbMap: Map<string, string>,
     activeGrouping: Grouping,
     activeSorting: Sorting,
+    overdueGroupingMode: 'date-first' | 'context-first' = 'date-first',
     focusFileName?: string
 ): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
@@ -771,7 +778,7 @@ export function generateGtdViewHtml(
         `;
         viewContent = hierarchyControls + data.hierarchicalData.map(root => renderHierarchyViewRecursive(root, 0)).join('');
     } else if (activeView === 'gtd') {
-        viewContent = renderGtdListsView(data, taskBreadcrumbMap);
+        viewContent = renderGtdListsView(data, taskBreadcrumbMap, overdueGroupingMode);
     } else if (activeView === 'inProgress') {
         viewContent = renderInProgressView(data.inProgressData, taskBreadcrumbMap, activeGrouping, activeSorting);
     } else if (activeView === 'time-tracker') {

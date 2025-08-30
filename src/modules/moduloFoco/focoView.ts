@@ -159,7 +159,7 @@ export class FocoView extends ItemView {
                 navigationItems: navigationItems
             };
 
-            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.activeFile?.basename);
+            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.overdueGroupingMode, this.activeFile?.basename);
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
 

@@ -299,6 +299,7 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
         let isStartDate = false;
         let isDueDate = false;
         let isCalendarItem = false;
+        let isCalendarToday = false;
         let isHopeTodayCandidate = false;
 
         if (hasDate && task.dateSymbol) {
@@ -331,8 +332,11 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
                 }
             }
             
-            // Detectar Calendar items - SOLO las de HOY con hora de inicio
-            isCalendarItem = isDueDate && !!task.startTime && isDateToday(task.date!);
+            // Detectar Calendar items - TODAS las tareas con fecha due y hora de inicio
+            isCalendarItem = isDueDate && !!task.startTime;
+            
+            // Detectar Calendar items de HOY para "Agenda de Hoy"
+            isCalendarToday = isCalendarItem && isDateToday(task.date!);
             
             // Detectar candidatos para Hope Today - fechas Schedule/Due = hoy sin hora
             if (!task.startTime) {
@@ -413,8 +417,8 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
             addTaskToOverdueWithGrouping(task, gtdLists[GtdList.Overdue] as Map<string, Task[]>, currentOverdueMode);
         }
 
-        // NUEVA LÓGICA: Tareas del calendario de hoy van a "Agenda de Hoy"
-        if (isCalendarItem) {
+        // NUEVA LÓGICA: Tareas del calendario de HOY van a "Agenda de Hoy"
+        if (isCalendarToday) {
             const agendaKey = '📅 Agenda de Hoy';
             pushToMap(gtdLists[GtdList.HopeToday] as Map<string, Task[]>, agendaKey, task);
         }
@@ -465,8 +469,8 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
                 const key = `cx-${context}`;
                 pushToMap(gtdLists[GtdList.NextActions] as Map<string, Task[]>, key, task);
             });
-        } else if (isStartDate && task.date && (isDatePast(task.date) || isDateToday(task.date))) {
-            // Start date activo sin contexto: agregar a contexto especial
+        } else if (isStartDate && task.date && (isDatePast(task.date) || isDateToday(task.date)) && !hasAssigned) {
+            // Start date activo sin contexto ni personas asignadas: agregar a contexto especial
             const key = 'cx-Sin Contexto';
             pushToMap(gtdLists[GtdList.NextActions] as Map<string, Task[]>, key, task);
         }
@@ -495,6 +499,9 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
 
     // NUEVA FUNCIÓN: Ordenar tareas en "Ojalá Hoy" poniendo las del calendario primero por hora
     sortHopeTodayTasksByTime(gtdLists[GtdList.HopeToday] as Map<string, Task[]>);
+    
+    // NUEVA FUNCIÓN: Ordenar tareas en "Calendario" por fecha y hora
+    sortCalendarTasks(gtdLists[GtdList.Calendar]);
 
     // Generar elementos de navegación
     const navigationItems = generateNavigationItems(gtdLists);
@@ -506,6 +513,30 @@ export function processGtdLists(allTasks: Task[], allTaskMap: Map<string, Task>,
         inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
         navigationItems
     };
+}
+
+/**
+ * Ordena las tareas en "Calendario" por fecha (más antiguas primero) y luego por hora de inicio
+ */
+function sortCalendarTasks(calendarTasks: Task[]): void {
+    if (calendarTasks.length <= 1) return;
+    
+    calendarTasks.sort((a, b) => {
+        // Primero ordenar por fecha (más antigua primero)
+        if (a.date && b.date) {
+            const dateComparison = a.date.localeCompare(b.date);
+            if (dateComparison !== 0) {
+                return dateComparison;
+            }
+        }
+        
+        // Si las fechas son iguales o una no tiene fecha, ordenar por hora de inicio
+        const timeA = a.startTime || '00:00';
+        const timeB = b.startTime || '00:00';
+        return timeA.localeCompare(timeB);
+    });
+    
+    console.log(`📅 Calendario: ${calendarTasks.length} tareas ordenadas por fecha y hora`);
 }
 
 /**
