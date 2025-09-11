@@ -17,7 +17,7 @@ export class BacklinksView extends ItemView {
     private sortConfig: SortConfig = { ...DEFAULT_SORT_CONFIG };
     private lastClickTime = 0;
     private lastClickedButton: string | null = null;
-    private readonly DOUBLE_CLICK_DELAY = 300;
+    private readonly DOUBLE_CLICK_DELAY = 800;
 
     constructor(leaf: WorkspaceLeaf, private plugin: DovelaPersonalManagementPlugin) {
         super(leaf);
