@@ -94,6 +94,7 @@ export class BacklinksView extends ItemView {
         await this.refreshBacklinks();
 
         this.renderHeader(container);
+        this.renderCurrentPath(container);
         this.renderControls(container);
         this.renderBacklinksList();
     }
@@ -120,15 +121,13 @@ export class BacklinksView extends ItemView {
     private renderHeader(container: Element) {
         const header = container.createEl('div', { cls: 'backlinks-header' });
         
-        const title = header.createEl('div', { cls: 'header-title' });
-        title.createEl('span', { cls: 'header-icon', text: '📎' });
-        title.createEl('span', { cls: 'header-text', text: 'Backlinks' });
+        // Removed title section to save space
         
         const currentNote = header.createEl('div', { cls: 'current-note' });
         const noteName = this.currentFile?.basename || '';
         currentNote.createEl('span', { 
             cls: 'note-name',
-            text: noteName.length > 20 ? noteName.substring(0, 20) + '...' : noteName,
+            text: noteName,
             attr: { title: noteName }
         });
 
@@ -151,6 +150,22 @@ export class BacklinksView extends ItemView {
         toggleBtn.onclick = () => {
             this.cycleBreadcrumbStyle();
         };
+    }
+
+    private renderCurrentPath(container: Element) {
+        // Remove existing path if it exists
+        const existingPath = container.querySelector('.current-path-section');
+        if (existingPath) {
+            existingPath.remove();
+        }
+
+        // Only show path if file has a parent folder
+        if (this.currentFile?.parent?.path) {
+            const pathSection = container.createEl('div', { cls: 'current-path-section' });
+            const pathBreadcrumb = this.breadcrumbRenderer.createBreadcrumb(this.currentFile.parent.path);
+            pathBreadcrumb.addClass('current-path-breadcrumb');
+            pathSection.appendChild(pathBreadcrumb);
+        }
     }
 
     private renderControls(container: Element) {
@@ -456,6 +471,7 @@ export class BacklinksView extends ItemView {
         });
         
         this.breadcrumbRenderer.updateSettings(newSettings);
+        this.renderCurrentPath(this.containerEl.children[1] as Element); // Update current path style
         this.renderBacklinksList(); // Re-render con nuevo estilo
         
         // Update button tooltip to show current style
