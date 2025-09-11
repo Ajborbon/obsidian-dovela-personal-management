@@ -1,9 +1,10 @@
 
-import { Plugin, Notice, WorkspaceLeaf, TFile, TAbstractFile } from 'obsidian';
+import { Plugin, Notice, WorkspaceLeaf, TFile, TAbstractFile, Menu } from 'obsidian';
 import { GtdView, GTD_VIEW_TYPE, GTD_VIEW_DISPLAY_TEXT, GTD_VIEW_ICON } from './modules/moduloGTDv3/view.js';
 import { FocoView, FOCO_VIEW_TYPE, FOCO_VIEW_ICON } from './modules/moduloFoco/focoView.js';
 import { ActivityView, ACTIVITY_VIEW_TYPE, ACTIVITY_VIEW_DISPLAY_TEXT, ACTIVITY_VIEW_ICON } from './modules/moduloActividad/activityView.js';
 import { ReviewPanelView, REVIEW_PANEL_VIEW_TYPE, REVIEW_PANEL_DISPLAY_TEXT, REVIEW_PANEL_ICON } from './modules/moduloGTDv3/reviewPanelView.js';
+import { BacklinksView, BACKLINKS_VIEW_TYPE, BACKLINKS_VIEW_DISPLAY_TEXT, BACKLINKS_VIEW_ICON } from './modules/moduloBacklinks/backlinkView.js';
 import { TimeTrackerService } from './modules/moduloGTDv3/timeTrackerService.js';
 import { TimeTrackerCommands } from './modules/moduloGTDv3/timeTrackerCommands.js';
 import { StalledProjectService } from './modules/moduloGTDv3/stalledProjectService.js';
@@ -64,6 +65,22 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.registerEvent(this.app.vault.on('rename', () => this.collectMetadata()));
         this.registerEvent(this.app.vault.on('delete', () => this.collectMetadata()));
 
+        // Register file context menu for backlinks
+        this.registerEvent(
+            this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+                if (file instanceof TFile) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle('📎 Ver Backlinks Organizados')
+                            .setIcon(BACKLINKS_VIEW_ICON)
+                            .onClick(() => {
+                                this.activateBacklinksView();
+                            });
+                    });
+                }
+            })
+        );
+
 
         this.registerView(
             GTD_VIEW_TYPE,
@@ -83,6 +100,11 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.registerView(
             REVIEW_PANEL_VIEW_TYPE,
             (leaf) => new ReviewPanelView(leaf, this)
+        );
+
+        this.registerView(
+            BACKLINKS_VIEW_TYPE,
+            (leaf) => new BacklinksView(leaf, this)
         );
 
         this.addCommand({
@@ -133,6 +155,21 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'open-backlinks-view',
+            name: 'Dovela: Mostrar Backlinks Organizados',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (activeFile) {
+                    if (!checking) {
+                        this.activateBacklinksView();
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
         // Registrar comandos del time tracker
         this.timeTrackerCommands.registerCommands();
 
@@ -164,6 +201,10 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             this.activateReviewPanelView();
         });
 
+        this.addRibbonIcon(BACKLINKS_VIEW_ICON, BACKLINKS_VIEW_DISPLAY_TEXT, () => {
+            this.activateBacklinksView();
+        });
+
         // Start the sync poller now that the plugin is fully loaded
         this.startSyncInterval();
     }
@@ -173,6 +214,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.stopSyncInterval(); // Use the dedicated stop function
         if (this.activeTimerInterval) clearInterval(this.activeTimerInterval);
         this.app.workspace.detachLeavesOfType(GTD_VIEW_TYPE);
+        this.app.workspace.detachLeavesOfType(BACKLINKS_VIEW_TYPE);
         this.smartInboxView?.remove();
     }
 
@@ -346,6 +388,24 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         if (leaf) {
             await leaf.setViewState({
                 type: ACTIVITY_VIEW_TYPE,
+                active: true,
+            });
+        }
+    }
+
+    private async activateBacklinksView(): Promise<void> {
+        const leaves = this.app.workspace.getLeavesOfType(BACKLINKS_VIEW_TYPE);
+        if (leaves.length > 0) {
+            const leaf = leaves[0];
+            if (leaf) {
+                this.app.workspace.revealLeaf(leaf);
+            }
+            return;
+        }
+        const leaf = this.app.workspace.getRightLeaf(false);
+        if (leaf) {
+            await leaf.setViewState({
+                type: BACKLINKS_VIEW_TYPE,
                 active: true,
             });
         }
