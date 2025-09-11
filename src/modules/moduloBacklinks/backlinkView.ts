@@ -256,7 +256,7 @@ export class BacklinksView extends ItemView {
                 text: backlink.file.basename
             });
 
-            // Metadata row
+            // Metadata row - Type and Estado
             if (backlink.type || backlink.estado) {
                 const metadata = content.createEl('div', { cls: 'metadata-row' });
                 if (backlink.type) {
@@ -272,6 +272,46 @@ export class BacklinksView extends ItemView {
                     });
                 }
             }
+
+            // Financial information for transactions
+            if (backlink.moneda && backlink.monto) {
+                const financialRow = content.createEl('div', { cls: 'financial-row' });
+                financialRow.createEl('span', { 
+                    cls: 'financial-icon',
+                    text: '💰'
+                });
+                financialRow.createEl('span', { 
+                    cls: 'financial-amount',
+                    text: this.formatMoney(backlink.moneda, backlink.monto)
+                });
+            }
+
+            // Date information row
+            const dateRow = content.createEl('div', { cls: 'date-row' });
+            
+            // Creation date
+            const creationInfo = dateRow.createEl('div', { cls: 'date-info creation' });
+            creationInfo.createEl('span', { cls: 'date-icon', text: '📅' });
+            creationInfo.createEl('span', { 
+                cls: 'date-label', 
+                text: 'Creado:' 
+            });
+            creationInfo.createEl('span', { 
+                cls: 'date-value', 
+                text: this.formatDateTime(backlink.creationDate)
+            });
+
+            // Modification date
+            const modificationInfo = dateRow.createEl('div', { cls: 'date-info modification' });
+            modificationInfo.createEl('span', { cls: 'date-icon', text: '📝' });
+            modificationInfo.createEl('span', { 
+                cls: 'date-label', 
+                text: 'Modificado:' 
+            });
+            modificationInfo.createEl('span', { 
+                cls: 'date-value', 
+                text: this.formatDateTime(backlink.modificationDate)
+            });
 
             // Breadcrumb
             if (backlink.folderPath) {
@@ -424,6 +464,36 @@ export class BacklinksView extends ItemView {
             const styleNames: Record<string, string> = { full: 'Completo', smart: 'Inteligente', compact: 'Compacto' };
             const styleName = styleNames[nextStyle as keyof typeof styleNames] || 'Desconocido';
             toggleBtn.setAttribute('title', `Estilo actual: ${styleName} - Click para cambiar`);
+        }
+    }
+
+    private formatDateTime(date: Date): string {
+        return new Intl.DateTimeFormat('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).format(date);
+    }
+
+    private formatMoney(moneda: string, monto: number): string {
+        const formatter = new Intl.NumberFormat('es-ES', {
+            style: 'currency',
+            currency: moneda.toUpperCase(),
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        
+        try {
+            return formatter.format(monto);
+        } catch (error) {
+            // Fallback if currency is not recognized
+            return `${moneda.toUpperCase()} ${monto.toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
         }
     }
 

@@ -61,7 +61,10 @@ export class BacklinkDetector {
             isInSameFolder,
             hasBacklink,
             creationDate: new Date(file.stat.ctime),
-            modificationDate: new Date(file.stat.mtime)
+            modificationDate: new Date(file.stat.mtime),
+            // Información financiera para transacciones
+            moneda: frontmatter?.['moneda'],
+            monto: frontmatter?.['monto']
         };
     }
 

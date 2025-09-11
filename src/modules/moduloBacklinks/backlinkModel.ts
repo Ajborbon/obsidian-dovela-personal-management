@@ -9,6 +9,9 @@ export interface BacklinkItem {
     hasBacklink: boolean;
     creationDate: Date;
     modificationDate: Date;
+    // Información financiera para transacciones
+    moneda?: string;
+    monto?: number;
 }
 
 export interface SortConfig {
