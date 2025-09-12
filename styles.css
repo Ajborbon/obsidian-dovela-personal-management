@@ -3066,6 +3066,55 @@ body.is-copying {
     color: var(--text-normal);
 }
 
+.focus-collapse-indicator {
+    font-size: 12px;
+    color: var(--text-muted);
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.focus-view-title:hover .focus-collapse-indicator {
+    opacity: 1;
+}
+
+/* === CONTENIDO COLAPSIBLE DEL HEADER === */
+.focus-collapsible-content {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animación suave para el colapso en móvil */
+@media (max-width: 768px) {
+    .focus-collapsible-content {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    .focus-collapsible-content[style*="display: none"] {
+        animation: fadeOut 0.3s ease-in-out;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
 /* --- Task display status colors (overdue / today / future / paused) --- */
 /* Use both background and text adjustments for legibility. These styles apply
    to task rows; they also ensure nested metadata inherits readable color. */

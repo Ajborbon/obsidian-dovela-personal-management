@@ -833,21 +833,24 @@ export function generateGtdViewHtml(
                         <span class="focus-title-icon">🎯</span>
                         <span>Foco: <strong>${focusFileName}</strong></span>
                     </div>
-                    <span style="font-size: 12px; color: var(--text-muted); opacity: 0.7;">👆 Click para colapsar</span>
+                    <span class="focus-collapse-indicator" id="focus-collapse-indicator">👆 Click para colapsar</span>
                 </div>` : ''}
 
-                <!-- Total de tareas -->
-                <div class="gtd-total-tasks" id="gtd-total-tasks">
-                    <span>Total de Tareas Abiertas: <strong>${totalOpenTasks}</strong></span>
+                <!-- Contenido colapsible del header -->
+                <div class="focus-collapsible-content" id="focus-collapsible-content">
+                    <!-- Total de tareas -->
+                    <div class="gtd-total-tasks" id="gtd-total-tasks">
+                        <span>Total de Tareas Abiertas: <strong>${totalOpenTasks}</strong></span>
+                    </div>
+                    <!-- Estadísticas de expansión -->
+                    ${expansionStats ? generateExpansionStatsHtml(expansionStats) : ''}
+
+                    <!-- Filtros responsivos (solo para vista GTD) -->
+                    ${activeView === 'gtd' ? generateFiltersHtml(data) : ''}
+
+                    <!-- Navegación rápida (solo para vista GTD) -->
+                    ${activeView === 'gtd' ? generateQuickNavHtml(data) : ''}
                 </div>
-                <!-- Estadísticas de expansión -->
-                ${expansionStats ? generateExpansionStatsHtml(expansionStats) : ''}
-
-                <!-- Filtros responsivos (solo para vista GTD) -->
-                ${activeView === 'gtd' ? generateFiltersHtml(data) : ''}
-
-                <!-- Navegación rápida (solo para vista GTD) -->
-                ${activeView === 'gtd' ? generateQuickNavHtml(data) : ''}
             </div>
 
             <!-- Contenido principal -->

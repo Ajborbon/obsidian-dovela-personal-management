@@ -1,12 +1,18 @@
 // cascadeSuggestionProvider.ts
+import { TFile } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import type { MenuOption, CascadeMenuConfig } from './cascadeMenuTypes.js';
 
 export class CascadeSuggestionProvider {
     private plugin: DovelaPersonalManagementPlugin;
+    private activeFile: TFile | null = null;
 
     constructor(plugin: DovelaPersonalManagementPlugin) {
         this.plugin = plugin;
+    }
+
+    public setActiveFile(activeFile: TFile | null): void {
+        this.activeFile = activeFile;
     }
 
     public getProjectMenuOptions(): MenuOption[] {
@@ -53,6 +59,32 @@ export class CascadeSuggestionProvider {
         const projects = activeFiles.filter(file => file.basename.startsWith('PGTD -') || file.basename.startsWith('PQ -'));
         
         const options: MenuOption[] = [];
+        
+        // Agregar la nota activa como primera opción si existe
+        if (this.activeFile && this.activeFile.extension === 'md') {
+            const activeFileName = this.activeFile.basename;
+            
+            // Solo agregar si no está ya en la lista de áreas o proyectos
+            const alreadyInList = activeFiles.some(file => file.basename === activeFileName);
+            if (!alreadyInList) {
+                options.push({
+                    id: `active-file-${activeFileName}`,
+                    label: `📝 ${activeFileName}`,
+                    value: activeFileName,
+                    description: 'Nota actualmente abierta'
+                });
+                
+                // Agregar separador si hay más opciones
+                if (areas.length > 0 || projects.length > 0) {
+                    options.push({
+                        id: 'separator-active',
+                        label: '────────────────────',
+                        value: '',
+                        description: 'Separador'
+                    });
+                }
+            }
+        }
         
         // Agregar áreas de interés activas con nombre completo (sin iconos)
         if (areas.length > 0) {

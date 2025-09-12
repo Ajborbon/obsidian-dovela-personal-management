@@ -581,6 +581,53 @@ export class FocoView extends ItemView {
                 }
             }
         }, { signal: this.eventAbortController.signal });
+
+        // === EVENT LISTENER PARA COLAPSAR HEADER DE FOCO ===
+        container.addEventListener('click', (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const focusTitle = target.closest('#focus-view-title') as HTMLElement;
+            
+            if (focusTitle) {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleFocusHeaderCollapse();
+            }
+        }, { signal: this.eventAbortController.signal });
+
+        // Inicializar el estado del header colapsible
+        this.initializeFocusHeaderState();
+    }
+
+    private toggleFocusHeaderCollapse(): void {
+        const collapsibleContent = this.contentEl.querySelector('#focus-collapsible-content') as HTMLElement;
+        const indicator = this.contentEl.querySelector('#focus-collapse-indicator') as HTMLElement;
+        
+        if (collapsibleContent && indicator) {
+            const isCollapsed = collapsibleContent.style.display === 'none';
+            
+            if (isCollapsed) {
+                // Expandir
+                collapsibleContent.style.display = '';
+                indicator.textContent = '👆 Click para colapsar';
+                localStorage.setItem('dovela-focus-header-collapsed', 'false');
+            } else {
+                // Colapsar
+                collapsibleContent.style.display = 'none';
+                indicator.textContent = '👇 Click para expandir';
+                localStorage.setItem('dovela-focus-header-collapsed', 'true');
+            }
+        }
+    }
+
+    private initializeFocusHeaderState(): void {
+        const isCollapsed = localStorage.getItem('dovela-focus-header-collapsed') === 'true';
+        const collapsibleContent = this.contentEl.querySelector('#focus-collapsible-content') as HTMLElement;
+        const indicator = this.contentEl.querySelector('#focus-collapse-indicator') as HTMLElement;
+        
+        if (collapsibleContent && indicator && isCollapsed) {
+            collapsibleContent.style.display = 'none';
+            indicator.textContent = '👇 Click para expandir';
+        }
     }
 
     private toggleOverdueGroupingMode(): void {

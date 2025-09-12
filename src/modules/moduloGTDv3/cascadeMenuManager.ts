@@ -1,5 +1,6 @@
 // cascadeMenuManager.ts
 import type DovelaPersonalManagementPlugin from '../../main.js';
+import { TFile } from 'obsidian';
 import { MenuState, type MenuContext, type MenuOption, type CascadeMenuConfig } from './cascadeMenuTypes.js';
 import { CascadeSuggestionProvider } from './cascadeSuggestionProvider.js';
 import { CascadeMenuRenderer } from './cascadeMenuRenderer.js';
@@ -34,6 +35,10 @@ export class CascadeMenuManager {
 
     public setSelectionCallback(callback: (tag: string) => void): void {
         this.onSelectionCallback = callback;
+    }
+
+    public setActiveFile(activeFile: TFile | null): void {
+        this.suggestionProvider.setActiveFile(activeFile);
     }
 
     public detectTrigger(text: string, cursorPos: number): boolean {

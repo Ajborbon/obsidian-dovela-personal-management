@@ -19,6 +19,7 @@ export class SmartInboxView {
     private calendarManager: CalendarManager | null = null;
     private useCascadeMenu: boolean = true; // Flag para alternar entre sistemas
     private useCalendarPicker: boolean = true; // Flag para alternar sistema de fechas
+    private activeFileAtOpen: TFile | null = null; // Capturar la nota activa al abrir
 
     constructor(plugin: DovelaPersonalManagementPlugin) {
         this.plugin = plugin;
@@ -54,6 +55,16 @@ export class SmartInboxView {
 
     public open() {
         if (this.isOpen) return;
+        
+        // Capturar la nota activa al momento de abrir el Smart Inbox
+        this.activeFileAtOpen = this.app.workspace.getActiveFile();
+        console.log('🔍 SMART INBOX DEBUG: Captured activeFileAtOpen on open:', this.activeFileAtOpen?.path || 'No active file');
+        
+        // Pasarle la nota activa al cascade manager
+        if (this.cascadeMenuManager) {
+            this.cascadeMenuManager.setActiveFile(this.activeFileAtOpen);
+        }
+        
         this.isOpen = true;
         this.viewEl.style.display = 'flex';
         this.inputEl.focus();
@@ -67,6 +78,7 @@ export class SmartInboxView {
         this.suggestionsEl.style.display = 'none';
         this.selectedSuggestionIndex = -1;
         this.currentSuggestionContext = null;
+        this.activeFileAtOpen = null; // Limpiar referencia al cerrar
         
         // Cerrar menús en cascada y calendario
         if (this.cascadeMenuManager) {
@@ -160,14 +172,51 @@ export class SmartInboxView {
         const text = this.inputEl.value;
         const cursorPos = this.inputEl.selectionStart || 0;
         const textBeforeCursor = text.substring(0, cursorPos);
+        
+        console.log('🔍 SMART INBOX DEBUG: handleInputOriginal called');
+        console.log('🔍 SMART INBOX DEBUG: text:', text);
+        console.log('🔍 SMART INBOX DEBUG: textBeforeCursor:', textBeforeCursor);
 
         const atMatch = textBeforeCursor.match(/@(\S*)$/);
+        console.log('🔍 SMART INBOX DEBUG: atMatch:', atMatch);
         if (atMatch) {
             this.currentSuggestionContext = { prefix: '@', match: atMatch };
             const query = atMatch[1] || '';
-            const suggestions = this.plugin.gtdProjectsAndAreas
+            
+            // Obtener sugerencias de proyectos y áreas
+            const projectSuggestions = this.plugin.gtdProjectsAndAreas
                 .map((f: TFile) => f.basename)
                 .filter((name: string) => name.toLowerCase().includes(query.toLowerCase()));
+            
+            // Usar la nota activa capturada al abrir el Smart Inbox
+            const activeFile = this.activeFileAtOpen;
+            console.log('🔍 SMART INBOX DEBUG: Using captured activeFile:', activeFile?.path || 'No active file');
+            let suggestions = [...projectSuggestions];
+            
+            if (activeFile && activeFile.extension === 'md') {
+                const activeFileName = activeFile.basename;
+                console.log('🔍 SMART INBOX DEBUG: activeFileName:', activeFileName);
+                console.log('🔍 SMART INBOX DEBUG: query:', query);
+                console.log('🔍 SMART INBOX DEBUG: projectSuggestions:', projectSuggestions);
+                
+                // Solo agregar la nota activa si coincide con la query y no está ya en la lista
+                if (activeFileName.toLowerCase().includes(query.toLowerCase()) && 
+                    !suggestions.includes(activeFileName)) {
+                    // Agregar la nota activa como primera opción
+                    suggestions.unshift(activeFileName);
+                } else if (query === '') {
+                    // Si no hay query, siempre mostrar la nota activa como primera opción
+                    if (!suggestions.includes(activeFileName)) {
+                        suggestions.unshift(activeFileName);
+                    } else {
+                        // Si ya existe en la lista, moverla al principio
+                        suggestions = suggestions.filter(s => s !== activeFileName);
+                        suggestions.unshift(activeFileName);
+                    }
+                }
+            }
+            
+            console.log('🔍 SMART INBOX DEBUG: Final suggestions:', suggestions);
             this.showSuggestions(suggestions);
             return;
         }

@@ -1,47 +1,60 @@
-feat: Sistema bidireccional de expansión de enlaces para Vista de Foco
+feat: Priorizar nota activa en Smart Inbox y colapso de header Vista de Foco
 
-Implementación completa del sistema de expansión bidireccional de enlaces para la Vista de Foco con configuraciones independientes y detección inteligente de carpetas de terminación.
+Implementación de dos mejoras principales para optimizar la experiencia del usuario en dispositivos móviles y desktop:
 
-## Nuevas funcionalidades:
+## Smart Inbox - Nota activa prioritaria
 
-### Sistema de configuración bidireccional
-- Niveles independientes para enlaces salientes (default: 2) y entrantes (default: 5)
-- Carpetas de terminación configurables (default: AI - Journals)
-- Notas específicas de terminación opcionales
-- Indicadores visuales de origen con iconos ➡️ (salientes) y ⬅️ (entrantes)
-- Modal de configuración con interfaz intuitiva y autocompletado
+### Funcionalidad principal:
+- La nota actualmente abierta aparece como primera opción al usar @ para seleccionar destino de tarea
+- Captura inteligente de la nota activa al abrir el Smart Inbox (evita pérdida de contexto por cambio de foco)
+- Integración completa con el sistema de menús en cascada existente
 
-### Arquitectura de expansión separada
-- Grupos independientes: folderBaseGroup, outgoingGroup, incomingGroup
-- Lógica de expansión respeta el tipo de origen de cada nota
-- Las notas agregadas por enlaces salientes solo expanden salientes
-- Las notas agregadas por enlaces entrantes solo expanden entrantes
-- Evita contaminación cruzada entre tipos de expansión
+### Arquitectura implementada:
+- SmartInboxView: captura activeFileAtOpen al abrir y la pasa al CascadeMenuManager
+- CascadeMenuManager: nuevo método setActiveFile() para recibir nota activa
+- CascadeSuggestionProvider: lógica para priorizar nota activa como primera opción con icono 📝
+- Prevención de duplicados: si la nota activa ya está en Áreas/Proyectos, se mueve al principio
 
-### Detección de carpetas de terminación
-- Sistema robusto para detección de carpetas de terminación
-- Manejo de variaciones en nombres de carpetas (espacios vs guiones)
-- Estadísticas detalladas de expansión con tiempo de procesamiento
+### UX mejorada:
+- Primera opción: "📝 [Nombre nota activa] - Nota actualmente abierta"
+- Separador visual antes de Áreas y Proyectos tradicionales
+- Funciona solo si la nota activa no está ya en la lista de proyectos activos
+- Mantiene toda la funcionalidad existente del Smart Inbox
 
-### Mejoras de UX
-- Iconos más grandes y visibles (➡️⬅️ en lugar de 📤📥)
-- Estadísticas de expansión en tiempo real
-- Debug logging completo para troubleshooting
-- Configuración persistente en localStorage
+## Vista de Foco - Header colapsible para móvil
 
-### Correcciones técnicas
-- Separación correcta de grupos de expansión para evitar mezcla errónea
-- Las notas de terminación no actúan como objetivos para búsqueda entrante
-- Corrección de errores TypeScript en focoSettingsModal
-- Optimización de rendimiento en búsqueda de enlaces
+### Funcionalidad de colapso:
+- Click en título de foco colapsa/expande información del header
+- Elementos colapsibles: Total de tareas, estadísticas de expansión, filtros, navegación rápida
+- Estado persistente en localStorage para sesiones futuras
+- Optimizado especialmente para dispositivos móviles
+
+### Elementos técnicos:
+- focoHtmlGenerator: contenedor focus-collapsible-content agrupa elementos colapsibles
+- focoView: event listeners para toggle y inicialización de estado guardado
+- styles.css: animaciones suaves y responsive design para móvil
+- Indicador dinámico: "👆 Click para colapsar" / "👇 Click para expandir"
+
+### Beneficios móvil:
+- Reduce significativamente el espacio ocupado por el header en pantallas pequeñas
+- Interfaz más limpia y enfocada en el contenido principal
+- Transiciones suaves con CSS animations
+
+## Mejoras adicionales
+
+### Iconos Vista de Foco:
+- Reemplazo de iconos pequeños (📤📥) por flechas más visibles (➡️⬅️)
+- ➡️ Enlaces salientes (sale de ti)
+- ⬅️ Enlaces entrantes (llega a ti)
+- Aplicado en indicadores y estadísticas de expansión
 
 Archivos modificados:
-- src/modules/moduloFoco/focoSettings.ts (nuevo)
-- src/modules/moduloFoco/focoSettingsModal.ts (nuevo) 
-- src/modules/moduloFoco/focoParser.ts (refactorizado)
-- src/modules/moduloFoco/focoView.ts (integración modal)
-- src/modules/moduloFoco/focoHtmlGenerator.ts (indicadores visuales)
-- styles.css (estilos para modal y componentes)
+- src/modules/moduloGTDv3/smartInboxView.ts (captura nota activa)
+- src/modules/moduloGTDv3/cascadeMenuManager.ts (integración nota activa)
+- src/modules/moduloGTDv3/cascadeSuggestionProvider.ts (lógica priorización)
+- src/modules/moduloFoco/focoView.ts (colapso header)
+- src/modules/moduloFoco/focoHtmlGenerator.ts (estructura colapsible + iconos)
+- styles.css (animaciones colapso + responsive)
 
 🤖 Generated with Claude Code
 
