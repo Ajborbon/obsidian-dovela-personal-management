@@ -1,6 +1,8 @@
 import type { ProcessedVaultData, HierarchicalItem, Task, InProgressData } from './focoModel.js';
 import { GtdList } from './focoProcessor.js';
 import { isDatePast } from './focoDateUtils.js';
+import { getNoteOriginMap, type ExpansionStats } from './focoParser.js';
+import { FocoSettingsManager } from './focoSettings.js';
 
 type Grouping = 'none' | 'context' | 'person' | 'project';
 type Sorting = 'priority' | 'duration-asc' | 'duration-desc';
@@ -726,6 +728,7 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
         <div class="gtd-card-header" ${itemPathAttr}>
             <span class="gtd-card-type-icon" data-type="${item.type}"></span>
             <span class="gtd-card-name">${item.name.replace(/\[FALTA\]\s*/, '')}</span>
+            ${item.file ? generateOriginIndicator(item.file.path) : ''}
             ${estado}
             <div class="gtd-card-counts">
                 <span class="gtd-card-own-tasks" title="Tareas en esta nota">${item.ownTaskCount}</span>
@@ -757,7 +760,8 @@ export function generateGtdViewHtml(
     activeGrouping: Grouping,
     activeSorting: Sorting,
     overdueGroupingMode: 'date-first' | 'context-first' = 'date-first',
-    focusFileName?: string
+    focusFileName?: string,
+    expansionStats?: ExpansionStats | null
 ): string {
     const totalOpenTasks = data.allTasks.filter(task => !task.completed).length;
 
@@ -817,6 +821,9 @@ export function generateGtdViewHtml(
                     <button class="gtd-refresh-button" title="Refrescar datos">
                         🔄 Refrescar
                     </button>
+                    <button class="foco-settings-button" title="Configurar expansión de enlaces">
+                        ⚙️ Configurar
+                    </button>
                 </div>
 
                 <!-- Título de foco colapsible -->
@@ -833,6 +840,8 @@ export function generateGtdViewHtml(
                 <div class="gtd-total-tasks" id="gtd-total-tasks">
                     <span>Total de Tareas Abiertas: <strong>${totalOpenTasks}</strong></span>
                 </div>
+                <!-- Estadísticas de expansión -->
+                ${expansionStats ? generateExpansionStatsHtml(expansionStats) : ''}
 
                 <!-- Filtros responsivos (solo para vista GTD) -->
                 ${activeView === 'gtd' ? generateFiltersHtml(data) : ''}
@@ -847,4 +856,79 @@ export function generateGtdViewHtml(
             </div>
         </div>
     `;
+}
+
+// Función para generar HTML de estadísticas de expansión
+function generateExpansionStatsHtml(stats: ExpansionStats): string {
+    const settings = FocoSettingsManager.load();
+    
+    return `
+        <div class="foco-expansion-stats" title="Click para más detalles">
+            <div class="foco-stats-summary">
+                📂 <span class="foco-stat-value">${stats.folderBaseNotes}</span>
+                ➡️ <span class="foco-stat-value">${stats.outgoingLinksNotes}</span>
+                ⬅️ <span class="foco-stat-value">${stats.incomingLinksNotes}</span>
+                🛑 <span class="foco-stat-value">${stats.terminationNotes}</span>
+                ⚡ <span class="foco-processing-time">${stats.processingTimeMs}ms</span>
+            </div>
+            <div class="foco-stats-detailed" style="display: none;">
+                <div class="foco-stats-grid">
+                    <div class="foco-stat-item">
+                        <span class="foco-stat-icon">📂</span>
+                        <span class="foco-stat-label">Carpeta Base</span>
+                        <span class="foco-stat-value">${stats.folderBaseNotes}</span>
+                    </div>
+                    <div class="foco-stat-item">
+                        <span class="foco-stat-icon">➡️</span>
+                        <span class="foco-stat-label">Enlaces Salientes (${stats.maxOutgoingLevel}/${settings.outgoingLinksLevels})</span>
+                        <span class="foco-stat-value">${stats.outgoingLinksNotes}</span>
+                    </div>
+                    <div class="foco-stat-item">
+                        <span class="foco-stat-icon">⬅️</span>
+                        <span class="foco-stat-label">Enlaces Entrantes (${stats.maxIncomingLevel}/${settings.incomingLinksLevels})</span>
+                        <span class="foco-stat-value">${stats.incomingLinksNotes}</span>
+                    </div>
+                    <div class="foco-stat-item">
+                        <span class="foco-stat-icon">🛑</span>
+                        <span class="foco-stat-label">Terminación</span>
+                        <span class="foco-stat-value">${stats.terminationNotes}</span>
+                    </div>
+                    <div class="foco-stat-item">
+                        <span class="foco-stat-icon">📊</span>
+                        <span class="foco-stat-label">Total Notas</span>
+                        <span class="foco-stat-value">${stats.totalNotes}</span>
+                    </div>
+                    <div class="foco-stat-item">
+                        <span class="foco-stat-icon">⚡</span>
+                        <span class="foco-stat-label">Tiempo Procesamiento</span>
+                        <span class="foco-stat-value">${stats.processingTimeMs}ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Función para generar indicadores de origen para notas individuales
+export function generateOriginIndicator(notePath: string): string {
+    const originMap = getNoteOriginMap();
+    const origin = originMap.get(notePath);
+    const settings = FocoSettingsManager.load();
+    
+    if (!origin || !settings.showOriginIndicators) {
+        return '';
+    }
+    
+    const indicatorMap = {
+        'folder-base': { icon: '📁', title: 'Nota de carpeta base', class: 'foco-origin-folder' },
+        'outgoing-link': { icon: '➡️', title: `Enlace saliente (Nivel ${origin.level})`, class: 'foco-origin-outgoing' },
+        'incoming-link': { icon: '⬅️', title: `Enlace entrante (Nivel ${origin.level})`, class: 'foco-origin-incoming' },
+        'termination-folder': { icon: '🛑', title: `Carpeta de terminación${origin.terminationReason ? ': ' + origin.terminationReason : ''}`, class: 'foco-origin-termination' },
+        'termination-note': { icon: '🛑', title: `Nota de terminación${origin.terminationReason ? ': ' + origin.terminationReason : ''}`, class: 'foco-origin-termination' }
+    };
+    
+    const indicator = indicatorMap[origin.type];
+    if (!indicator) return '';
+    
+    return `<span class="foco-origin-indicator ${indicator.class}" title="${indicator.title}" data-origin-type="${origin.type}" data-origin-level="${origin.level}">${indicator.icon}</span>`;
 }

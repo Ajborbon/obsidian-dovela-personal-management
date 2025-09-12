@@ -1,5 +1,9 @@
 import { TFile, Vault, MetadataCache, TFolder } from 'obsidian';
 import type { HierarchicalItem, Task, ProcessedVaultData, HierarchicalItemType, DateSymbol } from './focoModel.js';
+import { FocoSettingsManager, type FocoExpansionSettings, type NoteOriginInfo, type ExpansionStats } from './focoSettings.js';
+
+// Exportar tipos para uso en otros módulos
+export type { NoteOriginInfo, ExpansionStats } from './focoSettings.js';
 
 // --- Lógica de Detección de Tipo (sin cambios) ---
 const PREFIX_TO_TYPE_MAP: { [prefix: string]: HierarchicalItemType } = {
@@ -154,55 +158,146 @@ export function parseTasks(content: string, sourceFile: TFile): Task[] {
     return tasks;
 }
 
-// --- NUEVA LÓGICA DE RECOLECCIÓN ---
+// --- NUEVA LÓGICA DE RECOLECCIÓN CON EXPANSIÓN BIDIRECCIONAL ---
 
-async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache: MetadataCache): Promise<Set<TFile>> {
-    console.log('🔍 COLLECT DEBUG: Iniciando collectFocusFiles');
-    console.log('🔍 COLLECT DEBUG: activeFile:', activeFile.path);
-    console.log('🔍 COLLECT DEBUG: parent folder:', activeFile.parent?.path);
+// Almacenar información sobre el origen de cada nota
+const noteOriginMap = new Map<string, NoteOriginInfo>();
+
+function isTerminationFile(file: TFile, settings: FocoExpansionSettings): { isTermination: boolean; reason?: string } {
+    // Verificar carpetas de terminación
+    for (const folder of settings.terminationFolders) {
+        if (file.path.startsWith(folder + '/') || file.path === folder) {
+            return { isTermination: true, reason: `Carpeta de terminación: ${folder}` };
+        }
+    }
+    
+    // Verificar notas específicas de terminación
+    for (const note of settings.terminationNotes) {
+        if (file.basename + '.md' === note || file.name === note) {
+            return { isTermination: true, reason: `Nota de terminación: ${note}` };
+        }
+    }
+    
+    return { isTermination: false };
+}
+
+async function collectFocusFiles(activeFile: TFile, vault: Vault, metadataCache: MetadataCache): Promise<{ files: Set<TFile>; originMap: Map<string, NoteOriginInfo>; stats: ExpansionStats }> {
+    const startTime = Date.now();
+    const settings = FocoSettingsManager.load();
+    
+    console.log('🔍 COLLECT DEBUG: Iniciando collectFocusFiles con configuraciones:', settings);
     
     const focusFiles = new Set<TFile>();
     const processedPaths = new Set<string>();
+    const originMap = new Map<string, NoteOriginInfo>();
+    
+    // Grupos separados para mantener la integridad de las reglas de expansión
+    const outgoingGroup = new Set<TFile>(); // Solo archivos que se expandirán por salientes
+    const incomingGroup = new Set<TFile>(); // Solo archivos que se expandirán por entrantes
+    const folderBaseGroup = new Set<TFile>(); // Archivos base que pueden expandirse en ambas direcciones
+    
+    // Estadísticas para el usuario
+    const stats: ExpansionStats = {
+        totalNotes: 0,
+        folderBaseNotes: 0,
+        outgoingLinksNotes: 0,
+        incomingLinksNotes: 0,
+        terminationNotes: 0,
+        maxOutgoingLevel: 0,
+        maxIncomingLevel: 0,
+        processingTimeMs: 0
+    };
 
     // 1. Add the active file itself
     console.log('🔍 COLLECT DEBUG: Añadiendo archivo activo');
     focusFiles.add(activeFile);
     processedPaths.add(activeFile.path);
+    folderBaseGroup.add(activeFile);
+    originMap.set(activeFile.path, {
+        type: 'folder-base',
+        level: 0,
+        path: activeFile.path
+    });
 
     // 2. Get all files in the same folder and subfolders
     console.log('🔍 COLLECT DEBUG: Recolectando archivos de carpeta...');
     const rootFolder = activeFile.parent;
     if (rootFolder) {
-        console.log('🔍 COLLECT DEBUG: Carpeta raíz encontrada:', rootFolder.path);
         const allDescendantFiles = (folder: TFolder): TFile[] => {
             let files: TFile[] = [];
             for (const child of folder.children) {
                 if (child instanceof TFile && child.extension === 'md') {
-                    console.log(`🔍 COLLECT DEBUG: Archivo MD encontrado: ${child.path}`);
                     files.push(child);
-                } else if (child instanceof TFile) {
-                    console.log(`🔍 COLLECT DEBUG: Archivo no-MD saltado (${child.extension}): ${child.path}`);
                 } else if (child instanceof TFolder) {
                     files = files.concat(allDescendantFiles(child));
                 }
             }
             return files;
         };
+        
         const folderFiles = allDescendantFiles(rootFolder);
-        console.log('🔍 COLLECT DEBUG: Archivos de carpeta encontrados:', folderFiles.length);
         folderFiles.forEach(file => {
-            focusFiles.add(file);
-            processedPaths.add(file.path);
+            if (!processedPaths.has(file.path)) {
+                focusFiles.add(file);
+                processedPaths.add(file.path);
+                folderBaseGroup.add(file);
+                originMap.set(file.path, {
+                    type: 'folder-base',
+                    level: 0,
+                    path: file.path
+                });
+                stats.folderBaseNotes++;
+            }
         });
-    } else {
-        console.log('🔍 COLLECT DEBUG: No se encontró carpeta padre');
     }
 
-    // 3. Get linked files recursively (2 levels)
-    console.log('🔍 COLLECT DEBUG: Recolectando archivos enlazados...');
-    const getLinkedFiles = (fileSet: Set<TFile>): Set<TFile> => {
-        const newFiles = new Set<TFile>();
-        for (const file of fileSet) {
+    // 3. Expansión de enlaces salientes (outgoing links)
+    if (settings.outgoingLinksLevels > 0) {
+        console.log('🔍 COLLECT DEBUG: Iniciando expansión de enlaces salientes...');
+        await expandOutgoingLinksFromGroup(folderBaseGroup, outgoingGroup, focusFiles, processedPaths, originMap, stats, metadataCache, settings);
+    }
+
+    // 4. Expansión de enlaces entrantes (incoming links / backlinks)  
+    if (settings.incomingLinksLevels > 0) {
+        console.log('🔍 COLLECT DEBUG: Iniciando expansión de enlaces entrantes...');
+        await expandIncomingLinksFromGroup(folderBaseGroup, incomingGroup, focusFiles, processedPaths, originMap, stats, metadataCache, settings, vault);
+    }
+
+    stats.totalNotes = focusFiles.size;
+    stats.processingTimeMs = Date.now() - startTime;
+    
+    console.log('🔍 COLLECT DEBUG: Expansión completada:', stats);
+    console.log('🔍 COLLECT DEBUG: Grupo carpeta base:', folderBaseGroup.size);
+    console.log('🔍 COLLECT DEBUG: Grupo salientes:', outgoingGroup.size);
+    console.log('🔍 COLLECT DEBUG: Grupo entrantes:', incomingGroup.size);
+    
+    return { files: focusFiles, originMap, stats };
+}
+
+async function expandOutgoingLinksFromGroup(
+    sourceGroup: Set<TFile>,
+    targetGroup: Set<TFile>,
+    focusFiles: Set<TFile>,
+    processedPaths: Set<string>,
+    originMap: Map<string, NoteOriginInfo>,
+    stats: ExpansionStats,
+    metadataCache: MetadataCache,
+    settings: FocoExpansionSettings
+): Promise<void> {
+    let currentLevel = new Set<TFile>(sourceGroup);
+    
+    for (let level = 1; level <= settings.outgoingLinksLevels; level++) {
+        console.log(`🔍 OUTGOING DEBUG: Nivel ${level}, procesando ${currentLevel.size} archivos del grupo salientes`);
+        const nextLevel = new Set<TFile>();
+        
+        for (const file of currentLevel) {
+            // Verificar si este archivo es de terminación
+            const termination = isTerminationFile(file, settings);
+            if (termination.isTermination && level > 1) {
+                console.log(`🔍 OUTGOING DEBUG: Saltando expansión desde ${file.path}: ${termination.reason}`);
+                continue;
+            }
+
             const cache = metadataCache.getCache(file.path);
             if (!cache?.links) continue;
 
@@ -211,33 +306,115 @@ async function collectFocusFiles(activeFile: TFile, _vault: Vault, metadataCache
                 if (linkedFile instanceof TFile && 
                     linkedFile.extension === 'md' && 
                     !processedPaths.has(linkedFile.path)) {
-                    console.log(`🔍 COLLECT DEBUG: Archivo enlazado MD encontrado: ${linkedFile.path}`);
-                    newFiles.add(linkedFile);
+                    
+                    nextLevel.add(linkedFile);
+                    targetGroup.add(linkedFile); // Añadir al grupo de salientes
+                    focusFiles.add(linkedFile);
                     processedPaths.add(linkedFile.path);
-                } else if (linkedFile instanceof TFile && linkedFile.extension !== 'md') {
-                    console.log(`🔍 COLLECT DEBUG: Archivo enlazado no-MD saltado (${linkedFile.extension}): ${linkedFile.path}`);
+                    
+                    const linkedTermination = isTerminationFile(linkedFile, settings);
+                    originMap.set(linkedFile.path, {
+                        type: linkedTermination.isTermination ? 'termination-folder' : 'outgoing-link',
+                        level: level,
+                        path: linkedFile.path,
+                        terminationReason: linkedTermination.reason
+                    });
+                    
+                    if (linkedTermination.isTermination) {
+                        stats.terminationNotes++;
+                    } else {
+                        stats.outgoingLinksNotes++;
+                    }
+                    
+                    console.log(`🔍 OUTGOING DEBUG: Encontrado enlace saliente nivel ${level}: ${linkedFile.path}`);
                 }
             }
         }
-        return newFiles;
-    };
+        
+        currentLevel = nextLevel;
+        if (currentLevel.size === 0) break;
+        stats.maxOutgoingLevel = level;
+    }
+}
 
-    const level1Files = getLinkedFiles(new Set(focusFiles));
-    console.log('🔍 COLLECT DEBUG: Archivos nivel 1:', level1Files.size);
-    level1Files.forEach(file => focusFiles.add(file));
-
-    const level2Files = getLinkedFiles(level1Files);
-    console.log('🔍 COLLECT DEBUG: Archivos nivel 2:', level2Files.size);
-    level2Files.forEach(file => focusFiles.add(file));
-
-    console.log('🔍 COLLECT DEBUG: Total archivos recolectados:', focusFiles.size);
-    console.log('🔍 COLLECT DEBUG: Lista de archivos:', Array.from(focusFiles).map(f => f.path));
+async function expandIncomingLinksFromGroup(
+    sourceGroup: Set<TFile>,
+    targetGroup: Set<TFile>,
+    focusFiles: Set<TFile>,
+    processedPaths: Set<string>,
+    originMap: Map<string, NoteOriginInfo>,
+    stats: ExpansionStats,
+    metadataCache: MetadataCache,
+    settings: FocoExpansionSettings,
+    vault: Vault
+): Promise<void> {
+    // Obtener todos los archivos del vault para buscar backlinks
+    const allFiles = vault.getMarkdownFiles();
+    let currentTargets = new Set<TFile>(sourceGroup); // Solo buscar enlaces hacia el grupo fuente (carpeta base)
     
-    return focusFiles;
+    for (let level = 1; level <= settings.incomingLinksLevels; level++) {
+        console.log(`🔍 INCOMING DEBUG: Nivel ${level}, buscando enlaces hacia ${currentTargets.size} archivos objetivo del grupo entrantes`);
+        const nextLevel = new Set<TFile>();
+        
+        for (const targetFile of currentTargets) {
+            // Verificar si este archivo objetivo es de terminación
+            const termination = isTerminationFile(targetFile, settings);
+            if (termination.isTermination && level > 1) {
+                console.log(`🔍 INCOMING DEBUG: Saltando búsqueda hacia archivo de terminación: ${targetFile.path}`);
+                continue;
+            }
+            
+            // Buscar archivos que enlazan hacia targetFile
+            for (const sourceFile of allFiles) {
+                if (processedPaths.has(sourceFile.path)) continue;
+                
+                const cache = metadataCache.getCache(sourceFile.path);
+                if (!cache?.links) continue;
+                
+                // Verificar si sourceFile tiene un enlace hacia targetFile
+                for (const link of cache.links) {
+                    const linkedFile = metadataCache.getFirstLinkpathDest(link.link, sourceFile.path);
+                    if (linkedFile === targetFile) {
+                        // sourceFile enlaza a targetFile - agregarlo
+                        nextLevel.add(sourceFile);
+                        targetGroup.add(sourceFile); // Añadir al grupo de entrantes
+                        focusFiles.add(sourceFile);
+                        processedPaths.add(sourceFile.path);
+                        
+                        const sourceTermination = isTerminationFile(sourceFile, settings);
+                        originMap.set(sourceFile.path, {
+                            type: sourceTermination.isTermination ? 'termination-folder' : 'incoming-link',
+                            level: level,
+                            path: sourceFile.path,
+                            terminationReason: sourceTermination.reason
+                        });
+                        
+                        if (sourceTermination.isTermination) {
+                            stats.terminationNotes++;
+                        } else {
+                            stats.incomingLinksNotes++;
+                        }
+                        
+                        console.log(`🔍 INCOMING DEBUG: Encontrado enlace entrante nivel ${level}: ${sourceFile.path} → ${targetFile.path}`);
+                        break; // Una vez encontrado el enlace, no necesitamos seguir buscando en los otros enlaces de este archivo
+                    }
+                }
+            }
+        }
+        
+        currentTargets = nextLevel;
+        if (currentTargets.size === 0) break;
+        stats.maxIncomingLevel = level;
+    }
+}
+
+// Función auxiliar para exportar el mapa de orígenes
+export function getNoteOriginMap(): Map<string, NoteOriginInfo> {
+    return noteOriginMap;
 }
 
 
-export async function parseFocus(activeFile: TFile, vault: Vault, metadataCache: MetadataCache): Promise<ProcessedVaultData> {
+export async function parseFocus(activeFile: TFile, vault: Vault, metadataCache: MetadataCache): Promise<ProcessedVaultData & { originMap?: Map<string, NoteOriginInfo>; expansionStats?: ExpansionStats }> {
     console.log('🔍 PARSER DEBUG: Iniciando parseFocus');
     console.log('🔍 PARSER DEBUG: activeFile:', activeFile.path);
     
@@ -248,9 +425,14 @@ export async function parseFocus(activeFile: TFile, vault: Vault, metadataCache:
 
     try {
         console.log('🔍 PARSER DEBUG: Recolectando archivos de foco...');
-        const filesToProcess = await collectFocusFiles(activeFile, vault, metadataCache);
+        const { files: filesToProcess, originMap, stats: expansionStats } = await collectFocusFiles(activeFile, vault, metadataCache);
         console.log('🔍 PARSER DEBUG: Archivos recolectados:', filesToProcess.size);
+        console.log('🔍 PARSER DEBUG: Estadísticas de expansión:', expansionStats);
         console.log('🔍 PARSER DEBUG: Lista de archivos:', Array.from(filesToProcess).map(f => f.path));
+        
+        // Actualizar el mapa global para acceso desde otras partes
+        noteOriginMap.clear();
+        originMap.forEach((value, key) => noteOriginMap.set(key, value));
         
         let processedCount = 0;
         for (const file of filesToProcess) {
@@ -319,7 +501,9 @@ export async function parseFocus(activeFile: TFile, vault: Vault, metadataCache:
             uniqueContexts: Array.from(uniqueContexts),
             uniquePeople: Array.from(uniquePeople),
             inProgressData: { groups: {}, stats: { total: 0, overdue: 0, definedTimeMinutes: 0, estimatedTimeMinutes: 0 } },
-            navigationItems: [] // Agregamos navigationItems vacío ya que se generará en el processor
+            navigationItems: [], // Agregamos navigationItems vacío ya que se generará en el processor
+            originMap: originMap, // Información sobre el origen de cada nota
+            expansionStats: expansionStats // Estadísticas de la expansión
         };
         
         console.log('🔍 PARSER DEBUG: parseFocus completado exitosamente');

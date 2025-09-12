@@ -4382,3 +4382,380 @@ datalist {
     overflow: visible !important;
 }
 
+/* === ESTILOS PARA VISTA FOCO - EXPANSIÓN BIDIRECCIONAL === */
+
+/* Botón de configuración de Vista Foco */
+.foco-settings-button {
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.2s ease;
+}
+
+.foco-settings-button:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
+}
+
+/* Estadísticas de expansión */
+.foco-expansion-stats {
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.foco-expansion-stats:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent-hover);
+}
+
+/* Vista resumida de estadísticas */
+.foco-stats-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-size: 0.9em;
+}
+
+.foco-stat-value {
+    font-weight: 600;
+    color: var(--text-accent);
+    margin-left: 2px;
+}
+
+.foco-processing-time {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Vista detallada de estadísticas */
+.foco-stats-detailed {
+    animation: fadeIn 0.2s ease;
+}
+
+.foco-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.foco-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--background-primary);
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.foco-stat-icon {
+    font-size: 1em;
+    width: 20px;
+    text-align: center;
+}
+
+.foco-stat-label {
+    flex: 1;
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.foco-stat-item .foco-stat-value {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+/* Indicadores de origen de notas */
+.foco-origin-indicator {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.8em;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    vertical-align: middle;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.foco-origin-indicator:hover {
+    transform: scale(1.1);
+    border-color: var(--background-modifier-border);
+    background: var(--background-modifier-hover);
+}
+
+.foco-origin-folder {
+    color: var(--color-blue);
+    background: rgba(var(--color-blue-rgb), 0.1);
+}
+
+.foco-origin-outgoing {
+    color: var(--color-green);
+    background: rgba(var(--color-green-rgb), 0.1);
+}
+
+.foco-origin-incoming {
+    color: var(--color-purple);
+    background: rgba(var(--color-purple-rgb), 0.1);
+}
+
+.foco-origin-termination {
+    color: var(--color-orange);
+    background: rgba(var(--color-orange-rgb), 0.1);
+}
+
+/* Responsivo para móvil */
+@media (max-width: 768px) {
+    .foco-stats-summary {
+        font-size: 0.8em;
+        gap: 8px;
+    }
+    
+    .foco-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    
+    .foco-stat-item {
+        padding: 4px 6px;
+    }
+    
+    .foco-stat-label {
+        font-size: 0.8em;
+    }
+    
+    .foco-origin-indicator {
+        font-size: 0.75em;
+        margin-left: 4px;
+        padding: 1px 3px;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mejoras para el header cuando hay estadísticas */
+.gtd-sticky-header .foco-expansion-stats {
+    margin: 4px 0 8px 0;
+    font-size: 0.85em;
+}
+
+.gtd-sticky-header .foco-stats-summary {
+    justify-content: center;
+    gap: 16px;
+}
+
+/* Estados compactos para header con scroll */
+.gtd-sticky-header.scrolled .foco-expansion-stats {
+    margin: 2px 0 4px 0;
+}
+
+.gtd-sticky-header.scrolled .foco-stats-summary {
+    gap: 12px;
+    font-size: 0.8em;
+}
+
+/* Adaptación para tema oscuro */
+.theme-dark .foco-origin-indicator {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-dark .foco-expansion-stats {
+    background: var(--background-primary-alt);
+}
+
+.theme-dark .foco-stat-item {
+    background: var(--background-secondary);
+    border-color: var(--background-modifier-border-hover);
+}
+
+/* === AUTOCOMPLETADO DE CARPETAS Y ARCHIVOS === */
+
+/* Contenedor principal del autocompletado */
+.foco-autocomplete-container {
+    position: relative;
+    width: 100%;
+}
+
+/* Input del autocompletado */
+.foco-autocomplete-input {
+    width: 100%;
+    padding: 6px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.foco-autocomplete-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* Lista de sugerencias */
+.foco-autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Items individuales de sugerencia */
+.foco-autocomplete-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+    font-size: 0.85em;
+    transition: background-color 0.1s ease;
+    display: flex;
+    align-items: center;
+}
+
+.foco-autocomplete-suggestion:last-child {
+    border-bottom: none;
+}
+
+.foco-autocomplete-suggestion:hover,
+.foco-autocomplete-suggestion.selected {
+    background: var(--background-modifier-hover);
+}
+
+/* Highlighting del texto que coincide */
+.foco-autocomplete-suggestion mark {
+    background: var(--text-accent);
+    color: var(--background-primary);
+    padding: 1px 2px;
+    border-radius: 2px;
+    font-weight: 500;
+}
+
+/* Iconos para diferencias entre carpetas y archivos */
+.foco-autocomplete-suggestion::before {
+    content: '📁';
+    margin-right: 6px;
+    opacity: 0.7;
+}
+
+.foco-autocomplete-container[data-type="files"] .foco-autocomplete-suggestion::before {
+    content: '📄';
+}
+
+/* Scroll bar personalizado para las sugerencias */
+.foco-autocomplete-suggestions::-webkit-scrollbar {
+    width: 4px;
+}
+
+.foco-autocomplete-suggestions::-webkit-scrollbar-track {
+    background: var(--background-secondary);
+}
+
+.foco-autocomplete-suggestions::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 2px;
+}
+
+.foco-autocomplete-suggestions::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* Estados de carga o vacío */
+.foco-autocomplete-empty {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.8em;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .foco-autocomplete-suggestions {
+        max-height: 150px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .foco-autocomplete-suggestion {
+        padding: 10px 12px;
+        font-size: 0.9em;
+    }
+    
+    .foco-autocomplete-input {
+        padding: 8px 12px;
+        font-size: 1em;
+    }
+}
+
+/* Animaciones */
+.foco-autocomplete-suggestions {
+    animation: fadeInDown 0.15s ease-out;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mejoras para el modal de configuración */
+.foco-settings-section .foco-autocomplete-container {
+    margin-top: 8px;
+}
+
+/* Tema oscuro específico para autocompletado */
+.theme-dark .foco-autocomplete-suggestions {
+    background: var(--background-primary-alt);
+    border-color: var(--background-modifier-border-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .foco-autocomplete-suggestion:hover,
+.theme-dark .foco-autocomplete-suggestion.selected {
+    background: var(--background-modifier-hover-focus);
+}
+
+.theme-dark .foco-autocomplete-suggestion mark {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+

@@ -1,0 +1,48 @@
+feat: Sistema bidireccional de expansión de enlaces para Vista de Foco
+
+Implementación completa del sistema de expansión bidireccional de enlaces para la Vista de Foco con configuraciones independientes y detección inteligente de carpetas de terminación.
+
+## Nuevas funcionalidades:
+
+### Sistema de configuración bidireccional
+- Niveles independientes para enlaces salientes (default: 2) y entrantes (default: 5)
+- Carpetas de terminación configurables (default: AI - Journals)
+- Notas específicas de terminación opcionales
+- Indicadores visuales de origen con iconos ➡️ (salientes) y ⬅️ (entrantes)
+- Modal de configuración con interfaz intuitiva y autocompletado
+
+### Arquitectura de expansión separada
+- Grupos independientes: folderBaseGroup, outgoingGroup, incomingGroup
+- Lógica de expansión respeta el tipo de origen de cada nota
+- Las notas agregadas por enlaces salientes solo expanden salientes
+- Las notas agregadas por enlaces entrantes solo expanden entrantes
+- Evita contaminación cruzada entre tipos de expansión
+
+### Detección de carpetas de terminación
+- Sistema robusto para detección de carpetas de terminación
+- Manejo de variaciones en nombres de carpetas (espacios vs guiones)
+- Estadísticas detalladas de expansión con tiempo de procesamiento
+
+### Mejoras de UX
+- Iconos más grandes y visibles (➡️⬅️ en lugar de 📤📥)
+- Estadísticas de expansión en tiempo real
+- Debug logging completo para troubleshooting
+- Configuración persistente en localStorage
+
+### Correcciones técnicas
+- Separación correcta de grupos de expansión para evitar mezcla errónea
+- Las notas de terminación no actúan como objetivos para búsqueda entrante
+- Corrección de errores TypeScript en focoSettingsModal
+- Optimización de rendimiento en búsqueda de enlaces
+
+Archivos modificados:
+- src/modules/moduloFoco/focoSettings.ts (nuevo)
+- src/modules/moduloFoco/focoSettingsModal.ts (nuevo) 
+- src/modules/moduloFoco/focoParser.ts (refactorizado)
+- src/modules/moduloFoco/focoView.ts (integración modal)
+- src/modules/moduloFoco/focoHtmlGenerator.ts (indicadores visuales)
+- styles.css (estilos para modal y componentes)
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>

@@ -12,6 +12,8 @@ import { buildHierarchy } from './focoHierarchyBuilder.js';
 import { processGtdLists } from './focoProcessor.js';
 import { processInProgressTasks } from '../moduloGTDv3/inProgressProcessor.js';
 import { generateGtdViewHtml } from './focoHtmlGenerator.js';
+import { FocoSettingsModal } from './focoSettingsModal.js';
+import { FocoSettingsManager, type FocoExpansionSettings, type ExpansionStats } from './focoSettings.js';
 import type { ProcessedVaultData, HierarchicalItem } from './focoModel.js';
 
 export const FOCO_VIEW_TYPE = 'foco-gtd-view';
@@ -31,12 +33,15 @@ export class FocoView extends ItemView {
     private activeSorting: 'priority' | 'duration-asc' | 'duration-desc' = 'priority';
     private eventAbortController: AbortController = new AbortController();
     private overdueGroupingMode: 'date-first' | 'context-first' = 'date-first'; // Modo de organización de Vencidas
+    private expansionStats: ExpansionStats | null = null; // Estadísticas de la última expansión
+    private focoSettings: FocoExpansionSettings;
 
     constructor(leaf: WorkspaceLeaf, plugin: DovelaPersonalManagementPlugin, activeFile: TFile | null) {
         super(leaf);
         this.plugin = plugin;
         this.timeTrackerService = this.plugin.timeTrackerService;
         this.activeFile = activeFile;
+        this.focoSettings = FocoSettingsManager.load(); // Cargar configuraciones al inicializar
     }
 
     getViewType(): string {
@@ -142,6 +147,12 @@ export class FocoView extends ItemView {
             const parsedData = await parseFocus(activeFile, this.app.vault, this.app.metadataCache);
             console.log('🔍 FOCO DEBUG: parseFocus completado exitosamente');
             console.log('🔍 FOCO DEBUG: Datos obtenidos - tareas:', parsedData.allTasks.length, 'items:', parsedData.hierarchicalData.length);
+            
+            // Capturar estadísticas de expansión
+            if (parsedData.expansionStats) {
+                this.expansionStats = parsedData.expansionStats;
+                console.log('🔍 FOCO DEBUG: Estadísticas de expansión capturadas:', this.expansionStats);
+            }
             const hierarchicalData = buildHierarchy(parsedData.hierarchicalData);
             const taskBreadcrumbMap = this.createTaskBreadcrumbMap(hierarchicalData);
 
@@ -159,7 +170,7 @@ export class FocoView extends ItemView {
                 navigationItems: navigationItems
             };
 
-            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.overdueGroupingMode, this.activeFile?.basename);
+            const html = generateGtdViewHtml(finalData, this.activeView, taskBreadcrumbMap, this.activeGrouping, this.activeSorting, this.overdueGroupingMode, this.activeFile?.basename, this.expansionStats);
             this.contentEl.empty();
             this.contentEl.innerHTML = html;
 
@@ -473,6 +484,8 @@ export class FocoView extends ItemView {
                     }
                 } else if (button.classList.contains('gtd-refresh-button')) {
                     if (this.activeFile) this.drawView(this.activeFile);
+                } else if (button.classList.contains('foco-settings-button')) {
+                    this.openSettingsModal();
                 } else if (button.classList.contains('gtd-hierarchy-control-button')) {
                     const action = button.getAttribute('data-action');
                     const detailsElements = container.querySelectorAll('.gtd-card-container') as NodeListOf<HTMLDetailsElement>;
@@ -541,6 +554,33 @@ export class FocoView extends ItemView {
                 this.toggleOverdueGroupingMode();
             }
         }, { signal: this.eventAbortController.signal });
+
+        // === EVENT LISTENER PARA ESTADÍSTICAS DE EXPANSIÓN ===
+        container.addEventListener('click', (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const statsContainer = target.closest('.foco-expansion-stats') as HTMLElement;
+            
+            if (statsContainer) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                const summary = statsContainer.querySelector('.foco-stats-summary') as HTMLElement;
+                const detailed = statsContainer.querySelector('.foco-stats-detailed') as HTMLElement;
+                
+                if (detailed && summary) {
+                    const isDetailed = detailed.style.display !== 'none';
+                    if (isDetailed) {
+                        detailed.style.display = 'none';
+                        summary.style.display = '';
+                        statsContainer.title = 'Click para más detalles';
+                    } else {
+                        detailed.style.display = '';
+                        summary.style.display = 'none';
+                        statsContainer.title = 'Click para vista compacta';
+                    }
+                }
+            }
+        }, { signal: this.eventAbortController.signal });
     }
 
     private toggleOverdueGroupingMode(): void {
@@ -569,6 +609,29 @@ export class FocoView extends ItemView {
                 toggleButton.title = 'Modo: Por contexto/persona primero. Click para cambiar a fecha primero';
             }
         }
+    }
+
+    private openSettingsModal(): void {
+        const modal = new FocoSettingsModal(
+            this.app, 
+            this.plugin,
+            (newSettings: FocoExpansionSettings) => {
+                this.focoSettings = newSettings;
+                console.log('🔍 FOCO DEBUG: Configuraciones actualizadas, refrescando vista...');
+                if (this.activeFile) {
+                    this.drawView(this.activeFile);
+                }
+            }
+        );
+        modal.open();
+    }
+
+    public getExpansionStats(): ExpansionStats | null {
+        return this.expansionStats;
+    }
+
+    public getFocoSettings(): FocoExpansionSettings {
+        return this.focoSettings;
     }
 
     private initializeMobileFiltersOptimization(container: HTMLElement): void {
