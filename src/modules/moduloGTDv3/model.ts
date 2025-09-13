@@ -136,15 +136,79 @@ export interface ActiveTimerState {
     lineNumber?: number; // Línea de la tarea en la nota.
 }
 
+// --- Pomodoro ---
+
+export type PomodoroSessionType = 'work' | 'shortBreak' | 'longBreak';
+
+export interface PomodoroSettings {
+    workDuration: number; // Duración trabajo en minutos (default: 25)
+    shortBreakDuration: number; // Duración descanso corto en minutos (default: 5)
+    longBreakDuration: number; // Duración descanso largo en minutos (default: 15)
+    cyclesBeforeLongBreak: number; // Ciclos antes de descanso largo (default: 4)
+    autoStartBreaks: boolean; // Auto-iniciar descansos (default: false)
+    autoStartWork: boolean; // Auto-iniciar trabajo después de descanso (default: false)
+    soundEnabled: boolean; // Reproducir sonido al finalizar (default: true)
+    notificationsEnabled: boolean; // Mostrar notificaciones (default: true)
+    overtimeAlertInterval: number; // Intervalo de alertas en modo overtime en minutos (default: 5)
+}
+
+export interface PomodoroSession {
+    id: string; // ID único de la sesión
+    type: PomodoroSessionType; // Tipo de sesión actual
+    startTime: string; // Inicio de la sesión actual en formato ISO
+    duration: number; // Duración planificada en minutos
+    taskPath?: string; // Ruta de la tarea (solo para work sessions)
+    taskDescription?: string; // Descripción de la tarea
+    completedCycles: number; // Ciclos de trabajo completados en esta serie
+    notes?: string; // Notas de la sesión de trabajo
+    isOvertime?: boolean; // Si está en modo overtime (después de completar el tiempo planificado)
+    overtimeStartTime?: string; // Momento cuando empezó el overtime
+    lastOvertimeAlert?: string; // Último momento que se mostró alerta de overtime (para intervals de 5min)
+}
+
+export interface PomodoroStats {
+    totalWorkSessions: number; // Total de sesiones de trabajo completadas
+    totalWorkMinutes: number; // Total de minutos de trabajo
+    completedCycles: number; // Total de ciclos completos (work + break)
+    todayWorkSessions: number; // Sesiones de trabajo completadas hoy
+    todayWorkMinutes: number; // Minutos de trabajo hoy
+}
+
 // --- Plugin Data ---
 
 // Define la estructura completa de los datos que el plugin guarda en data.json.
 export interface DovelaPluginData {
     timeLogs: TimeLogEntry[];
     activeTimer?: ActiveTimerState;
+    pomodoroSettings: PomodoroSettings;
+    activePomodoroSession?: PomodoroSession;
+    pomodoroStats: PomodoroStats;
 }
+
+export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
+    workDuration: 25,
+    shortBreakDuration: 5,
+    longBreakDuration: 15,
+    cyclesBeforeLongBreak: 4,
+    autoStartBreaks: false,
+    autoStartWork: false,
+    soundEnabled: true,
+    notificationsEnabled: true,
+    overtimeAlertInterval: 5
+};
+
+export const DEFAULT_POMODORO_STATS: PomodoroStats = {
+    totalWorkSessions: 0,
+    totalWorkMinutes: 0,
+    completedCycles: 0,
+    todayWorkSessions: 0,
+    todayWorkMinutes: 0
+};
 
 export const DEFAULT_SETTINGS: DovelaPluginData = {
     timeLogs: [],
-    activeTimer: undefined
+    activeTimer: undefined,
+    pomodoroSettings: DEFAULT_POMODORO_SETTINGS,
+    activePomodoroSession: undefined,
+    pomodoroStats: DEFAULT_POMODORO_STATS
 };

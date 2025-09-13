@@ -10,7 +10,9 @@ import { TimeTrackerCommands } from './modules/moduloGTDv3/timeTrackerCommands.j
 import { StalledProjectService } from './modules/moduloGTDv3/stalledProjectService.js';
 import { AnalyzerService } from './modules/moduloActividad/analyzerService.js';
 import { TimeLogModal } from './modules/moduloGTDv3/timeLogModal.js';
-import type { ActiveTimerState, Task, DovelaPluginData, TimeLogEntry } from './modules/moduloGTDv3/model.js';
+import { PomodoroService } from './modules/moduloGTDv3/pomodoroService.js';
+import { DovelaSettingsTab } from './modules/moduloGTDv3/settingsTab.js';
+import type { ActiveTimerState, Task, DovelaPluginData, TimeLogEntry, PomodoroSession } from './modules/moduloGTDv3/model.js';
 import { DEFAULT_SETTINGS } from './modules/moduloGTDv3/model.js';
 import { parseVault } from './modules/moduloGTDv3/parser.js';
 import moment from 'moment';
@@ -21,7 +23,9 @@ type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 export default class DovelaPersonalManagementPlugin extends Plugin {
     public data!: DovelaPluginData;
     public activeTimer: ActiveTimerState | null = null;
+    public activePomodoroSession: PomodoroSession | null = null;
     public timeTrackerService!: TimeTrackerService;
+    public pomodoroService!: PomodoroService;
     public timeTrackerCommands!: TimeTrackerCommands;
     public analyzerService!: AnalyzerService;
     public stalledProjectService!: StalledProjectService;
@@ -43,6 +47,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         await this.loadPluginData();
 
         this.timeTrackerService = new TimeTrackerService(this);
+        this.pomodoroService = new PomodoroService(this);
         this.timeTrackerCommands = new TimeTrackerCommands(this);
         this.analyzerService = new AnalyzerService(this);
         this.stalledProjectService = new StalledProjectService(this.app.vault, this.app.metadataCache, this.data);
@@ -54,6 +59,15 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
             console.log("Dovela PM Sync: Active timer found on load. Initializing.");
             this.initializeTimerFromState(this.data.activeTimer);
         }
+
+        // Sync active pomodoro session from data.json on load
+        if (this.data.activePomodoroSession) {
+            console.log("Dovela PM Sync: Active Pomodoro session found on load. Initializing.");
+            this.initializePomodoroFromState(this.data.activePomodoroSession);
+        }
+
+        // Add settings tab
+        this.addSettingTab(new DovelaSettingsTab(this.app, this));
 
         this.app.workspace.onLayoutReady(async () => {
             await this.loadAvailableTasks();
@@ -213,6 +227,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         console.log('Unloading Dovela Personal Management Plugin...');
         this.stopSyncInterval(); // Use the dedicated stop function
         if (this.activeTimerInterval) clearInterval(this.activeTimerInterval);
+        this.pomodoroService?.cleanup(); // Cleanup pomodoro intervals
         this.app.workspace.detachLeavesOfType(GTD_VIEW_TYPE);
         this.app.workspace.detachLeavesOfType(BACKLINKS_VIEW_TYPE);
         this.smartInboxView?.remove();
@@ -586,6 +601,152 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     
         this.updateStatusBar(`${taskName}...`);
         this.refreshAllTimerViews();
+    }
+
+    public initializePomodoroFromState(pomodoroSession: PomodoroSession) {
+        this.activePomodoroSession = pomodoroSession;
+        
+        // Configurar callbacks del PomodoroService que incluyan tanto barra de estado como vistas
+        this.pomodoroService.setCallbacks(
+            (completedSession: PomodoroSession) => this.handlePomodoroComplete(completedSession),
+            (remainingSeconds: number) => {
+                // Actualizar barra de estado
+                this.updatePomodoroStatusBar(remainingSeconds);
+                // Actualizar todas las vistas GTD que puedan tener TimeTrackerView
+                this.updatePomodoroInAllViews(remainingSeconds);
+            }
+        );
+        
+        // IMPORTANTE: Reiniciar el temporizador interno del PomodoroService
+        // Esto asegura que el timer funcione correctamente después de recargar Obsidian
+        const remainingTime = this.pomodoroService.getRemainingTime();
+        if (remainingTime > 0) {
+            // Forzar el reinicio del timer interno del PomodoroService
+            this.pomodoroService.startTimer(pomodoroSession);
+        }
+        
+        // Inicializar el display de la barra de estado
+        this.updatePomodoroStatusBar(remainingTime);
+        
+        // Refrescar vistas
+        this.refreshAllTimerViews();
+    }
+
+    private handlePomodoroComplete(completedSession: PomodoroSession) {
+        // Importar el modal aquí para evitar problemas de importación circular
+        import('./modules/moduloGTDv3/pomodoroModal.js').then(({ PomodoroModal }) => {
+            const modal = new PomodoroModal(this.app, this, {
+                type: 'sessionComplete',
+                completedSession,
+                onContinue: async (nextType) => {
+                    if (nextType === 'work') {
+                        // Continuar con otra sesión de trabajo con la misma tarea
+                        if (completedSession.taskPath && completedSession.taskDescription) {
+                            await this.pomodoroService.startWorkSession(
+                                completedSession.taskPath, 
+                                completedSession.taskDescription
+                            );
+                        }
+                    } else {
+                        // Iniciar descanso
+                        await this.pomodoroService.startBreakSession(nextType);
+                    }
+                },
+                onWorkMore: async () => {
+                    // Iniciar otra sesión de trabajo inmediatamente
+                    if (completedSession.taskPath && completedSession.taskDescription) {
+                        await this.pomodoroService.startWorkSession(
+                            completedSession.taskPath, 
+                            completedSession.taskDescription
+                        );
+                    }
+                },
+                onContinueOvertime: async () => {
+                    // Entrar en modo overtime - seguir con el mismo ciclo
+                    await this.pomodoroService.startOvertimeMode(completedSession);
+                },
+                onFinish: () => {
+                    // Finalizar completamente - ya se limpió el estado en el service
+                }
+            });
+            
+            modal.open();
+            
+            // Si el modal se abre desde la barra de estado, navegar a la vista
+            this.activateView(true);
+        });
+    }
+
+    private updatePomodoroStatusBar(timeValue: number) {
+        if (!this.activePomodoroSession) return;
+
+        const session = this.activePomodoroSession;
+        const isOvertime = session.isOvertime || false;
+        
+        const taskName = session.taskPath ? 
+            session.taskPath.split('/').pop()?.replace('.md', '') || 'Tarea' : 
+            'Descanso';
+
+        const hours = Math.floor(timeValue / 3600);
+        const minutes = Math.floor((timeValue % 3600) / 60);
+        const seconds = Math.floor(timeValue % 60);
+
+        const timeString = hours > 0 
+            ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+            : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        // Configurar emoji según el modo
+        let emoji: string;
+        let statusText: string;
+        
+        if (isOvertime) {
+            emoji = '🔴';
+            statusText = `${emoji} ${taskName}... ${timeString} (overtime)`;
+            
+            // Aplicar estilo rojo al status bar si es posible
+            const statusBarItem = this.statusBarItem;
+            if (statusBarItem) {
+                statusBarItem.style.color = 'red';
+                statusBarItem.style.fontWeight = 'bold';
+            }
+        } else {
+            emoji = session.type === 'work' ? '🍅' : '☕';
+            statusText = `${emoji} ${taskName}... ${timeString}`;
+            
+            // Restaurar estilo normal
+            const statusBarItem = this.statusBarItem;
+            if (statusBarItem) {
+                statusBarItem.style.color = '';
+                statusBarItem.style.fontWeight = '';
+            }
+        }
+        
+        this.updateStatusBar(statusText);
+    }
+
+    public clearActivePomodoroSession() {
+        this.activePomodoroSession = null;
+        this.updateStatusBar(''); // Ocultar barra de estado
+        
+        // Actualizar todas las vistas para limpiar UI de Pomodoro
+        this.updatePomodoroInAllViews(0);
+    }
+
+    private updatePomodoroInAllViews(remainingSeconds: number) {
+        // Obtener todas las vistas GTD que contengan TimeTrackerView
+        const allGtdViews = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
+        
+        allGtdViews.forEach(leaf => {
+            const view = leaf.view as any;
+            if (view && view.timeTrackerView && view.timeTrackerView.updatePomodoroDisplay) {
+                try {
+                    view.timeTrackerView.updatePomodoroDisplay(remainingSeconds);
+                    view.timeTrackerView.updatePomodoroUI();
+                } catch (error) {
+                    console.warn('Dovela PM: Error updating Pomodoro in view:', error);
+                }
+            }
+        });
     }
 
     private clearActiveTimer() {

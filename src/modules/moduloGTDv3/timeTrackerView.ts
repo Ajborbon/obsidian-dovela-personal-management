@@ -2,6 +2,7 @@ import { TFile, Notice } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import { TimeTrackerService } from './timeTrackerService.js';
 import { TimeLogModal } from './timeLogModal.js';
+import { PomodoroModal } from './pomodoroModal.js';
 import type { Task, TimeLogEntry } from './model.js';
 import moment from 'moment';
 import 'moment/locale/es';
@@ -48,6 +49,9 @@ export class TimeTrackerView {
 
         await this.renderTaskSelector(selectorCard);
         this.renderTimerControls(timerCard);
+        
+        // Inicializar UI de Pomodoro si hay una sesión activa
+        this.initializePomodoroState();
     }
 
     private async renderTaskSelector(parent: HTMLElement) {
@@ -166,6 +170,7 @@ export class TimeTrackerView {
 
         const buttonsContainer = timerDiv.createDiv({ cls: 'timer-buttons-container' });
         const startButton = buttonsContainer.createEl('button', { text: '▶️ Iniciar', cls: 'start-button' });
+        const pomodoroButton = buttonsContainer.createEl('button', { text: '🍅 Pomodoro', cls: 'pomodoro-button' });
         const stopButton = buttonsContainer.createEl('button', { text: '⏹️ Detener', cls: 'stop-button is-hidden' });
         const editButton = buttonsContainer.createEl('button', { text: '✏️ Modificar', cls: 'edit-button is-hidden' });
         const manualButton = buttonsContainer.createEl('button', { text: '+ Manual', cls: 'manual-button' });
@@ -178,6 +183,15 @@ export class TimeTrackerView {
             const { path, description, lineNumber } = this.selectedTask;
             
             this.startTimer(path, description, lineNumber, timerDisplay, startButton, stopButton, editButton);
+        });
+
+        pomodoroButton.onClickEvent(async () => {
+            if (!this.selectedTask) {
+                new Notice("Por favor, seleccione una tarea para iniciar el Pomodoro.");
+                return;
+            }
+            
+            this.showPomodoroOptionsModal();
         });
 
         stopButton.onClickEvent(() => {
@@ -224,12 +238,18 @@ export class TimeTrackerView {
         }
 
         const isTimerActive = !!this.plugin.activeTimer;
+        const pomodoroButton = this.container.querySelector('.pomodoro-button') as HTMLElement;
 
         startBtn.classList.toggle('is-hidden', isTimerActive);
         stopBtn.classList.toggle('is-hidden', !isTimerActive);
         editBtn.classList.toggle('is-hidden', !isTimerActive);
         goToTaskBtn.classList.toggle('is-hidden', !isTimerActive);
         activeTaskDetailsContainer.classList.toggle('is-hidden', !isTimerActive);
+        
+        // Ocultar botón Pomodoro cuando hay un registro de tiempo normal activo
+        if (pomodoroButton) {
+            pomodoroButton.classList.toggle('is-hidden', isTimerActive);
+        }
         
         activeTaskDetailsContainer.empty();
 
@@ -297,8 +317,17 @@ export class TimeTrackerView {
     }
 
     private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, editBtn: HTMLElement) {
+        // Verificar si es un Pomodoro activo o un timer regular
+        if (this.plugin.activePomodoroSession) {
+            // Detener sesión Pomodoro
+            this.plugin.pomodoroService.stopCurrentSession();
+            this.updatePomodoroUI();
+            return;
+        }
+
         if (!this.plugin.activeTimer) return;
 
+        // Detener timer regular
         this.plugin.stopTracking();
         
         const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
@@ -321,5 +350,194 @@ export class TimeTrackerView {
         new TimeLogModal(this.plugin.app, this.plugin, onSaveCallback, {}).open();
     }
 
+    private showPomodoroOptionsModal() {
+        const modal = new PomodoroModal(this.plugin.app, this.plugin, {
+            type: 'sessionOptions',
+            onContinue: async (sessionType) => {
+                if (sessionType === 'work') {
+                    await this.startPomodoroWorkSession();
+                } else {
+                    await this.plugin.pomodoroService.startBreakSession(sessionType);
+                    this.updatePomodoroUI();
+                }
+            }
+        });
+        
+        modal.open();
+    }
+
+    private async startPomodoroWorkSession() {
+        if (!this.selectedTask) return;
+
+        const { path, description, lineNumber } = this.selectedTask;
+        await this.plugin.pomodoroService.startWorkSession(path, description, lineNumber);
+        this.updatePomodoroUI();
+    }
+
+
+    public updatePomodoroDisplay(timeValue: number) {
+        const timerDisplay = this.container.querySelector('.timer-display') as HTMLElement;
+        if (timerDisplay) {
+            const session = this.plugin.activePomodoroSession;
+            
+            // En modo overtime, timeValue es el tiempo transcurrido total
+            // En modo normal, timeValue es el tiempo restante
+            const isOvertime = session?.isOvertime || false;
+            
+            const hours = Math.floor(timeValue / 3600);
+            const minutes = Math.floor((timeValue % 3600) / 60);
+            const seconds = Math.floor(timeValue % 60);
+            
+            const timeString = hours > 0 
+                ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Configurar emoji y estilo según el modo
+            let emoji: string;
+            if (isOvertime) {
+                emoji = '🔴'; // Rojo para overtime
+                timerDisplay.style.color = 'red';
+                timerDisplay.style.fontWeight = 'bold';
+            } else {
+                emoji = session?.type === 'work' ? '🍅' : '☕';
+                timerDisplay.style.color = '';
+                timerDisplay.style.fontWeight = '';
+            }
+            
+            timerDisplay.setText(`${emoji} ${timeString}`);
+        }
+    }
+
+    public updatePomodoroUI() {
+        // Refrescar la UI para mostrar/ocultar botones según el estado del Pomodoro
+        const isActive = this.plugin.pomodoroService.isActive();
+        
+        const startButton = this.container.querySelector('.start-button') as HTMLElement;
+        const pomodoroButton = this.container.querySelector('.pomodoro-button') as HTMLElement;
+        const stopButton = this.container.querySelector('.stop-button') as HTMLElement;
+        const editButton = this.container.querySelector('.edit-button') as HTMLElement;
+        const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
+        const activeTaskDetailsContainer = this.container.querySelector('.active-task-details-container') as HTMLElement;
+
+        if (startButton && pomodoroButton && stopButton && editButton && goToTaskButton && activeTaskDetailsContainer) {
+            if (isActive) {
+                startButton.classList.add('is-hidden');
+                pomodoroButton.classList.add('is-hidden');
+                stopButton.classList.remove('is-hidden');
+                editButton.classList.add('is-hidden'); // No permitir edición durante Pomodoro
+                goToTaskButton.classList.remove('is-hidden');
+                activeTaskDetailsContainer.classList.remove('is-hidden');
+                
+                // Configurar detalles de la tarea para Pomodoro
+                this.updatePomodoroTaskDetails();
+            } else {
+                startButton.classList.remove('is-hidden');
+                pomodoroButton.classList.remove('is-hidden');
+                stopButton.classList.add('is-hidden');
+                editButton.classList.add('is-hidden');
+                goToTaskButton.classList.add('is-hidden');
+                activeTaskDetailsContainer.classList.add('is-hidden');
+                
+                // Habilitar campo de búsqueda
+                if (this.searchInputEl) {
+                    this.searchInputEl.disabled = false;
+                }
+            }
+        }
+
+        // También actualizar el display del timer
+        if (isActive) {
+            const remainingTime = this.plugin.pomodoroService.getRemainingTime();
+            this.updatePomodoroDisplay(remainingTime);
+        } else {
+            const timerDisplay = this.container.querySelector('.timer-display') as HTMLElement;
+            if (timerDisplay) {
+                timerDisplay.setText('00:00:00');
+            }
+        }
+    }
+
+    private updatePomodoroTaskDetails() {
+        const session = this.plugin.activePomodoroSession;
+        const activeTaskDetailsContainer = this.container.querySelector('.active-task-details-container') as HTMLElement;
+        const goToTaskButton = this.container.querySelector('.goto-task-button') as HTMLElement;
+        
+        if (!session || !activeTaskDetailsContainer) return;
+        
+        // Limpiar contenido anterior
+        activeTaskDetailsContainer.empty();
+        
+        // Actualizar selectedTask y campo de búsqueda
+        if (session.taskPath && session.taskDescription) {
+            this.selectedTask = {
+                path: session.taskPath,
+                description: session.taskDescription,
+                lineNumber: 0
+            };
+            
+            if (this.searchInputEl) {
+                this.searchInputEl.value = session.taskDescription;
+                this.searchInputEl.disabled = true;
+            }
+        }
+        
+        // Extraer nombre del proyecto
+        const projectName = session.taskPath?.split('/').pop()?.replace('.md', '') || 'N/A';
+        
+        const createDetailRow = (label: string, value?: string) => {
+            if (!value) return;
+            const row = activeTaskDetailsContainer.createDiv({ cls: 'task-detail-row' });
+            row.createEl('strong', { text: `${label}:` });
+            row.createEl('span', { text: value });
+        };
+        
+        // Mostrar información del proyecto
+        createDetailRow('Proyecto', projectName);
+        
+        // Mostrar tarea solo si es diferente al nombre del proyecto
+        if (session.taskDescription && session.taskDescription !== projectName) {
+            createDetailRow('Tarea', session.taskDescription);
+        }
+        
+        // Mostrar notas si existen
+        if (session.notes) {
+            createDetailRow('Notas', session.notes);
+        }
+        
+        // Configurar botón para ir a la tarea
+        if (session.taskPath && goToTaskButton) {
+            goToTaskButton.onclick = () => {
+                this.plugin.app.workspace.openLinkText(session.taskPath!, '', false, {
+                    eState: { line: 0 }
+                });
+            };
+        }
+    }
+
+    private initializePomodoroState() {
+        // Verificar si hay una sesión Pomodoro activa al cargar la vista
+        if (this.plugin.activePomodoroSession) {
+            console.log('TimeTrackerView: Detectada sesión Pomodoro activa, inicializando UI');
+            
+            // Configurar la tarea seleccionada si es una sesión de trabajo
+            const session = this.plugin.activePomodoroSession;
+            if (session.taskPath && session.taskDescription) {
+                this.selectedTask = {
+                    path: session.taskPath,
+                    description: session.taskDescription,
+                    lineNumber: 0
+                };
+                
+                // Actualizar el campo de búsqueda
+                if (this.searchInputEl) {
+                    this.searchInputEl.value = session.taskDescription;
+                    this.searchInputEl.disabled = true;
+                }
+            }
+            
+            // Actualizar UI para mostrar controles de Pomodoro
+            this.updatePomodoroUI();
+        }
+    }
     
 }
