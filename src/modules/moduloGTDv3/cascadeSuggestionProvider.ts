@@ -60,63 +60,47 @@ export class CascadeSuggestionProvider {
         
         const options: MenuOption[] = [];
         
-        // Agregar la nota activa como primera opción si existe
+        // Agregar la nota activa como primera opción SIEMPRE si existe
         if (this.activeFile && this.activeFile.extension === 'md') {
             const activeFileName = this.activeFile.basename;
             
-            // Solo agregar si no está ya en la lista de áreas o proyectos
-            const alreadyInList = activeFiles.some(file => file.basename === activeFileName);
-            if (!alreadyInList) {
-                options.push({
-                    id: `active-file-${activeFileName}`,
-                    label: `📝 ${activeFileName}`,
-                    value: activeFileName,
-                    description: 'Nota actualmente abierta'
-                });
-                
-                // Agregar separador si hay más opciones
-                if (areas.length > 0 || projects.length > 0) {
+            options.push({
+                id: `active-file-${activeFileName}`,
+                label: `📝 ${activeFileName}`,
+                value: activeFileName,
+                description: 'Nota actualmente abierta'
+            });
+        }
+        
+        // Agregar áreas de interés activas (evitando duplicado con nota activa)
+        if (areas.length > 0) {
+            const activeFileName = this.activeFile?.basename;
+            areas.forEach(area => {
+                // Solo agregar si no es la misma nota activa que ya agregamos
+                if (area.basename !== activeFileName) {
                     options.push({
-                        id: 'separator-active',
-                        label: '────────────────────',
-                        value: '',
-                        description: 'Separador'
+                        id: `area-${area.basename}`,
+                        label: area.basename,
+                        value: area.basename,
+                        description: 'Área de interés activa (🟢)'
                     });
                 }
-            }
-        }
-        
-        // Agregar áreas de interés activas con nombre completo (sin iconos)
-        if (areas.length > 0) {
-            areas.forEach(area => {
-                options.push({
-                    id: `area-${area.basename}`,
-                    label: area.basename, // Nombre completo del área
-                    value: area.basename, // Nombre completo para identificación exacta
-                    description: 'Área de interés activa (🟢)'
-                });
             });
         }
         
-        // Agregar separador visual si hay tanto áreas como proyectos
-        if (areas.length > 0 && projects.length > 0) {
-            options.push({
-                id: 'separator',
-                label: '────────────────────',
-                value: '',
-                description: 'Separador'
-            });
-        }
-        
-        // Agregar proyectos GTD activos con nombre completo (sin iconos)
+        // Agregar proyectos GTD activos (evitando duplicado con nota activa)
         if (projects.length > 0) {
+            const activeFileName = this.activeFile?.basename;
             projects.forEach(project => {
-                options.push({
-                    id: `project-${project.basename}`,
-                    label: project.basename, // Nombre completo del proyecto
-                    value: project.basename, // Nombre completo para identificación exacta
-                    description: 'Proyecto GTD activo (🟢)'
-                });
+                // Solo agregar si no es la misma nota activa que ya agregamos
+                if (project.basename !== activeFileName) {
+                    options.push({
+                        id: `project-${project.basename}`,
+                        label: project.basename,
+                        value: project.basename,
+                        description: 'Proyecto GTD activo (🟢)'
+                    });
+                }
             });
         }
         
