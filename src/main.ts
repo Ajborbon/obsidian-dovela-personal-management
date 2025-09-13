@@ -665,7 +665,11 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                     // Entrar en modo overtime - seguir con el mismo ciclo
                     await this.pomodoroService.startOvertimeMode(completedSession);
                 },
-                onFinish: () => {
+                onFinish: async (shouldCloseTask?: boolean) => {
+                    // Cerrar tarea si se solicitó
+                    if (shouldCloseTask && completedSession.type === 'work') {
+                        await this.pomodoroService.closeSessionTask(completedSession);
+                    }
                     // Finalizar completamente - ya se limpió el estado en el service
                 }
             });

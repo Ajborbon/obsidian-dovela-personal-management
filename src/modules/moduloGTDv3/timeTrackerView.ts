@@ -319,8 +319,8 @@ export class TimeTrackerView {
     private stopTimer(timerDisplay: HTMLElement, startBtn: HTMLElement, stopBtn: HTMLElement, editBtn: HTMLElement) {
         // Verificar si es un Pomodoro activo o un timer regular
         if (this.plugin.activePomodoroSession) {
-            // Detener sesión Pomodoro
-            this.plugin.pomodoroService.stopCurrentSession();
+            // Detener sesión Pomodoro (con prompt para cerrar tarea)
+            this.plugin.pomodoroService.stopCurrentSession(true);
             this.updatePomodoroUI();
             return;
         }

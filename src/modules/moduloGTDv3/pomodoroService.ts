@@ -1,6 +1,7 @@
 import { Notice } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import type { PomodoroSession, PomodoroSessionType, PomodoroSettings, TimeLogEntry } from './model.js';
+import { TaskStateManager } from './taskStateManager.js';
 import moment from 'moment';
 
 export class PomodoroService {
@@ -8,9 +9,11 @@ export class PomodoroService {
     private interval: number | null = null;
     private onSessionCompleteCallback?: (session: PomodoroSession) => void;
     private onTickCallback?: (remainingSeconds: number) => void;
+    private taskStateManager: TaskStateManager;
 
     constructor(plugin: DovelaPersonalManagementPlugin) {
         this.plugin = plugin;
+        this.taskStateManager = new TaskStateManager(plugin.app);
     }
 
     public setCallbacks(
@@ -38,6 +41,11 @@ export class PomodoroService {
             completedCycles: this.plugin.data.activePomodoroSession?.completedCycles || 0,
             notes: ''
         };
+
+        // Si es una tarea específica, ponerla en progreso automáticamente
+        if (this.taskStateManager.isSpecificTask(taskPath, taskDescription)) {
+            await this.taskStateManager.setTaskInProgress(taskPath, taskDescription);
+        }
 
         this.plugin.activePomodoroSession = session;
         this.plugin.data.activePomodoroSession = session;
@@ -106,7 +114,7 @@ export class PomodoroService {
         }
     }
 
-    public async stopCurrentSession(): Promise<void> {
+    public async stopCurrentSession(shouldPromptCloseTask: boolean = true): Promise<void> {
         if (!this.plugin.activePomodoroSession) return;
 
         if (this.interval) {
@@ -142,10 +150,35 @@ export class PomodoroService {
 
                 await this.plugin.timeTrackerService.addLogEntry(timeLogEntry);
             }
-        }
 
-        this.clearActiveSession();
-        new Notice('🛑 Sesión Pomodoro detenida');
+            // Si debe preguntar sobre cerrar tarea y es una tarea específica
+            if (shouldPromptCloseTask && this.hasSpecificTask(session)) {
+                // Limpiar sesión primero
+                this.clearActiveSession();
+                
+                // Importar y mostrar modal de confirmación
+                import('./pomodoroModal.js').then(({ PomodoroModal }) => {
+                    const modal = new PomodoroModal(this.plugin.app, this.plugin, {
+                        type: 'sessionComplete',
+                        completedSession: session,
+                        onFinish: async (shouldCloseTask?: boolean) => {
+                            if (shouldCloseTask) {
+                                await this.closeSessionTask(session);
+                            }
+                        }
+                    });
+                    modal.open();
+                });
+                
+                new Notice('🛑 Sesión Pomodoro detenida');
+            } else {
+                this.clearActiveSession();
+                new Notice('🛑 Sesión Pomodoro detenida');
+            }
+        } else {
+            this.clearActiveSession();
+            new Notice('🛑 Sesión Pomodoro detenida');
+        }
     }
 
     public async startOvertimeMode(completedSession: PomodoroSession): Promise<void> {
@@ -394,6 +427,32 @@ export class PomodoroService {
         } catch (error) {
             console.warn('Dovela PM: No se pudo reproducir el sonido de finalización:', error);
         }
+    }
+
+    /**
+     * Cierra la tarea asociada a una sesión Pomodoro
+     * @param session - Sesión con información de la tarea
+     * @returns true si se cerró exitosamente
+     */
+    public async closeSessionTask(session: PomodoroSession): Promise<boolean> {
+        if (!session.taskPath) {
+            return false;
+        }
+
+        if (!this.taskStateManager.isSpecificTask(session.taskPath, session.taskDescription)) {
+            return false;
+        }
+
+        return await this.taskStateManager.closeTask(session.taskPath, session.taskDescription);
+    }
+
+    /**
+     * Verifica si una sesión tiene una tarea específica que puede ser cerrada
+     * @param session - Sesión a verificar
+     * @returns true si tiene tarea específica
+     */
+    public hasSpecificTask(session: PomodoroSession): boolean {
+        return !!(session.taskPath && this.taskStateManager.isSpecificTask(session.taskPath, session.taskDescription));
     }
 
     public cleanup(): void {

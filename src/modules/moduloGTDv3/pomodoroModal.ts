@@ -11,7 +11,7 @@ interface PomodoroModalOptions {
     type: PomodoroModalType;
     completedSession?: PomodoroSession;
     onContinue?: (nextType: PomodoroSessionType) => void;
-    onFinish?: () => void;
+    onFinish?: (shouldCloseTask?: boolean) => void;
     onWorkMore?: () => void;
     onContinueOvertime?: () => void; // Nueva callback para modo overtime
 }
@@ -19,6 +19,7 @@ interface PomodoroModalOptions {
 export class PomodoroModal extends Modal {
     private plugin: DovelaPersonalManagementPlugin;
     private options: PomodoroModalOptions;
+    private shouldCloseTaskCheckbox: HTMLInputElement | null = null;
 
     constructor(app: App, plugin: DovelaPersonalManagementPlugin, options: PomodoroModalOptions) {
         super(app);
@@ -78,6 +79,23 @@ export class PomodoroModal extends Modal {
             });
         }
 
+        // Checkbox para cerrar tarea (solo si es una tarea específica)
+        if (session.type === 'work' && this.plugin.pomodoroService.hasSpecificTask(session)) {
+            const checkboxContainer = contentEl.createDiv({ cls: 'pomodoro-close-task-container' });
+            
+            const checkboxLabel = checkboxContainer.createEl('label', { 
+                cls: 'pomodoro-close-task-label' 
+            });
+            
+            this.shouldCloseTaskCheckbox = checkboxLabel.createEl('input', { 
+                type: 'checkbox',
+                cls: 'pomodoro-close-task-checkbox'
+            }) as HTMLInputElement;
+            
+            checkboxLabel.appendText(' ¿Cerrar la tarea al finalizar?');
+            this.shouldCloseTaskCheckbox.checked = true; // Por defecto marcado
+        }
+
         // Opciones según el tipo de sesión
         const buttonContainer = contentEl.createDiv({ cls: 'pomodoro-modal-buttons' });
 
@@ -93,7 +111,8 @@ export class PomodoroModal extends Modal {
             cls: 'mod-cta'
         }).addEventListener('click', () => {
             if (this.options.onFinish) {
-                this.options.onFinish();
+                const shouldCloseTask = this.shouldCloseTaskCheckbox?.checked || false;
+                this.options.onFinish(shouldCloseTask);
             }
             this.close();
         });
