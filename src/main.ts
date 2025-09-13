@@ -480,7 +480,9 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                 endTime: moment().local().toISOString(true),
                 notes: currentTimer.notes || '', // Pass the accumulated notes
                 taskDescription: currentTimer.taskDescription || ''
-            }
+            },
+            false, // isEditingActiveTimer
+            true   // isStoppingActiveTimer - Nuevo parámetro para habilitar botón cancelar
         ).open();
     }
 
@@ -513,8 +515,21 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                 startTime: this.activeTimer.startTime,
                 notes: this.activeTimer.notes, // Pass current notes to the modal
             },
-            true // isEditingActiveTimer = true
+            true, // isEditingActiveTimer = true
+            false // isStoppingActiveTimer = false
         ).open();
+    }
+
+    public async cancelActiveTimer() {
+        if (!this.activeTimer) return;
+        
+        // Limpiar el estado del temporizador activo sin guardar ningún registro
+        this.clearActiveTimer();
+        this.data.activeTimer = undefined;
+        await this.savePluginData();
+        
+        // Refrescar las vistas para actualizar la UI
+        this.refreshAllGtdAndFocoViews();
     }
 
     public async loadAvailableTasks(source: TaskSource = 'all-tasks'): Promise<void> {

@@ -14,6 +14,7 @@ export class TimeLogModal extends Modal {
     private availableTasks: (TFile | Task)[] = [];
     private isEditing: boolean;
     private isEditingActiveTimer: boolean; // Flag for our new mode
+    private isStoppingActiveTimer: boolean; // Flag for stopping active timer mode
     private closeTaskCheckbox: HTMLElement | null = null;
     private savedOrDeleted = false;
 
@@ -22,13 +23,15 @@ export class TimeLogModal extends Modal {
         plugin: DovelaPersonalManagementPlugin,
         onSave: OnSaveCallback,
         entryData: Partial<TimeLogEntry> = {},
-        isEditingActiveTimer = false // New parameter to control the mode
+        isEditingActiveTimer = false, // New parameter to control the mode
+        isStoppingActiveTimer = false // New parameter for stopping active timer
     ) {
         super(app);
         this.plugin = plugin;
         this.onSave = onSave;
         this.isEditing = !!entryData?.id;
         this.isEditingActiveTimer = isEditingActiveTimer;
+        this.isStoppingActiveTimer = isStoppingActiveTimer;
 
         const now = moment().local();
         this.entry = {
@@ -256,6 +259,15 @@ export class TimeLogModal extends Modal {
                 .setWarning()
                 .onClick(() => this.delete()));
         }
+        
+        // Agregar botón "Cancelar Registro" solo cuando se está deteniendo un temporizador activo
+        if (this.isStoppingActiveTimer) {
+            buttonContainer.addButton(btn => btn
+                .setButtonText('Cancelar Registro')
+                .setWarning()
+                .onClick(() => this.cancelActiveTimer()));
+        }
+        
         buttonContainer.addButton(btn => btn
             .setButtonText('Cancelar')
             .onClick(() => this.close()));
@@ -351,6 +363,18 @@ export class TimeLogModal extends Modal {
         // We need a way to refresh the view after deletion.
         // The onSave callback is repurposed here to trigger a refresh.
         await this.onSave({});
+        this.close();
+    }
+
+    async cancelActiveTimer() {
+        if (!this.isStoppingActiveTimer) return;
+        
+        this.savedOrDeleted = true;
+        
+        // Usar el método público para cancelar el temporizador activo
+        await this.plugin.cancelActiveTimer();
+        
+        new Notice('Registro de tiempo cancelado.');
         this.close();
     }
 
