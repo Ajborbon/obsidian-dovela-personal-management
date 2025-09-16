@@ -639,11 +639,14 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                 type: 'sessionComplete',
                 completedSession,
                 onContinue: async (nextType) => {
+                    // Registrar el tiempo de la sesión completada antes de continuar
+                    await this.pomodoroService.stopCurrentSession(false); // false = no mostrar modal
+
                     if (nextType === 'work') {
                         // Continuar con otra sesión de trabajo con la misma tarea
                         if (completedSession.taskPath && completedSession.taskDescription) {
                             await this.pomodoroService.startWorkSession(
-                                completedSession.taskPath, 
+                                completedSession.taskPath,
                                 completedSession.taskDescription
                             );
                         }
@@ -653,10 +656,13 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                     }
                 },
                 onWorkMore: async () => {
+                    // Registrar el tiempo de la sesión completada antes de continuar
+                    await this.pomodoroService.stopCurrentSession(false); // false = no mostrar modal
+
                     // Iniciar otra sesión de trabajo inmediatamente
                     if (completedSession.taskPath && completedSession.taskDescription) {
                         await this.pomodoroService.startWorkSession(
-                            completedSession.taskPath, 
+                            completedSession.taskPath,
                             completedSession.taskDescription
                         );
                     }
@@ -666,11 +672,13 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
                     await this.pomodoroService.startOvertimeMode(completedSession);
                 },
                 onFinish: async (shouldCloseTask?: boolean) => {
+                    // Registrar el tiempo completado (solo cuando realmente finalizamos)
+                    await this.pomodoroService.stopCurrentSession(false); // false = no mostrar modal otra vez
+
                     // Cerrar tarea si se solicitó
                     if (shouldCloseTask && completedSession.type === 'work') {
                         await this.pomodoroService.closeSessionTask(completedSession);
                     }
-                    // Finalizar completamente - ya se limpió el estado en el service
                 }
             });
             
@@ -737,10 +745,14 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     }
 
     private updatePomodoroInAllViews(remainingSeconds: number) {
-        // Obtener todas las vistas GTD que contengan TimeTrackerView
+        // Obtener todas las vistas que contengan TimeTrackerView (GTD + Foco)
         const allGtdViews = this.app.workspace.getLeavesOfType(GTD_VIEW_TYPE);
-        
-        allGtdViews.forEach(leaf => {
+        const allFocoViews = this.app.workspace.getLeavesOfType(FOCO_VIEW_TYPE);
+
+        // Combinar ambos arrays
+        const allViews = [...allGtdViews, ...allFocoViews];
+
+        allViews.forEach(leaf => {
             const view = leaf.view as any;
             if (view && view.timeTrackerView && view.timeTrackerView.updatePomodoroDisplay) {
                 try {

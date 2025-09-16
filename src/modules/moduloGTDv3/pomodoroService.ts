@@ -132,11 +132,25 @@ export class PomodoroService {
 
             // Solo registrar si trabajó al menos 1 minuto
             if (actualDuration >= 1 && session.taskPath) {
-                let notes: string;
+                // Generar notas automáticas del sistema
+                let systemNotes: string;
                 if (session.isOvertime) {
-                    notes = session.notes || `Sesión Pomodoro + Overtime (${actualDuration} min total)`;
+                    systemNotes = `Sesión Pomodoro + Overtime (${actualDuration} min total)`;
                 } else {
-                    notes = session.notes || `Sesión Pomodoro (${actualDuration}/${session.duration} min)`;
+                    systemNotes = `Sesión Pomodoro (${actualDuration}/${session.duration} min)`;
+                }
+
+                // Agregar información de ciclos si aplica
+                if (session.completedCycles > 0) {
+                    systemNotes += ` - Ciclos completados: ${session.completedCycles}`;
+                }
+
+                // Combinar notas del sistema con notas del usuario
+                let notes: string;
+                if (session.notes && session.notes.trim() !== '') {
+                    notes = `${systemNotes}\n\n${session.notes}`;
+                } else {
+                    notes = systemNotes;
                 }
 
                 const timeLogEntry: Omit<TimeLogEntry, 'id'> = {
@@ -151,25 +165,25 @@ export class PomodoroService {
                 await this.plugin.timeTrackerService.addLogEntry(timeLogEntry);
             }
 
-            // Si debe preguntar sobre cerrar tarea y es una tarea específica
-            if (shouldPromptCloseTask && this.hasSpecificTask(session)) {
+            // Mostrar modal para todas las sesiones de trabajo (tanto tareas específicas como notas generales)
+            if (shouldPromptCloseTask) {
                 // Limpiar sesión primero
                 this.clearActiveSession();
-                
+
                 // Importar y mostrar modal de confirmación
                 import('./pomodoroModal.js').then(({ PomodoroModal }) => {
                     const modal = new PomodoroModal(this.plugin.app, this.plugin, {
                         type: 'sessionComplete',
                         completedSession: session,
                         onFinish: async (shouldCloseTask?: boolean) => {
-                            if (shouldCloseTask) {
+                            if (shouldCloseTask && this.hasSpecificTask(session)) {
                                 await this.closeSessionTask(session);
                             }
                         }
                     });
                     modal.open();
                 });
-                
+
                 new Notice('🛑 Sesión Pomodoro detenida');
             } else {
                 this.clearActiveSession();
@@ -216,20 +230,15 @@ export class PomodoroService {
         const session = this.plugin.activePomodoroSession;
         const settings = this.plugin.data.pomodoroSettings;
 
-        if (session.type === 'work') {
-            // Registrar sesión de trabajo completada
-            if (session.taskPath) {
-                const timeLogEntry: Omit<TimeLogEntry, 'id'> = {
-                    taskNotePath: session.taskPath,
-                    taskDescription: session.taskDescription || '',
-                    startTime: session.startTime,
-                    endTime: moment().toISOString(true),
-                    durationMinutes: session.duration,
-                    notes: session.notes || `Sesión Pomodoro completada (${session.duration} min)`
-                };
+        // DETENER el timer para evitar loop infinito
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
 
-                await this.plugin.timeTrackerService.addLogEntry(timeLogEntry);
-            }
+        if (session.type === 'work') {
+            // NO registrar el tiempo aquí - solo se registrará en stopCurrentSession()
+            // cuando la sesión realmente termine (no cuando entre en overtime)
 
             // Actualizar estadísticas
             this.updateStats(session);
@@ -238,12 +247,13 @@ export class PomodoroService {
             session.completedCycles++;
         }
 
-        // Ejecutar callback si existe
+        // Ejecutar callback si existe (esto mostrará el modal)
         if (this.onSessionCompleteCallback) {
             this.onSessionCompleteCallback(session);
         }
 
-        this.clearActiveSession();
+        // NO limpiar la sesión aquí - se limpiará cuando se tome una decisión en el modal
+        // o cuando se llame stopCurrentSession() si no se entra en overtime
 
         // Mostrar notificación de finalización
         this.showSessionCompleteNotification(session, settings);

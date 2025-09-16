@@ -124,20 +124,23 @@ export class TaskStateManager {
 
     /**
      * Verifica si un archivo y descripción corresponden a una tarea específica
+     * (usando la misma lógica que TimeLogModal.shouldShowCloseCheckbox)
      * @param taskNotePath - Ruta del archivo
      * @param taskDescription - Descripción de la tarea
      * @returns true si es una tarea específica, false si es solo un archivo general
      */
     isSpecificTask(taskNotePath: string, taskDescription?: string): boolean {
-        // Si hay descripción de tarea específica, es una tarea
-        if (taskDescription && taskDescription.trim() !== '') {
-            return true;
-        }
-        
-        // Si no hay descripción pero el path no es el nombre base del archivo,
-        // probablemente es una tarea específica
-        const fileName = taskNotePath.split('/').pop()?.replace('.md', '') || '';
-        return taskDescription !== fileName;
+        if (!taskNotePath || !taskDescription) return false;
+
+        // Obtener el nombre del archivo sin extensión
+        const fileName = taskNotePath.split('/').pop()?.replace(/\.md$/, '') || '';
+
+        // Si taskDescription es diferente del nombre del archivo, es una tarea específica
+        const isSpecificTask = taskDescription !== fileName &&
+                               taskDescription !== taskNotePath &&
+                               taskDescription.length > 0;
+
+        return isSpecificTask;
     }
 
     /**

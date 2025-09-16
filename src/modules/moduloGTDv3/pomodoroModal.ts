@@ -1,6 +1,8 @@
-import { App, Modal, Setting, Notice } from 'obsidian';
+import { App, Modal, Setting, Notice, setIcon, TFile } from 'obsidian';
 import type DovelaPersonalManagementPlugin from '../../main.js';
 import type { PomodoroSession, PomodoroSessionType } from './model.js';
+import { TaskSelectionAnalyzer } from './taskSelectionAnalyzer.js';
+import moment from 'moment';
 
 export type PomodoroModalType = 
     | 'sessionComplete'    // Modal que aparece al completar una sesión
@@ -19,7 +21,8 @@ interface PomodoroModalOptions {
 export class PomodoroModal extends Modal {
     private plugin: DovelaPersonalManagementPlugin;
     private options: PomodoroModalOptions;
-    private shouldCloseTaskCheckbox: HTMLInputElement | null = null;
+    private shouldCloseTaskCheckbox: HTMLElement | null = null;
+    private sessionNotes: string = '';
 
     constructor(app: App, plugin: DovelaPersonalManagementPlugin, options: PomodoroModalOptions) {
         super(app);
@@ -47,7 +50,7 @@ export class PomodoroModal extends Modal {
     private renderSessionCompleteModal() {
         const { contentEl } = this;
         const session = this.options.completedSession;
-        
+
         if (!session) {
             this.close();
             return;
@@ -57,43 +60,95 @@ export class PomodoroModal extends Modal {
         const title = this.getSessionCompletionTitle(session);
         this.titleEl.setText(title);
 
-        // Información de la sesión
-        const infoContainer = contentEl.createDiv({ cls: 'pomodoro-session-info' });
-        
-        if (session.type === 'work' && session.taskDescription) {
-            infoContainer.createEl('p', { 
-                text: `Tarea: ${session.taskDescription}`,
-                cls: 'pomodoro-task-info'
+        // Inicializar notas con cualquier nota existente de la sesión
+        this.sessionNotes = session.notes || '';
+
+        // --- Campo Nota/Archivo (similar a TimeLogModal) ---
+        const noteSetting = new Setting(contentEl).setName('Nota');
+        noteSetting.controlEl.addClass('dovela-task-setting-container');
+
+        const noteLinkIcon = noteSetting.controlEl.createEl('a', {
+            cls: 'dovela-note-link-icon',
+            attr: { 'aria-label': 'Abrir nota', title: 'Abrir nota' }
+        });
+        setIcon(noteLinkIcon, 'external-link');
+
+        noteLinkIcon.onClickEvent((e) => {
+            e.preventDefault();
+            const notePath = session.taskPath;
+            if (notePath) {
+                this.app.workspace.openLinkText(notePath, '', true);
+            }
+        });
+
+        if (session.taskPath) {
+            const fileName = session.taskPath.split('/').pop()?.replace(/\.md$/, '') || session.taskPath;
+            noteSetting.controlEl.createEl('div', {
+                text: fileName,
+                cls: 'task-display-text'
             });
         }
 
-        infoContainer.createEl('p', { 
+        // --- Campo Tarea (solo si hay tarea específica) ---
+        if (session.type === 'work' && session.taskDescription && this.isSpecificTask(session)) {
+            const taskSetting = new Setting(contentEl).setName('Tarea');
+            taskSetting.controlEl.createEl('div', {
+                text: session.taskDescription,
+                cls: 'task-display-text'
+            });
+        }
+
+        // --- Información adicional de la sesión ---
+        const infoSetting = new Setting(contentEl).setName('Información de la Sesión');
+        const infoDiv = infoSetting.controlEl.createDiv({ cls: 'pomodoro-session-info' });
+
+        infoDiv.createEl('div', {
             text: `Duración: ${session.duration} minutos`,
             cls: 'pomodoro-duration-info'
         });
 
         if (session.type === 'work') {
-            infoContainer.createEl('p', { 
+            infoDiv.createEl('div', {
                 text: `Ciclos completados: ${session.completedCycles}`,
                 cls: 'pomodoro-cycles-info'
             });
         }
 
-        // Checkbox para cerrar tarea (solo si es una tarea específica)
-        if (session.type === 'work' && this.plugin.pomodoroService.hasSpecificTask(session)) {
-            const checkboxContainer = contentEl.createDiv({ cls: 'pomodoro-close-task-container' });
-            
-            const checkboxLabel = checkboxContainer.createEl('label', { 
-                cls: 'pomodoro-close-task-label' 
+        // --- Campo Notas de la Sesión (editable) ---
+        new Setting(contentEl)
+            .setName('Notas de la Sesión')
+            .addTextArea(text => {
+                text.setValue(this.sessionNotes);
+                text.onChange(value => this.sessionNotes = value);
+                text.inputEl.rows = 4;
+                text.inputEl.placeholder = 'Agrega notas sobre esta sesión de Pomodoro...';
             });
-            
-            this.shouldCloseTaskCheckbox = checkboxLabel.createEl('input', { 
-                type: 'checkbox',
-                cls: 'pomodoro-close-task-checkbox'
-            }) as HTMLInputElement;
-            
-            checkboxLabel.appendText(' ¿Cerrar la tarea al finalizar?');
-            this.shouldCloseTaskCheckbox.checked = true; // Por defecto marcado
+
+        // --- Checkbox para cerrar tarea (solo si es una tarea específica) ---
+        if (session.type === 'work' && this.isSpecificTask(session)) {
+            const closeTaskSetting = new Setting(contentEl)
+                .setName('Cerrar tarea activa?')
+                .setDesc('No usar en tareas recurrentes 🔁.')
+                .addToggle(toggle => {
+                    this.shouldCloseTaskCheckbox = toggle.toggleEl;
+                    toggle.setValue(false); // Por defecto desmarcado
+                });
+
+            // Añadir el texto personalizado después del toggle
+            const labelText = closeTaskSetting.controlEl.createSpan({
+                text: 'Cerrar la tarea ✅ ' + moment().format('YYYY-MM-DD'),
+                cls: 'task-close-label'
+            });
+
+            // Hacer que el texto también sea clickeable
+            labelText.addEventListener('click', () => {
+                const currentValue = this.shouldCloseTaskCheckbox?.classList.contains('is-enabled');
+                if (currentValue) {
+                    this.shouldCloseTaskCheckbox?.removeClass('is-enabled');
+                } else {
+                    this.shouldCloseTaskCheckbox?.addClass('is-enabled');
+                }
+            });
         }
 
         // Opciones según el tipo de sesión
@@ -109,9 +164,20 @@ export class PomodoroModal extends Modal {
         buttonContainer.createEl('button', {
             text: '✅ Finalizar sesión',
             cls: 'mod-cta'
-        }).addEventListener('click', () => {
+        }).addEventListener('click', async () => {
             if (this.options.onFinish) {
-                const shouldCloseTask = this.shouldCloseTaskCheckbox?.checked || false;
+                const shouldCloseTask = this.shouldCloseTaskCheckbox?.classList.contains('is-enabled') || false;
+
+                // Actualizar las notas de la sesión antes de finalizar
+                if (session) {
+                    session.notes = this.sessionNotes;
+                }
+
+                // Manejar el cierre de tarea si se solicitó
+                if (shouldCloseTask && session && this.isSpecificTask(session)) {
+                    await this.closeSessionTask(session);
+                }
+
                 this.options.onFinish(shouldCloseTask);
             }
             this.close();
@@ -133,6 +199,11 @@ export class PomodoroModal extends Modal {
             text: breakText,
             cls: 'mod-warning'
         }).addEventListener('click', () => {
+            // Actualizar las notas de la sesión antes de continuar
+            if (session) {
+                session.notes = this.sessionNotes;
+            }
+
             if (this.options.onContinue) {
                 this.options.onContinue(breakType);
             }
@@ -143,6 +214,11 @@ export class PomodoroModal extends Modal {
         container.createEl('button', {
             text: `🍅 Otro pomodoro (${settings.workDuration} min)`,
         }).addEventListener('click', () => {
+            // Actualizar las notas de la sesión antes de continuar
+            if (session) {
+                session.notes = this.sessionNotes;
+            }
+
             if (this.options.onWorkMore) {
                 this.options.onWorkMore();
             }
@@ -154,6 +230,11 @@ export class PomodoroModal extends Modal {
             text: `🔴 Seguir trabajando en el mismo ciclo`,
             cls: 'overtime-button'
         }).addEventListener('click', () => {
+            // Actualizar las notas de la sesión antes de entrar en overtime
+            if (session) {
+                session.notes = this.sessionNotes;
+            }
+
             if (this.options.onContinueOvertime) {
                 this.options.onContinueOvertime();
             }
@@ -352,6 +433,134 @@ export class PomodoroModal extends Modal {
             default:
                 return '✅ ¡Sesión completada!';
         }
+    }
+
+    /**
+     * Determina si una sesión de Pomodoro corresponde a una tarea específica
+     * (usando la misma lógica que TimeLogModal.shouldShowCloseCheckbox)
+     */
+    private isSpecificTask(session: PomodoroSession): boolean {
+        if (!session.taskPath || !session.taskDescription) return false;
+
+        // Obtener el nombre del archivo sin extensión
+        const fileName = session.taskPath.split('/').pop()?.replace(/\.md$/, '') || '';
+
+        // Si taskDescription es diferente del nombre del archivo, es una tarea específica
+        const isSpecificTask = session.taskDescription !== fileName &&
+                               session.taskDescription !== session.taskPath &&
+                               session.taskDescription.length > 0;
+
+        return isSpecificTask;
+    }
+
+    /**
+     * Cierra una tarea específica en el archivo correspondiente
+     * (similar a la funcionalidad de TimeLogModal.closeTaskInFile)
+     */
+    private async closeSessionTask(session: PomodoroSession): Promise<boolean> {
+        if (!session.taskPath || !session.taskDescription) {
+            return false;
+        }
+
+        try {
+            // Obtener el archivo
+            const file = this.app.vault.getAbstractFileByPath(session.taskPath);
+            if (!(file instanceof TFile)) {
+                console.warn(`Dovela PM: No se pudo encontrar el archivo: ${session.taskPath}`);
+                return false;
+            }
+
+            // Leer el contenido del archivo
+            const content = await this.app.vault.read(file);
+            const lines = content.split('\n');
+
+            // Buscar la línea de la tarea por descripción
+            let taskLineIndex = -1;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i] ?? '';
+                if (TaskSelectionAnalyzer.isValidTaskLine(line)) {
+                    const taskContent = TaskSelectionAnalyzer.extractTaskContent(line);
+                    if (taskContent && taskContent.includes(session.taskDescription)) {
+                        taskLineIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // Si no se encontró por descripción, buscar la primera tarea abierta o en progreso
+            if (taskLineIndex === -1) {
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i] ?? '';
+                    const taskState = TaskSelectionAnalyzer.getTaskState(line);
+                    if (taskState && (taskState === 'open' || taskState === 'in-progress')) {
+                        taskLineIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            if (taskLineIndex === -1) {
+                console.warn('Dovela PM: No se encontró una tarea válida para cerrar en el archivo');
+                return false;
+            }
+
+            const taskLine = lines[taskLineIndex];
+            if (!taskLine) return false;
+            const taskState = TaskSelectionAnalyzer.getTaskState(taskLine);
+
+            // Solo cerrar si la tarea no está ya completada
+            if (taskState && taskState === 'completed') {
+                console.log('Dovela PM: La tarea ya está completada');
+                return false;
+            }
+
+            // Crear la nueva línea con estado completado y fecha
+            const today = moment().format('YYYY-MM-DD');
+            const newLine = this.createCompletedTaskLine(taskLine, today);
+
+            if (!newLine) {
+                console.warn('Dovela PM: No se pudo crear la línea de tarea completada');
+                return false;
+            }
+
+            // Reemplazar la línea en el contenido
+            lines[taskLineIndex] = newLine;
+            const newContent = lines.join('\n');
+
+            // Guardar el archivo
+            await this.app.vault.modify(file, newContent);
+
+            console.log('Dovela PM: Tarea cerrada exitosamente desde Pomodoro');
+            return true;
+
+        } catch (error) {
+            console.error('Dovela PM: Error al cerrar la tarea desde Pomodoro:', error);
+            new Notice('Error al cerrar la tarea. Revisa la consola para más detalles.');
+            return false;
+        }
+    }
+
+    /**
+     * Crea una línea de tarea completada con fecha de finalización
+     * (copiado de TimeLogModal.createCompletedTaskLine)
+     */
+    private createCompletedTaskLine(originalLine: string, completionDate: string): string | null {
+        // Patrón para detectar tareas con cualquier estado
+        const taskMatch = originalLine.match(/^(\s*-\s\[)[\s\/xX!?*+-](\]\s*.*)$/);
+
+        if (!taskMatch) {
+            return null;
+        }
+
+        // Construir la nueva línea: cambiar estado a 'x' y agregar fecha de finalización
+        let newLine = `${taskMatch[1]}x${taskMatch[2]}`;
+
+        // Verificar si ya tiene una fecha de finalización
+        if (!newLine.includes('✅')) {
+            newLine = `${newLine.trimEnd()} ✅ ${completionDate}`;
+        }
+
+        return newLine;
     }
 
     override onClose() {
