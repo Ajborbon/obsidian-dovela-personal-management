@@ -12,6 +12,9 @@ export interface BacklinkItem {
     // Información financiera para transacciones
     moneda?: string;
     monto?: number;
+    // New properties for enhanced tree view
+    isCurrentFile?: boolean;
+    isExpandedModeFile?: boolean;
 }
 
 export interface SortConfig {

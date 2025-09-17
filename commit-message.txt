@@ -1,0 +1,60 @@
+feat(backlinks): implementar vista de árbol expandible con seguimiento de nota actual, visor de pestañas abiertas y búsqueda jerárquica en vistas GTD y Foco
+
+## Nuevas Funcionalidades
+
+### Vista de Árbol Mejorada (BackLinks)
+- Implementar detección de doble click en botón "Ordenar por ruta" para alternar entre modo normal y expandido
+- Modo normal: muestra backlinks organizados jerárquicamente + nota actual destacada
+- Modo expandido: incluye todas las notas de la carpeta actual y subcarpetas
+- Indicador visual en botón: 📁 (normal) vs 📁+ (expandido) con fondo verde
+- Nota actual siempre visible con icono 📍, fondo azul degradado y borde izquierdo azul
+
+### Visor de Pestañas Abiertas (BackLinks)
+- Botón 🗂️ para alternar entre vista de backlinks y vista de pestañas abiertas
+- Agrupación inteligente por splits (solo muestra grupos cuando hay múltiples splits reales)
+- Títulos completos de notas con rutas de carpetas en secciones diferenciadas
+- Destacado visual de pestaña activa con colores accent
+- Navegación por click y soporte para Command+Click (nueva pestaña)
+
+### Búsqueda Jerárquica (GTD Dashboard y Vista de Foco)
+- Filtro de búsqueda avanzada en vista jerárquica para ambos módulos
+- Toggle para incluir contenido de archivos además de títulos
+- Búsqueda por nombre, tipo de elemento, número de tareas y nivel jerárquico
+- Cache de contenido para mejorar performance en búsquedas repetidas
+- Atributos data-search-* para búsqueda granular
+- Actualización dinámica de placeholder según modo de búsqueda
+
+### Navegación Mejorada (BackLinks)
+- Command+Click en breadcrumb abre carpetas en nueva pestaña
+- Command+Click en elementos del árbol y lista abre archivos en nueva pestaña
+- Mejoras en detección de cambio de archivo activo (listeners adicionales + timeout)
+
+### Mejoras Visuales
+- Iconografía diferenciada: 📍 (actual), 🔗 (backlinks), 📋 (expandido), 📄 (normal)
+- Efectos hover suaves con transformaciones y sombras
+- Soporte completo para tema claro y oscuro
+- Diseño responsivo para sidebars estrechos
+- Fuente de título reducida en fichas de pestañas (14px → 12px)
+- Indicador visual del símbolo + en blanco con sombra para mejor visibilidad
+
+### Mejoras Técnicas
+- Nuevas propiedades en BacklinkItem: isCurrentFile, isExpandedModeFile
+- Método getFilesInFolderAndSubfolders para búsqueda recursiva de archivos
+- Actualización dinámica de iconos y tooltips de botones
+- Arquitectura modular con separación clara entre vista lista, árbol y pestañas
+- Detección mejorada de tareas en progreso con timeouts y debugging
+- Cache de contenido para búsquedas eficientes en archivos markdown
+
+## Archivos Modificados
+- src/modules/moduloBacklinks/backlinkModel.ts: nuevas propiedades de interfaz
+- src/modules/moduloBacklinks/backlinkView.ts: lógica principal de funcionalidades
+- src/modules/moduloBacklinks/breadcrumbRenderer.ts: soporte Command+Click
+- src/modules/moduloGTDv3/view.ts: implementación de búsqueda jerárquica
+- src/modules/moduloGTDv3/htmlGenerator.ts: atributos de búsqueda en elementos
+- src/modules/moduloFoco/focoView.ts: implementación de búsqueda jerárquica
+- src/modules/moduloFoco/focoHtmlGenerator.ts: atributos de búsqueda en elementos
+- styles.css: estilos completos para tree view, pestañas y destacado visual
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>

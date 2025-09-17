@@ -630,6 +630,24 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
     const estado = item.frontmatter?.['estado'] ? `<span class="gtd-card-estado">${item.frontmatter['estado']}</span>` : '';
     const missingClass = item.isNoteMissing ? 'is-missing' : '';
 
+    // Agregar datos para búsqueda
+    const searchData = {
+        name: item.name.replace(/\[FALTA\]\s*/, ''),
+        type: item.type,
+        hasOwnTasks: item.ownTaskCount > 0,
+        hasDescendantTasks: item.descendantTaskCount > 0,
+        totalTasks: totalTasks,
+        level: level
+    };
+    const searchDataAttrs = [
+        `data-search-name="${searchData.name.toLowerCase()}"`,
+        `data-search-type="${searchData.type}"`,
+        `data-search-has-own="${searchData.hasOwnTasks}"`,
+        `data-search-has-desc="${searchData.hasDescendantTasks}"`,
+        `data-search-total="${searchData.totalTasks}"`,
+        `data-search-level="${searchData.level}"`
+    ].join(' ');
+
     const cardHeader = `
         <div class="gtd-card-header" ${itemPathAttr}>
             <span class="gtd-card-type-icon" data-type="${item.type}"></span>
@@ -643,13 +661,17 @@ function renderHierarchyViewRecursive(item: HierarchicalItem, level: number = 0)
     `;
 
     if (!hasChildren) {
-        return `<div class="gtd-card-leaf ${missingClass}">${cardHeader}</div>`;
+        const checkInProgressClass = item.file ? 'check-in-progress' : '';
+        const checkInProgressAttr = item.file ? `data-check-path="${item.file.path}"` : '';
+        return `<div class="gtd-card-leaf gtd-hierarchy-item ${missingClass} ${checkInProgressClass}" ${checkInProgressAttr} ${searchDataAttrs}>${cardHeader}</div>`;
     }
 
     const openAttr = level < 2 ? 'open' : '';
 
+    const checkInProgressClass = item.file ? 'check-in-progress' : '';
+    const checkInProgressAttr = item.file ? `data-check-path="${item.file.path}"` : '';
     return `
-        <details class="gtd-card-container ${missingClass}" ${openAttr}>
+        <details class="gtd-card-container gtd-hierarchy-item ${missingClass} ${checkInProgressClass}" ${checkInProgressAttr} ${openAttr} ${searchDataAttrs}>
             <summary>${cardHeader}</summary>
             <div class="gtd-card-children">
                 ${item.children.map(child => renderHierarchyViewRecursive(child, level + 1)).join('')}
@@ -778,8 +800,27 @@ export function generateGtdViewHtml(
     if (activeView === 'hierarchy') {
         const hierarchyControls = `
             <div class="hierarchy-controls">
-                <button class="gtd-hierarchy-control-button" data-action="expand-all">Expandir Todo</button>
-                <button class="gtd-hierarchy-control-button" data-action="collapse-all">Colapsar Todo</button>
+                <div class="hierarchy-search-container">
+                    <div class="gtd-filter-group">
+                        <label for="hierarchy-search-filter">🔍 Buscar:</label>
+                        <input type="text" id="hierarchy-search-filter" placeholder="Buscar por título...">
+                    </div>
+                    <div class="hierarchy-search-options">
+                        <div class="hierarchy-toggle-container">
+                            <span class="hierarchy-toggle-text">Incluir contenido:</span>
+                            <div class="hierarchy-toggle-controls">
+                                <div class="hierarchy-toggle" id="hierarchy-include-content" role="button" tabindex="0">
+                                    <div class="hierarchy-toggle-slider"></div>
+                                </div>
+                                <div class="hierarchy-search-results" id="hierarchy-search-results"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hierarchy-buttons">
+                    <button class="gtd-hierarchy-control-button" data-action="expand-all">Expandir Todo</button>
+                    <button class="gtd-hierarchy-control-button" data-action="collapse-all">Colapsar Todo</button>
+                </div>
             </div>
         `;
         viewContent = hierarchyControls + data.hierarchicalData.map(root => renderHierarchyViewRecursive(root, 0)).join('');

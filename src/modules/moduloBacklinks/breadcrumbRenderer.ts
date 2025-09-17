@@ -56,7 +56,7 @@ export class BreadcrumbRenderer {
                 cls: 'breadcrumb-segment clickable'
             });
 
-            segmentEl.onclick = () => this.openFolder(segment.path);
+            segmentEl.onclick = (e) => this.openFolder(segment.path, e.metaKey || e.ctrlKey);
             segmentEl.title = `Click para abrir ${segment.path}`;
         });
 
@@ -105,18 +105,21 @@ export class BreadcrumbRenderer {
         return segments;
     }
 
-    private async openFolder(folderPath: string): Promise<void> {
+    private async openFolder(folderPath: string, openInNewTab: boolean = false): Promise<void> {
         const folder = this.plugin.app.vault.getAbstractFileByPath(folderPath);
         if (folder) {
             // Try to find a note in the folder to open, or create a new note
             const filesInFolder = this.plugin.app.vault.getMarkdownFiles()
                 .filter((file: any) => file.parent?.path === folderPath);
-            
+
             if (filesInFolder.length > 0) {
                 // Open the first file in the folder
                 const firstFile = filesInFolder[0];
                 if (firstFile) {
-                    await this.plugin.app.workspace.getLeaf().openFile(firstFile);
+                    const leaf = openInNewTab ?
+                        this.plugin.app.workspace.getLeaf('tab') :
+                        this.plugin.app.workspace.getLeaf();
+                    await leaf.openFile(firstFile);
                 }
             } else {
                 // Open file explorer to the folder
@@ -154,7 +157,7 @@ export class BreadcrumbRenderer {
                     text: first.name,
                     cls: 'breadcrumb-segment clickable',
                     attr: { title: `Click para abrir ${first.path}` }
-                }).onclick = () => this.openFolder(first.path);
+                }).onclick = (e) => this.openFolder(first.path, e.metaKey || e.ctrlKey);
             }
 
             container.createEl('span', { 
@@ -167,7 +170,7 @@ export class BreadcrumbRenderer {
                     text: last.name,
                     cls: 'breadcrumb-segment clickable',
                     attr: { title: `Click para abrir ${last.path}` }
-                }).onclick = () => this.openFolder(last.path);
+                }).onclick = (e) => this.openFolder(last.path, e.metaKey || e.ctrlKey);
             }
         } else {
             return this.createPathBreadcrumbs(folderPath);

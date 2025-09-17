@@ -9,6 +9,472 @@
     overflow: hidden; /* Evitamos overflow en el contenedor principal */
 }
 
+/* === ESTILOS PARA BÚSQUEDA JERÁRQUICA === */
+
+/* Contenedor de búsqueda jerárquica */
+.hierarchy-search-container {
+    background: var(--background-modifier-form-field);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.hierarchy-search-container .gtd-filter-group {
+    margin: 0;
+    margin-bottom: 6px;
+    gap: 8px;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.hierarchy-search-container label {
+    font-weight: 500;
+    color: var(--text-normal);
+    font-size: 11px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    background: var(--background-primary);
+    padding: 2px 4px;
+    border-radius: 3px;
+    min-width: 120px;
+}
+
+.hierarchy-search-container input {
+    padding: 6px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary) !important;
+    color: var(--text-normal);
+    font-size: 12px;
+    transition: border-color 0.2s ease;
+    flex: 1;
+    min-width: 140px;
+    opacity: 1 !important;
+}
+
+.hierarchy-search-container input:focus {
+    background: var(--background-primary) !important;
+    opacity: 1 !important;
+}
+
+/* Responsive para evitar traslape */
+@media (max-width: 650px) {
+    .hierarchy-search-container .gtd-filter-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .hierarchy-search-container label {
+        text-align: center;
+        min-width: auto;
+    }
+
+    .hierarchy-search-container input {
+        min-width: 100%;
+    }
+}
+
+.hierarchy-search-container input:focus {
+    border-color: var(--interactive-accent);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Reorganizar controles de jerarquía */
+.hierarchy-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.hierarchy-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+/* Toggle personalizado para opciones de búsqueda */
+.hierarchy-search-options {
+    margin-top: 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.hierarchy-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 8px;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.hierarchy-toggle-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.hierarchy-toggle-text {
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.hierarchy-toggle {
+    position: relative;
+    width: 35px;
+    height: 18px;
+    min-width: 35px;
+    max-width: 35px;
+    background: var(--background-modifier-border);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.hierarchy-toggle.active {
+    background: var(--interactive-accent);
+}
+
+.hierarchy-toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: var(--background-primary);
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.hierarchy-toggle.active .hierarchy-toggle-slider {
+    transform: translateX(18px);
+}
+
+.hierarchy-toggle:hover {
+    background: var(--background-modifier-hover);
+}
+
+.hierarchy-toggle.active:hover {
+    background: var(--interactive-accent-hover);
+}
+
+/* Resultados de búsqueda */
+.hierarchy-search-results {
+    margin-top: 4px;
+    min-height: 12px;
+    width: 100%;
+}
+
+.search-results-summary {
+    color: var(--text-normal);
+    padding: 2px 0px;
+    font-size: 12px;
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    line-height: 1.2;
+    max-width: fit-content;
+    height: 18px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.search-results-summary .results-total {
+    font-weight: 600;
+    font-size: 12px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.search-no-results {
+    background: var(--background-modifier-error);
+    color: var(--text-error);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+}
+
+.search-loading {
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.search-loading::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border: 1px solid var(--text-muted);
+    border-top: 1px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.match-type-title {
+    color: var(--text-normal);
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.match-type-content {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Forzar que siempre se mantenga en línea */
+.search-results-summary {
+    overflow: visible;
+    min-width: 0;
+}
+
+.search-results-summary * {
+    flex-shrink: 0;
+}
+
+/* Iconos de match en elementos de la jerarquía */
+.gtd-hierarchy-item.search-match-title .gtd-card-header::before {
+    content: "📄 ";
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+.gtd-hierarchy-item.search-match-content .gtd-card-header::before {
+    content: "📝 ";
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+/* Si tiene ambos matches, priorizar contenido */
+.gtd-hierarchy-item.search-match-title.search-match-content .gtd-card-header::before {
+    content: "📝 ";
+}
+
+/* Icono de rayo para notas con tareas en progreso [/] - solo para el elemento específico, no hijos */
+.gtd-hierarchy-item.has-in-progress-tasks > summary > .gtd-card-header::before,
+.gtd-hierarchy-item.has-in-progress-tasks.gtd-card-leaf > .gtd-card-header::before {
+    content: "⚡ ";
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+/* Prioridad: tareas en progreso > search matches - solo para el elemento específico, no hijos */
+.gtd-hierarchy-item.has-in-progress-tasks.search-match-title > summary > .gtd-card-header::before,
+.gtd-hierarchy-item.has-in-progress-tasks.search-match-title.gtd-card-leaf > .gtd-card-header::before,
+.gtd-hierarchy-item.has-in-progress-tasks.search-match-content > summary > .gtd-card-header::before,
+.gtd-hierarchy-item.has-in-progress-tasks.search-match-content.gtd-card-leaf > .gtd-card-header::before {
+    content: "⚡ ";
+}
+
+/* Responsive para mantener en línea */
+@media (max-width: 500px) {
+    .search-results-summary {
+        font-size: 9px;
+        gap: 3px;
+        height: 16px;
+    }
+
+    .search-results-summary .results-total {
+        font-size: 9px;
+    }
+
+    .match-type-title,
+    .match-type-content {
+        font-size: 11px;
+    }
+}
+
+/* === ESTILOS PARA VISTA JERÁRQUICA COMPACTA === */
+
+/* Vista jerárquica optimizada */
+.gtd-hierarchy-item {
+    margin-bottom: 2px; /* Reducido de 8px a 2px */
+    position: relative;
+}
+
+/* Conectores visuales para jerarquía */
+.gtd-hierarchy-item[data-search-level="1"]::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--background-modifier-border);
+    opacity: 0.5;
+}
+
+.gtd-hierarchy-item[data-search-level="2"]::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--background-modifier-border);
+    opacity: 0.3;
+}
+
+/* Headers de tarjetas más compactos */
+.gtd-card-header {
+    padding: 6px 12px; /* Reducido de 12px 16px */
+    min-height: 32px; /* Reducido de 60px a 32px */
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Reducido de 12px */
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.gtd-card-header:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+/* Iconos más pequeños */
+.gtd-card-type-icon {
+    width: 14px; /* Reducido de 20px */
+    height: 14px;
+    flex-shrink: 0;
+    font-size: 12px; /* Reducido de 16px */
+}
+
+/* Nombres más compactos */
+.gtd-card-name {
+    font-size: 13px; /* Reducido de 14px */
+    font-weight: 500;
+    color: var(--text-normal);
+    flex: 1;
+    line-height: 1.2; /* Altura de línea más compacta */
+}
+
+/* Contadores más pequeños */
+.gtd-card-counts {
+    display: flex;
+    gap: 4px; /* Reducido de 8px */
+    font-size: 11px; /* Reducido de 12px */
+}
+
+.gtd-card-own-tasks,
+.gtd-card-total-tasks {
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    padding: 2px 6px; /* Reducido de 4px 8px */
+    border-radius: 3px;
+    font-weight: 500;
+    min-width: 20px; /* Reducido de 24px */
+    text-align: center;
+}
+
+/* Estados más compactos */
+.gtd-card-estado {
+    font-size: 10px; /* Reducido de 11px */
+    padding: 2px 4px; /* Reducido de 3px 6px */
+}
+
+/* Hijos con padding reducido */
+.gtd-card-children {
+    padding-left: 16px; /* Reducido de 24px */
+    margin-top: 4px; /* Reducido de 8px */
+}
+
+/* Highlighting para búsquedas */
+.gtd-hierarchy-item.search-highlight {
+    background: var(--background-modifier-hover);
+    border-radius: 4px;
+    border: 1px solid var(--interactive-accent);
+    position: relative;
+    animation: searchHighlight 0.2s ease-out;
+}
+
+.gtd-hierarchy-item.search-match-title .gtd-card-name {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.gtd-hierarchy-item.search-match-content .gtd-card-name {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    padding: 2px 4px;
+    border-radius: 3px;
+    border-left: 3px solid var(--text-muted);
+    padding-left: 6px;
+}
+
+/* Animación suave para resultados */
+
+@keyframes searchHighlight {
+    0% {
+        border-color: transparent;
+        background: var(--background-primary);
+    }
+    100% {
+        border-color: var(--interactive-accent);
+        background: var(--background-modifier-hover);
+    }
+}
+
+/* Responsive para búsqueda */
+@media (max-width: 768px) {
+    .hierarchy-search-container {
+        padding: 8px;
+        margin-bottom: 12px;
+    }
+
+    .hierarchy-controls {
+        gap: 12px;
+    }
+
+    .hierarchy-buttons {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .search-results-summary {
+        display: inline-flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 4px;
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+    }
+}
+
 /* === BREAKPOINTS ESPECÍFICOS PARA FILTROS RESPONSIVOS === */
 
 /* Móvil muy pequeño: Stack vertical completo */
@@ -600,7 +1066,7 @@
 /* Iconography based on data-type attribute */
 .gtd-card-type-icon[data-type="PQ"]::before { content: "🎯"; } /* Project/Quest */
 .gtd-card-type-icon[data-type="AV"]::before { content: "💡"; } /* Area of Vision */
-.gtd-card-type-icon[data-type="Ax"]::before { content: "⚡"; } /* Action */
+/* .gtd-card-type-icon[data-type="Ax"]::before { content: "⚡"; } /* Action - Removido para usar solo con tareas en progreso */
 .gtd-card-type-icon[data-type="Folder"]::before { content: "📁"; } /* Generic Folder */
 .gtd-card-type-icon[data-type="Note"]::before { content: "📄"; } /* Generic Note */
 .gtd-card-type-icon[data-type="Missing"]::before { content: "❓"; } /* Missing Note Placeholder */
@@ -4806,5 +5272,306 @@ datalist {
 .theme-dark .foco-autocomplete-suggestion mark {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
+}
+
+/* === ESTILOS ACTUALIZADOS PARA VISOR DE PESTAÑAS === */
+
+/* Open Tabs Viewer Button */
+.open-tabs-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s ease;
+    margin-left: 4px;
+}
+
+.open-tabs-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.open-tabs-btn.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Tabs View Styles */
+.backlinks-list.tabs-view {
+    gap: 8px;
+}
+
+.tabs-list.no-groups {
+    margin-bottom: 0;
+}
+
+.tab-item {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.tab-item:hover,
+.tab-item.tab-hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.tab-item.active-tab {
+    border-left: 4px solid var(--interactive-accent);
+    box-shadow: 0 2px 12px rgba(var(--interactive-accent-rgb), 0.2);
+    background: var(--background-primary);
+}
+
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Title section with distinct background */
+.tab-title-section {
+    padding: 10px 12px 8px 12px;
+    background: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tab-item.active-tab .tab-title-section {
+    background: var(--interactive-accent);
+    border-bottom-color: var(--interactive-accent);
+}
+
+.tab-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-icon {
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.tab-item.active-tab .tab-icon {
+    opacity: 1;
+    color: var(--text-on-accent);
+}
+
+.tab-title {
+    font-size: 12px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--text-normal);
+    flex: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.tab-item.active-tab .tab-title {
+    color: var(--text-on-accent);
+    font-weight: 700;
+}
+
+/* Path section with different background */
+.tab-path-section {
+    padding: 6px 12px 8px 12px;
+    background: var(--background-modifier-border);
+}
+
+.tab-item.active-tab .tab-path-section {
+    background: var(--background-modifier-hover);
+}
+
+.tab-path-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding-left: 4px;
+}
+
+.path-icon {
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0.7;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.tab-item.active-tab .path-icon {
+    color: var(--text-normal);
+    opacity: 1;
+}
+
+.tab-path {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    opacity: 0.9;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    flex: 1;
+}
+
+.tab-item.active-tab .tab-path {
+    color: var(--text-normal);
+    opacity: 1;
+    font-weight: 500;
+}
+
+/* Dark theme tabs adjustments */
+.theme-dark .tab-title-section {
+    background: var(--background-primary-alt);
+}
+
+.theme-dark .tab-path-section {
+    background: var(--background-modifier-border-hover);
+}
+
+/* === ESTILOS PARA TREE VIEW MEJORADO === */
+
+/* Current file highlighting in tree view */
+.backlink-item.tree-item.current-file {
+    background: linear-gradient(90deg, rgba(var(--interactive-accent-rgb), 0.15), rgba(var(--interactive-accent-rgb), 0.05));
+    border-left: 3px solid var(--interactive-accent);
+    border-radius: 0 4px 4px 0;
+    font-weight: 600;
+}
+
+.backlink-item.tree-item.current-file .file-title {
+    color: var(--interactive-accent);
+    font-weight: 700;
+}
+
+.backlink-item.tree-item.current-file .file-icon {
+    color: var(--interactive-accent);
+    transform: scale(1.1);
+}
+
+/* Expanded mode files highlighting */
+.backlink-item.tree-item.expanded-mode-file {
+    background: rgba(var(--color-yellow-rgb), 0.08);
+    border-left: 2px solid var(--color-yellow);
+    opacity: 0.9;
+}
+
+.backlink-item.tree-item.expanded-mode-file .file-title {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.backlink-item.tree-item.expanded-mode-file .file-icon {
+    color: var(--color-yellow);
+    opacity: 0.8;
+}
+
+/* Dark theme adjustments for tree view */
+.theme-dark .backlink-item.tree-item.current-file {
+    background: linear-gradient(90deg, rgba(var(--interactive-accent-rgb), 0.2), rgba(var(--interactive-accent-rgb), 0.08));
+}
+
+.theme-dark .backlink-item.tree-item.expanded-mode-file {
+    background: rgba(255, 193, 7, 0.1);
+    border-left-color: #ffc107;
+}
+
+/* Hover effects for tree items */
+.backlink-item.tree-item:hover {
+    background: var(--background-modifier-hover);
+    transform: translateX(2px);
+    transition: all 0.2s ease;
+}
+
+.backlink-item.tree-item.current-file:hover {
+    background: linear-gradient(90deg, rgba(var(--interactive-accent-rgb), 0.25), rgba(var(--interactive-accent-rgb), 0.1));
+    transform: translateX(3px);
+}
+
+.backlink-item.tree-item.expanded-mode-file:hover {
+    background: rgba(var(--color-yellow-rgb), 0.15);
+    transform: translateX(2px);
+}
+
+/* Path button expanded mode indicator */
+.path-icon {
+    position: relative;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.expand-indicator {
+    color: white;
+    font-weight: 900;
+    font-size: 10px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    margin-left: -2px;
+    position: relative;
+    top: -1px;
+}
+
+/* Enhanced visual for expanded mode */
+.sort-btn:has(.expand-indicator) {
+    background: rgba(var(--color-green-rgb), 0.15);
+    border-color: var(--color-green);
+}
+
+.theme-dark .sort-btn:has(.expand-indicator) {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #4caf50;
+}
+
+.theme-dark .expand-indicator {
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+}
+
+.theme-dark .tab-item.active-tab .tab-path-section {
+    background: var(--background-modifier-border);
+}
+
+/* Responsive tabs view for narrow sidebars */
+@media (max-width: 250px) {
+    .tab-title-section {
+        padding: 8px 10px 6px 10px;
+    }
+
+    .tab-path-section {
+        padding: 4px 10px 6px 10px;
+    }
+
+    .tab-path-row {
+        padding-left: 2px;
+        gap: 4px;
+    }
+
+    .tab-title {
+        font-size: 12px;
+    }
+
+    .tab-path {
+        font-size: 9px;
+    }
+
+    .tab-icon {
+        font-size: 12px;
+        width: 14px;
+    }
 }
 

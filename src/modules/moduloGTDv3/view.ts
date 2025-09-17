@@ -189,6 +189,9 @@ export class GtdView extends ItemView {
             
             this.addEventListeners();
 
+            // Detectar tareas en progreso después de renderizar
+            setTimeout(() => this.checkInProgressTasks(), 100);
+
         } catch (error) {
             console.error('Error drawing GTD view:', error);
             this.contentEl.innerHTML = '<div class="gtd-error">An error occurred while rendering the GTD view. Check the console for details.</div>';
@@ -408,6 +411,186 @@ export class GtdView extends ItemView {
         if (contextFilter) contextFilter.addEventListener('input', applyFilters);
         if (personFilter) personFilter.addEventListener('input', applyFilters);
         if (contentFilter) contentFilter.addEventListener('input', applyFilters);
+
+        // === FILTRO DE BÚSQUEDA JERÁRQUICA ===
+        const hierarchySearchFilter = container.querySelector('#hierarchy-search-filter') as HTMLInputElement;
+        const includeContentToggle = container.querySelector('#hierarchy-include-content') as HTMLElement;
+
+        if (hierarchySearchFilter && includeContentToggle) {
+            let searchTimeout: NodeJS.Timeout;
+            let contentCache = new Map<string, string>();
+            let isContentIncluded = false;
+
+            // Actualizar placeholder dinámicamente
+            const updatePlaceholder = () => {
+                if (isContentIncluded) {
+                    hierarchySearchFilter.placeholder = 'Buscar por título y contenido...';
+                } else {
+                    hierarchySearchFilter.placeholder = 'Buscar por título...';
+                }
+            };
+
+            const readFileContent = async (filePath: string): Promise<string> => {
+                if (contentCache.has(filePath)) {
+                    return contentCache.get(filePath)!;
+                }
+
+                try {
+                    const file = this.app.vault.getAbstractFileByPath(filePath);
+                    if (file && 'extension' in file && file.extension === 'md') {
+                        const content = await this.app.vault.read(file as any);
+                        const contentLower = content.toLowerCase();
+                        contentCache.set(filePath, contentLower);
+                        return contentLower;
+                    }
+                } catch (error) {
+                    console.warn('Error reading file:', filePath, error);
+                }
+                return '';
+            };
+
+            const applyHierarchySearch = async () => {
+                const searchTerm = hierarchySearchFilter.value.trim().toLowerCase();
+                const includeContent = isContentIncluded;
+                const resultsContainer = container.querySelector('#hierarchy-search-results') as HTMLElement;
+
+                // Limpiar timeout anterior
+                clearTimeout(searchTimeout);
+
+                if (searchTerm === '') {
+                    // Mostrar todos los elementos y limpiar resultados
+                    container.querySelectorAll('.gtd-hierarchy-item').forEach((item: Element) => {
+                        (item as HTMLElement).style.display = '';
+                        (item as HTMLElement).style.visibility = '';
+                        (item as HTMLElement).classList.remove('search-highlight', 'search-match-title', 'search-match-content');
+                    });
+                    if (resultsContainer) resultsContainer.innerHTML = '';
+                    return;
+                }
+
+                // Mostrar indicador de carga si incluye contenido
+                if (includeContent && resultsContainer) {
+                    resultsContainer.innerHTML = '<div class="search-loading">Buscando en archivos...</div>';
+                }
+
+                // Debounce para búsqueda de contenido
+                const delay = includeContent ? 300 : 0;
+
+                searchTimeout = setTimeout(async () => {
+                    let totalMatches = 0;
+                    const matches: Array<{element: HTMLElement, type: 'title'|'content', name: string, level: number}> = [];
+
+                    // Primero limpiar todas las clases de búsqueda
+                    container.querySelectorAll('.gtd-hierarchy-item').forEach((item: Element) => {
+                        const htmlItem = item as HTMLElement;
+                        htmlItem.classList.remove('search-highlight', 'search-match-title', 'search-match-content');
+                    });
+
+                    // Procesar cada elemento
+                    const items = Array.from(container.querySelectorAll('.gtd-hierarchy-item'));
+                    for (const item of items) {
+                        const htmlItem = item as HTMLElement;
+                        const itemName = htmlItem.dataset['searchName'] || '';
+                        const itemLevel = parseInt(htmlItem.dataset['searchLevel'] || '0');
+                        let isVisible = false;
+
+                        // Búsqueda en título
+                        if (itemName.includes(searchTerm)) {
+                            isVisible = true;
+                            htmlItem.classList.add('search-highlight', 'search-match-title');
+                            matches.push({element: htmlItem, type: 'title', name: itemName, level: itemLevel});
+                            totalMatches++;
+                        }
+                        // Búsqueda en contenido (solo si checkbox está marcado)
+                        else if (includeContent) {
+                            // Buscar el path en el elemento o sus hijos
+                            const pathElement = htmlItem.querySelector('[data-item-path]') || htmlItem.querySelector('.gtd-card-header[data-item-path]');
+                            const itemPath = pathElement?.getAttribute('data-item-path');
+
+                            if (itemPath) {
+                                try {
+                                    const fileContent = await readFileContent(itemPath);
+                                    if (fileContent && fileContent.includes(searchTerm)) {
+                                        isVisible = true;
+                                        htmlItem.classList.add('search-highlight', 'search-match-content');
+                                        matches.push({element: htmlItem, type: 'content', name: itemName, level: itemLevel});
+                                        totalMatches++;
+                                    }
+                                } catch (error) {
+                                    console.warn('Error processing file content for:', itemPath, error);
+                                }
+                            }
+                        }
+
+                        // Aplicar visibilidad
+                        htmlItem.style.display = isVisible ? 'block' : 'none';
+                        htmlItem.style.visibility = isVisible ? 'visible' : 'hidden';
+
+                        // Expandir padres si hay coincidencia
+                        if (isVisible) {
+                            let parent = htmlItem.parentElement;
+                            while (parent && parent !== container) {
+                                if (parent.classList.contains('gtd-card-container')) {
+                                    (parent as HTMLDetailsElement).open = true;
+                                    parent.style.display = 'block';
+                                }
+                                if (parent.classList.contains('gtd-card-children')) {
+                                    parent.style.display = 'block';
+                                }
+                                parent = parent.parentElement;
+                            }
+                        }
+                    }
+
+                    // Mostrar resultados
+                    if (resultsContainer) {
+                        if (totalMatches === 0) {
+                            resultsContainer.innerHTML = '<div class="search-no-results">No se encontraron coincidencias</div>';
+                        } else {
+                            const titleMatches = matches.filter(m => m.type === 'title').length;
+                            const contentMatches = matches.filter(m => m.type === 'content').length;
+
+                            // Mostrar conteos específicos con formato: "6: 📄 4 📝 2"
+                            const parts = [];
+                            if (titleMatches > 0) {
+                                parts.push(`<span class="match-type-title">📄 ${titleMatches}</span>`);
+                            }
+                            if (contentMatches > 0) {
+                                parts.push(`<span class="match-type-content">📝 ${contentMatches}</span>`);
+                            }
+
+                            const resultsText = `
+                                <span class="results-total">${totalMatches}:</span>
+                                ${parts.join(' ')}
+                            `;
+
+                            resultsContainer.innerHTML = `<div class="search-results-summary">${resultsText}</div>`;
+                        }
+                    }
+                }, delay);
+            };
+
+            // Toggle functionality
+            const toggleContent = () => {
+                isContentIncluded = !isContentIncluded;
+                includeContentToggle.classList.toggle('active', isContentIncluded);
+                updatePlaceholder();
+                applyHierarchySearch();
+            };
+
+            // Event listeners
+            hierarchySearchFilter.addEventListener('input', applyHierarchySearch, { signal: this.eventAbortController.signal });
+            includeContentToggle.addEventListener('click', toggleContent, { signal: this.eventAbortController.signal });
+            includeContentToggle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleContent();
+                }
+            }, { signal: this.eventAbortController.signal });
+
+            // Inicializar placeholder
+            updatePlaceholder();
+        }
 
         container.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
@@ -816,7 +999,31 @@ export class GtdView extends ItemView {
             });
             updateFilterState(); // Estado inicial
         });
-        
+
         console.log('Optimización de filtros móviles inicializada correctamente');
+    }
+
+    private async checkInProgressTasks(): Promise<void> {
+        const container = this.contentEl;
+        const elementsToCheck = container.querySelectorAll('.check-in-progress[data-check-path]');
+
+        for (const element of Array.from(elementsToCheck)) {
+            const htmlElement = element as HTMLElement;
+            const filePath = htmlElement.dataset['checkPath'];
+
+            if (filePath) {
+                try {
+                    const file = this.app.vault.getAbstractFileByPath(filePath);
+                    if (file && file.path === filePath) {
+                        const content = await this.app.vault.read(file as any);
+                        if (/^- \[\/\]/m.test(content)) {
+                            htmlElement.classList.add('has-in-progress-tasks');
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error checking file for in-progress tasks:', filePath, error);
+                }
+            }
+        }
     }
 }
