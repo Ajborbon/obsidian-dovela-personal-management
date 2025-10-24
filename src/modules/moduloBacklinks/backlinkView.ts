@@ -492,6 +492,32 @@ export class BacklinksView extends ItemView {
         return filesInFolder;
     }
 
+    private shouldExpandFolder(folderPath: string, level: number): boolean {
+        // Siempre expandir el primer nivel (carpetas principales)
+        if (level === 0) {
+            return true;
+        }
+
+        // Si hay nota actual, expandir la ruta hacia ella
+        if (this.currentFile) {
+            const currentFilePath = this.currentFile.parent?.path || '';
+
+            // Expandir si esta carpeta está en la ruta hacia la nota actual
+            if (currentFilePath === folderPath || currentFilePath.startsWith(folderPath + '/')) {
+                return true;
+            }
+        }
+
+        // En modo expandido, ser más generoso con la expansión
+        if (this.expandedTreeMode) {
+            // Expandir hasta nivel 2 en modo expandido
+            return level < 2;
+        }
+
+        // Por defecto, mantener cerrado
+        return false;
+    }
+
     private buildFolderStructure(backlinks: BacklinkItem[]): FolderNode {
         const rootNode: FolderNode = {
             name: '',
@@ -552,7 +578,9 @@ export class BacklinksView extends ItemView {
                 cls: 'folder-item'
             });
 
-            if (level < 2) {
+            // Lógica inteligente para expandir carpetas
+            const shouldExpand = this.shouldExpandFolder(subfolder.path, level);
+            if (shouldExpand) {
                 folderItem.setAttribute('open', 'true');
             }
 
