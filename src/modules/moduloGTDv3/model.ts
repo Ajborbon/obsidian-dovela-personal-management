@@ -174,6 +174,14 @@ export interface PomodoroStats {
     todayWorkMinutes: number; // Minutos de trabajo hoy
 }
 
+export interface JournalSettings {
+    baseFolderPath: string; // Carpeta base para los journals (ej: "03 - Gestion Personal/AV - Gerente de Vida/AI - Journals")
+    yearSubfolder: boolean; // Si crear subcarpeta por año (ej: /2025/)
+    quarterSubfolder: boolean; // Si crear subcarpeta por trimestre (ej: /Q3/)
+    monthSubfolder: boolean; // Si crear subcarpeta por mes (ej: /10/)
+    weekFolderPattern: string; // Patrón para carpetas de semanas (ej: "{YYYY}/Q{Q}/{YYYY}-W{WW}")
+}
+
 // --- Plugin Data ---
 
 // Define la estructura completa de los datos que el plugin guarda en data.json.
@@ -183,6 +191,7 @@ export interface DovelaPluginData {
     pomodoroSettings: PomodoroSettings;
     activePomodoroSession?: PomodoroSession;
     pomodoroStats: PomodoroStats;
+    journalSettings: JournalSettings;
 }
 
 export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
@@ -205,10 +214,19 @@ export const DEFAULT_POMODORO_STATS: PomodoroStats = {
     todayWorkMinutes: 0
 };
 
+export const DEFAULT_JOURNAL_SETTINGS: JournalSettings = {
+    baseFolderPath: "03 - Gestion Personal/AV - Gerente de Vida/AI - Journals",
+    yearSubfolder: true,
+    quarterSubfolder: true,
+    monthSubfolder: false,
+    weekFolderPattern: "{YYYY}/Q{Q}"
+};
+
 export const DEFAULT_SETTINGS: DovelaPluginData = {
     timeLogs: [],
     activeTimer: undefined,
     pomodoroSettings: DEFAULT_POMODORO_SETTINGS,
     activePomodoroSession: undefined,
-    pomodoroStats: DEFAULT_POMODORO_STATS
+    pomodoroStats: DEFAULT_POMODORO_STATS,
+    journalSettings: DEFAULT_JOURNAL_SETTINGS
 };

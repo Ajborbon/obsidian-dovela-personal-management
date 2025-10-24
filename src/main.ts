@@ -17,6 +17,7 @@ import { DEFAULT_SETTINGS } from './modules/moduloGTDv3/model.js';
 import { parseVault } from './modules/moduloGTDv3/parser.js';
 import moment from 'moment';
 import { SmartInboxView } from './modules/moduloGTDv3/smartInboxView.js';
+import { JournalAPI } from './modules/moduloJournal/journalAPI.js';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
@@ -40,6 +41,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
     public gtdPersonTags: string[] = [];
 
     private smartInboxView: SmartInboxView | null = null;
+    public journalAPI!: JournalAPI;
 
     override async onload() {
         console.log('Loading Dovela Personal Management Plugin...');
@@ -218,6 +220,9 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
         this.addRibbonIcon(BACKLINKS_VIEW_ICON, BACKLINKS_VIEW_DISPLAY_TEXT, () => {
             this.activateBacklinksView();
         });
+
+        // Initialize Journal API for DataviewJS
+        this.journalAPI = new JournalAPI(this);
 
         // Start the sync poller now that the plugin is fully loaded
         this.startSyncInterval();

@@ -167,7 +167,9 @@ function parseTasks(content: string, sourceFile: TFile): Task[] {
         const startTime = extractAndClean(/ \[hI::\s*([^\]]+)\]/);
         const endTime = extractAndClean(/ \[hF::\s*([^\]]+)\]/);
         const duration = extractAndClean(/ \[([0-9]+h|[0-9]+min)\]/);
-        const week = extractAndClean(/ \[w::\s*(\[\[\d{4}-W\d{2}\]\])\]/);
+        // Regex para campos semanales - arreglado para no capturar ] extra
+        // Soporta: [w::[[ruta/completa/con espacios|2025-W43]]] y [w::[[2025-W43]]]
+        const week = extractAndClean(/\s*\[(?:w|W)\s*::\s*\[\[(?:.*?\|)?(\d{4}-W\d+)\]\]\s*\]/);
         const dependencies = extractDependenciesWithoutCleaning(currentTaskContent);
         const contexts = extractAndCleanAll(/#cx-([\w-]+)/g);
         const assignedPeople = extractAndCleanAll(/#px-([\w-]+)/g);
