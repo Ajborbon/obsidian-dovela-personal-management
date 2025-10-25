@@ -55,7 +55,21 @@ El sistema de Journal es un módulo completo que permite visualizar y organizar 
 src/modules/moduloJournal/
 ├── journalModel.ts         # Interfaces y tipos TypeScript
 ├── journalTaskRenderer.ts  # Lógica de renderizado y procesamiento
-└── journalAPI.ts          # API expuesta para DataviewJS
+├── journalAPI.ts          # API expuesta para DataviewJS
+└── journalPathHelper.ts    # Utilidades para generar rutas configurables
+```
+
+### Configuración del Sistema
+
+El sistema incluye una sección completa de configuración en la pestaña de configuración del plugin:
+
+```
+🗓️ Journal - Configuración de Carpetas
+├── Carpeta Base (configurable)
+├── Subcarpetas por Año (opcional)
+├── Subcarpetas por Trimestre (opcional)
+├── Subcarpetas por Mes (opcional)
+└── Patrón de Carpetas Semanales (configurable)
 ```
 
 ### Archivos Principales
@@ -90,17 +104,28 @@ Contiene la lógica central de procesamiento:
 **Funciones principales:**
 - `generateForDate()`: Punto de entrada principal
 - `processTasksForDate()`: Clasifica tareas en categorías
-- `extractWeekInfo()`: Detecta información de semanas ISO
+- `extractWeekInfo()`: Detecta información de semanas ISO desde `task.week`
 - `getWeekDateRange()`: Calcula rangos de fechas para semanas ISO
 - `isWeekOverdue()`: Determina si una semana está vencida
 - `generateJournalHTML()`: Genera HTML final
 - `generateTaskHTML()`: Renderiza tareas individuales
 
 **Detección de Tareas Semanales:**
+Las tareas semanales son detectadas por el parser GTD y almacenadas en `task.week`. Soporta ambos formatos:
 ```typescript
-// Soporta ambos formatos:
+// Formatos soportados (detectados por el parser):
 // [w::[[ruta/completa|2025-W43]]] y [w::[[2025-W43]]]
-const weekPattern = /\[(?:w|W)::\[\[(?:.*?\|)?(\d{4}-W\d{1,2})\]\]\]/;
+// [W::[[2025-W5]]] (semanas de 1 dígito también soportadas)
+
+private extractWeekInfo(task: Task): { weekCode: string; year: number; week: number } | null {
+    if (!task.week) return null;
+    const weekCode = task.week;
+    const parts = weekCode.split('-W');
+    if (parts.length !== 2) return null;
+    const year = parseInt(parts[0]!);
+    const week = parseInt(parts[1]!);
+    return { weekCode, year, week };
+}
 ```
 
 **Cálculo de Semanas ISO:**
@@ -124,6 +149,31 @@ export class JournalAPI {
 
     // Obtener solo conteos
     async getTaskCounts(targetDate: string): Promise<TaskCounts>
+}
+```
+
+#### 4. `journalPathHelper.ts`
+Utilidad para manejo de rutas configurables:
+
+```typescript
+export class JournalPathHelper {
+    // Genera ruta completa para nota diaria
+    getDailyNotePath(date: string | Date): string
+
+    // Genera ruta para enlaces semanales
+    getWeeklyLinkPath(weekCode: string): string
+
+    // Genera enlace completo de Obsidian
+    generateWeeklyLink(weekCode: string): string
+
+    // Valida carpeta base
+    async validateBaseFolderPath(vault: any): Promise<{valid: boolean; message?: string}>
+
+    // Crea estructura de carpetas
+    async ensureFolderStructure(vault: any, date?: string | Date): Promise<void>
+
+    // Vista previa de rutas
+    getPathPreview(sampleDate?: string | Date): {dailyNotePath: string; weeklyLinkPath: string; weeklyLinkFull: string}
 }
 ```
 
@@ -168,7 +218,24 @@ El sistema utiliza un ordenamiento específico para las prioridades:
 ### Variaciones Permitidas
 - Minúscula: `[w::]`
 - Mayúscula: `[W::]`
-- Código de semana: `YYYY-W##` (ej: `2025-W43`)
+- Código de semana: `YYYY-W##` (ej: `2025-W43`) o `YYYY-W#` (ej: `2025-W5`)
+- **Espacios tolerados**: El parser ignora espacios dentro de la definición del campo
+
+### Mejoras en el Parser GTD
+
+#### Detección Mejorada de Semanas
+El parser central en `src/modules/moduloGTDv3/parser.ts` fue actualizado para soportar:
+
+```typescript
+// Regex mejorado para campos semanales - soporta 1 y 2 dígitos
+const week = extractAndClean(/\s*\[(?:w|W)\s*::\s*\[\[(?:.*?\|)?(\d{4}-W\d+)\]\]\s*\]/);
+```
+
+**Cambios implementados:**
+- `\d{1,2}` → `\d+`: Soporta semanas de 1 y 2 dígitos (W5, W43)
+- Tolerancia a espacios: `\s*` alrededor de los elementos
+- Limpieza correcta: Remueve el campo completo del contenido de la tarea
+- Manejo de ambos formatos: Con y sin ruta completa en el enlace
 
 ## Estilos CSS
 
@@ -236,12 +303,52 @@ dv.paragraph(`📅 Programadas: ${counts.programmed} | 🔥 Vencidas: ${counts.o
 - **Completadas**: Colapsadas por defecto
 - **Bloqueadas**: Expandidas por defecto
 
+## Sistema de Configuración
+
+### Pestaña de Configuración Journal
+
+El plugin incluye una sección completa de configuración para Journal:
+
+```typescript
+interface JournalSettings {
+    baseFolderPath: string;          // Carpeta base para almacenar journals
+    yearSubfolder: boolean;          // Crear subcarpetas por año
+    quarterSubfolder: boolean;       // Crear subcarpetas por trimestre
+    monthSubfolder: boolean;         // Crear subcarpetas por mes
+    weekFolderPattern: string;       // Patrón para carpetas semanales
+}
+```
+
+### Funcionalidades de Configuración
+
+1. **Validación en Tiempo Real**: Valida rutas de carpetas mientras el usuario escribe
+2. **Vista Previa**: Muestra ejemplos de rutas que se generarían
+3. **Creación Automática**: Crea estructura de carpetas automáticamente
+4. **Validación de Caracteres**: Previene caracteres inválidos en nombres de carpeta
+5. **Verificación de Existencia**: Confirma que las carpetas son válidas o pueden ser creadas
+
+### Ejemplo de Configuración
+
+**Configuración predeterminada:**
+```
+Carpeta Base: "03 - Gestion Personal/AV - Gerente de Vida/AI - Journals"
+✅ Subcarpetas por Año
+✅ Subcarpetas por Trimestre
+✅ Subcarpetas por Mes
+Patrón Semanal: "{YYYY}/Q{Q}/{MM}"
+```
+
+**Resultado:**
+- Nota diaria: `03 - Gestion Personal/AV - Gerente de Vida/AI - Journals/2025/Q4/10/2025-10-24 viernes.md`
+- Enlace semanal: `03 - Gestion Personal/AV - Gerente de Vida/AI - Journals/2025/Q4/10/2025-W43`
+
 ## Consideraciones de Rendimiento
 
 1. **Parsing Inteligente**: Solo procesa tareas relevantes para la fecha objetivo
 2. **Caché de Resultados**: API incluye manejo de errores robusto
 3. **HTML Optimizado**: Reutiliza clases CSS existentes del sistema GTD
 4. **Lazy Loading**: Solo genera HTML cuando es necesario
+5. **Validación Eficiente**: El `JournalPathHelper` optimiza validaciones de carpetas
 
 ## Casos de Uso
 
@@ -278,14 +385,34 @@ El sistema está diseñado para ser extensible:
 ### Errores Comunes
 
 1. **Formato de fecha inválido**: Usar siempre `YYYY-MM-DD`
-2. **Semanas no detectadas**: Verificar formato `[w::[[YYYY-W##]]]`
+2. **Semanas no detectadas**: Verificar formato `[w::[[YYYY-W##]]]` o `[w::[[YYYY-W#]]]`
 3. **Tareas no aparecen**: Confirmar que las tareas estén en archivos indexados por Dataview
+4. **Configuración de carpetas**: Verificar que la carpeta base existe y es válida
+5. **Semanas de 1 dígito**: Asegurarse de usar el formato correcto (W5, no W05)
 
 ### Debug
 El sistema incluye logging detallado en la consola del desarrollador para facilitar la depuración.
 
 ---
 
+## Registro de Cambios
+
+### v1.1.0 (2025-10-24)
+- ✅ **Mejoras en Parser GTD**: Soporte completo para semanas de 1 y 2 dígitos
+- ✅ **Sistema de Configuración**: Pestaña completa de configuración con validación en tiempo real
+- ✅ **JournalPathHelper**: Nueva clase utilitaria para manejo de rutas configurables
+- ✅ **Tolerancia a Espacios**: Parser mejorado para manejar espacios en campos semanales
+- ✅ **Validación de Carpetas**: Sistema robusto de validación y creación de carpetas
+- ✅ **Vista Previa**: Ejemplos en tiempo real de rutas generadas
+
+### v1.0.0 (2025-10-24)
+- ✅ **Lanzamiento Inicial**: Sistema Journal completo con categorización de tareas
+- ✅ **Soporte Semanal**: Detección y agrupación de tareas semanales con formato [w::]
+- ✅ **API DataviewJS**: Integración completa con DataviewJS
+- ✅ **Estilos CSS**: Sistema completo de estilos responsivos
+
+---
+
 **Última actualización**: 2025-10-24
-**Versión del sistema**: 1.0.0
+**Versión del sistema**: 1.1.0
 **Compatibilidad**: Obsidian 1.0+ con plugin Dataview

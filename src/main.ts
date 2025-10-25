@@ -18,6 +18,7 @@ import { parseVault } from './modules/moduloGTDv3/parser.js';
 import moment from 'moment';
 import { SmartInboxView } from './modules/moduloGTDv3/smartInboxView.js';
 import { JournalAPI } from './modules/moduloJournal/journalAPI.js';
+import { WeeklyAPI } from './modules/moduloWeekly/weeklyAPI.js';
 
 type TaskSource = 'open-notes' | 'in-progress' | 'all-tasks';
 
@@ -42,6 +43,7 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
     private smartInboxView: SmartInboxView | null = null;
     public journalAPI!: JournalAPI;
+    public weeklyAPI!: WeeklyAPI;
 
     override async onload() {
         console.log('Loading Dovela Personal Management Plugin...');
@@ -223,6 +225,9 @@ export default class DovelaPersonalManagementPlugin extends Plugin {
 
         // Initialize Journal API for DataviewJS
         this.journalAPI = new JournalAPI(this);
+
+        // Initialize Weekly API for DataviewJS
+        this.weeklyAPI = new WeeklyAPI(this);
 
         // Start the sync poller now that the plugin is fully loaded
         this.startSyncInterval();

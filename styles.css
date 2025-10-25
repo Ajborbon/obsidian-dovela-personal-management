@@ -5903,3 +5903,246 @@ datalist {
 .theme-dark .journal-task:hover {
     background: var(--background-modifier-border);
 }
+
+/* ===================================================
+   WEEKLY TASK RENDERER STYLES
+   =================================================== */
+
+/* Weekly Container */
+.weekly-tasks-container.dovela-weekly {
+    font-family: var(--font-interface);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Weekly Header */
+.weekly-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.weekly-header h2 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.weekly-date-range {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Weekly Groups */
+.weekly-group {
+    margin-bottom: 24px;
+    padding: 12px;
+    background: var(--background-primary-alt);
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+}
+
+.weekly-group.collapsible.collapsed .weekly-task-list,
+.weekly-group.collapsible.collapsed .daily-task-list {
+    display: none;
+}
+
+.weekly-group-title {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-normal);
+    cursor: default;
+}
+
+.weekly-group.collapsible .weekly-group-title {
+    cursor: pointer;
+    user-select: none;
+}
+
+.weekly-group.collapsible .weekly-group-title:hover {
+    color: var(--interactive-accent);
+}
+
+.weekly-group.collapsible .weekly-group-title::before {
+    content: '▼ ';
+    font-size: 12px;
+    opacity: 0.6;
+    margin-right: 4px;
+}
+
+.weekly-group.collapsible.collapsed .weekly-group-title::before {
+    content: '▶ ';
+}
+
+/* Weekly Group Overdue */
+.weekly-group--overdue {
+    border-color: var(--text-error);
+    background: rgba(255, 0, 0, 0.05);
+}
+
+.weekly-group--completed {
+    opacity: 0.8;
+}
+
+/* Daily Groups */
+.daily-group {
+    margin-bottom: 16px;
+    padding: 10px;
+    background: var(--background-primary);
+    border-radius: 4px;
+    border-left: 3px solid var(--background-modifier-border);
+}
+
+.daily-group:last-child {
+    margin-bottom: 0;
+}
+
+.daily-group--today {
+    border-left-color: var(--interactive-accent);
+    background: var(--background-modifier-form-field);
+}
+
+.daily-group-title {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.daily-group--today .daily-group-title {
+    color: var(--interactive-accent);
+}
+
+/* Weekly Tasks */
+.weekly-task {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.weekly-task:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.weekly-task:last-child {
+    margin-bottom: 0;
+}
+
+.weekly-task .task-checkbox {
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.weekly-task .task-content {
+    flex: 1;
+    color: var(--text-normal);
+    line-height: 1.5;
+}
+
+.weekly-task .task-metadata {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.weekly-task .task-priority {
+    font-size: 14px;
+}
+
+.weekly-task .task-duration,
+.weekly-task .task-date,
+.weekly-task .task-week,
+.weekly-task .task-contexts,
+.weekly-task .task-people {
+    padding: 2px 6px;
+    background: var(--background-modifier-border);
+    border-radius: 3px;
+}
+
+.weekly-task .task-date.is-overdue,
+.weekly-task .task-week.is-overdue {
+    color: var(--text-error);
+    background: rgba(255, 0, 0, 0.1);
+    font-weight: 600;
+}
+
+.weekly-task--overdue {
+    border-color: var(--text-error);
+    background: rgba(255, 0, 0, 0.05);
+}
+
+/* Weekly More Tasks Indicator */
+.weekly-more-tasks {
+    padding: 8px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 13px;
+}
+
+/* Weekly Error */
+.weekly-error {
+    padding: 12px;
+    margin: 8px 0;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid var(--text-error);
+    border-radius: 4px;
+    color: var(--text-error);
+    font-size: 14px;
+}
+
+/* Responsive adjustments for Weekly */
+@media (max-width: 768px) {
+    .weekly-header h2 {
+        font-size: 20px;
+    }
+
+    .weekly-group-title {
+        font-size: 14px;
+    }
+
+    .weekly-task {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .weekly-task .task-metadata {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+/* Dark theme adjustments */
+.theme-dark .weekly-group {
+    background: var(--background-primary);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.theme-dark .daily-group {
+    background: var(--background-primary-alt);
+}
+
+.theme-dark .weekly-task {
+    background: var(--background-primary-alt);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.theme-dark .weekly-task:hover {
+    background: var(--background-modifier-border);
+}
