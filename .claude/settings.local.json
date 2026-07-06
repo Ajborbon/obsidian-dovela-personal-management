@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(pnpm build:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Read(//Users/andresborbon/Library/CloudStorage/GoogleDrive-andresborbon@crezco360.com/**)"
     ],
     "deny": [],
     "ask": []
