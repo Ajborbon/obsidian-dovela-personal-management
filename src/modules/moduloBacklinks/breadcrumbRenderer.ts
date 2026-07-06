@@ -80,8 +80,8 @@ export class BreadcrumbRenderer {
     }
 
     createPathBreadcrumbs(folderPath: string): HTMLElement {
-        // Mantener por compatibilidad - delega al nuevo método
-        return this.createBreadcrumb(folderPath);
+        // Mantener por compatibilidad — usa full para evitar recursión mutua con createCompactBreadcrumb
+        return this.createFullBreadcrumb(folderPath);
     }
 
 

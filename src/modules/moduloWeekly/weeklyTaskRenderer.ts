@@ -362,10 +362,10 @@ export class WeeklyTaskRenderer {
             if (!aMatch) return 1;
             if (!bMatch) return -1;
 
-            const aYear = parseInt(aMatch[1]);
-            const aWeek = parseInt(aMatch[2]);
-            const bYear = parseInt(bMatch[1]);
-            const bWeek = parseInt(bMatch[2]);
+            const aYear = parseInt(aMatch[1]!);
+            const aWeek = parseInt(aMatch[2]!);
+            const bYear = parseInt(bMatch[1]!);
+            const bWeek = parseInt(bMatch[2]!);
 
             // Ordenar por año primero
             if (aYear !== bYear) {
