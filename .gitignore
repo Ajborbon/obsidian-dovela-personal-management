@@ -26,3 +26,8 @@ data.json
 dist
 .env
 /tsconfig.tsbuildinfo
+
+# Archivos temporales de trabajo
+Copia de styles.css
+*.gemini_*
+.gemini_*
