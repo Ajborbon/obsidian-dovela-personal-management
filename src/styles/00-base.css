@@ -1,0 +1,9 @@
+/* Dovela v2 — variables y utilidades comunes. Solo variables CSS de Obsidian. */
+.dovela {
+  --dovela-gap: var(--size-4-2, 8px);
+  --dovela-radius: var(--radius-m, 8px);
+  --dovela-overdue: var(--color-red, #e5484d);
+  --dovela-today: var(--color-green, #30a46c);
+  --dovela-future: var(--color-blue, #0091ff);
+  --dovela-paused: var(--color-orange, #f76808);
+}

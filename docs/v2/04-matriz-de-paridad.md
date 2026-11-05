@@ -3,22 +3,22 @@
 Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (paridad + cambios documentados) · **descartada** (con motivo) · **parcial** (qué falta en la nota).
 “Fase” = fase del [plan](03-plan-de-desarrollo.md). “Prueba” = automatizada (A) / manual (M, ver guía 05).
 
-Última actualización: F0 (2026-11-05).
+Última actualización: F1 (2026-11-05).
 
 ## Núcleo de tareas
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F01 | Parser de línea de tarea (estados ` `,`x`,`X`,`/`; fechas 🛫⏳📅; 🆔/^; hI/hF; duración; `[w::]`; ⛔; #cx/#px; tags GTD; prioridad) | RI-A §2 | F1 | pendiente | A | R1–R12 |
-| F02 | Detección de conflictos hora/duración → Inbox | RI-A §2.4 | F1 | pendiente | A | |
-| F03 | Tipos de nota por frontmatter/prefijo | RI-A §1.2 | F1 | pendiente | A | acepta `Wly/Mly/Qly/Yly` |
+| F01 | Parser de línea de tarea (estados ` `,`x`,`X`,`/`; fechas 🛫⏳📅; 🆔/^; hI/hF; duración; `[w::]`; ⛔; #cx/#px; tags GTD; prioridad) | RI-A §2 | F1 | parcial | A | R1–R12; núcleo `core/tasks/parse.ts` + 15 pruebas; integración en índice F2 |
+| F02 | Detección de conflictos hora/duración → Inbox | RI-A §2.4 | F1 | parcial | A | núcleo hecho; horas fuera de rango ahora son conflicto |
+| F03 | Tipos de nota por frontmatter/prefijo | RI-A §1.2 | F1 | parcial | A | acepta `Wly/Mly/Qly/Yly`; `core/notes/types.ts`; lee cualquier `type` conocido del frontmatter |
 | F04 | Exclusión de plantillas y `99 - Adjuntos` | RI-A §1.1 | F2 | pendiente | A | configurable |
-| F05 | Jerarquía carpeta↔nota, placeholders `[FALTA]`, conteos, orden | RI-A §5 | F1 | pendiente | A | corrige B-H1 |
-| F06 | Clasificación 10 listas GTD + displayStatus | RI-A §4 | F1 | pendiente | A | 21 escenarios oro |
-| F07 | Navegación (orden dinámico, ids de ancla, iconos) | RI-A §4.4 | F1 | pendiente | A | |
-| F08 | En Progreso: métricas, agrupaciones, orden cíclico | RI-A §4.6 | F1 | pendiente | A | |
-| F09 | Marcar en progreso `[ ]→[/]` | RI-A §6.3 | F1/F4 | pendiente | A | sin fallback peligroso |
-| F10 | Cerrar tarea `[x] ✅ fecha` | RI-A §6.3 | F1/F4 | pendiente | A | ✅ antes de `^bloque` |
+| F05 | Jerarquía carpeta↔nota, placeholders `[FALTA]`, conteos, orden | RI-A §5 | F1 | parcial | A | corrige B-H1; `core/notes/hierarchy.ts`, B-H1 corregido; UI en F5 |
+| F06 | Clasificación 10 listas GTD + displayStatus | RI-A §4 | F1 | parcial | A | 21 escenarios oro; `core/gtd/classify.ts`; 23 escenarios oro + 11 reglas; B-G1, B-G2, B-P6 corregidos; ciclos → Inbox |
+| F07 | Navegación (orden dinámico, ids de ancla, iconos) | RI-A §4.4 | F1 | parcial | A | `navigationItems`, anclas sin acentos |
+| F08 | En Progreso: métricas, agrupaciones, orden cíclico | RI-A §4.6 | F1 | parcial | A | `core/gtd/inprogress.ts`; orden total (comparador transitivo) |
+| F09 | Marcar en progreso `[ ]→[/]` | RI-A §6.3 | F1/F4 | parcial | A | sin fallback peligroso; `markInProgress` + localización segura |
+| F10 | Cerrar tarea `[x] ✅ fecha` | RI-A §6.3 | F1/F4 | parcial | A | ✅ antes de `^bloque`; `markDone`, ✅ antes de `^bloque`, conserva CRLF |
 | F11 | Dependencias `⛔ id` con enlace 🔗 navegable | RI-A §4.2 | F1/F5 | pendiente | A+M | ciclos → Inbox |
 | F12 | Proyectos estancados (🟢 sin tareas, carpeta+2 niveles de enlaces) | RI-A §6.1 | F7 | pendiente | A+M | cuenta `[/]` como abierta |
 

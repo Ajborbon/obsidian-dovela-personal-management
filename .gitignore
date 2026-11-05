@@ -31,3 +31,5 @@ dist
 Copia de styles.css
 *.gemini_*
 .gemini_*
+# Build v2 (generado desde src/styles)
+/styles.css
