@@ -3,22 +3,22 @@
 Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (paridad + cambios documentados) · **descartada** (con motivo) · **parcial** (qué falta en la nota).
 “Fase” = fase del [plan](03-plan-de-desarrollo.md). “Prueba” = automatizada (A) / manual (M, ver guía 05).
 
-Última actualización: F3 (2026-11-05).
+Última actualización: F10 (2026-11-05). **Ninguna funcionalidad está validada aún en Obsidian real**: “hecha/mejorada” significa implementada + pruebas automáticas de la lógica + guía manual escrita.
 
 ## Núcleo de tareas
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F01 | Parser de línea de tarea (estados ` `,`x`,`X`,`/`; fechas 🛫⏳📅; 🆔/^; hI/hF; duración; `[w::]`; ⛔; #cx/#px; tags GTD; prioridad) | RI-A §2 | F1 | parcial | A | R1–R12; núcleo `core/tasks/parse.ts` + 15 pruebas; integración en índice F2 |
-| F02 | Detección de conflictos hora/duración → Inbox | RI-A §2.4 | F1 | parcial | A | núcleo hecho; horas fuera de rango ahora son conflicto |
-| F03 | Tipos de nota por frontmatter/prefijo | RI-A §1.2 | F1 | parcial | A | acepta `Wly/Mly/Qly/Yly`; `core/notes/types.ts`; lee cualquier `type` conocido del frontmatter |
+| F01 | Parser de línea de tarea (estados ` `,`x`,`X`,`/`; fechas 🛫⏳📅; 🆔/^; hI/hF; duración; `[w::]`; ⛔; #cx/#px; tags GTD; prioridad) | RI-A §2 | F1 | mejorada | A | R1–R12; núcleo `core/tasks/parse.ts` + 15 pruebas; integración en índice F2; integrado en el índice y en todas las vistas (un solo parser para GTD, Foco, Journal, Weekly, captura, paneles) |
+| F02 | Detección de conflictos hora/duración → Inbox | RI-A §2.4 | F1 | mejorada | A | núcleo hecho; horas fuera de rango ahora son conflicto; conflictos visibles en la fila de tarea (⚠️ con el motivo) |
+| F03 | Tipos de nota por frontmatter/prefijo | RI-A §1.2 | F1 | mejorada | A | acepta `Wly/Mly/Qly/Yly`; `core/notes/types.ts`; lee cualquier `type` conocido del frontmatter; tipos del vault (`Btx`, `Cmt`, `Wly`…) y alias de v1 |
 | F04 | Exclusión de plantillas y `99 - Adjuntos` | RI-A §1.1 | F2 | hecha | A | configurable; `core/settings.isExcludedPath` + `VaultIndex`; ahora con límite de carpeta y configurable |
 | F05 | Jerarquía carpeta↔nota, placeholders `[FALTA]`, conteos, orden | RI-A §5 | F1 | mejorada | A | corrige B-H1; `core/notes/hierarchy.ts`, B-H1 corregido; UI en F5; UI: árbol sobre el índice, hijos al abrir |
 | F06 | Clasificación 10 listas GTD + displayStatus | RI-A §4 | F1 | mejorada | A | 21 escenarios oro; `core/gtd/classify.ts`; 23 escenarios oro + 11 reglas; B-G1, B-G2, B-P6 corregidos; ciclos → Inbox; UI: listas y clases de displayStatus |
 | F07 | Navegación (orden dinámico, ids de ancla, iconos) | RI-A §4.4 | F1 | hecha | A | `navigationItems`, anclas sin acentos; navegación desde las mismas secciones pintadas |
 | F08 | En Progreso: métricas, agrupaciones, orden cíclico | RI-A §4.6 | F1 | hecha | A | `core/gtd/inprogress.ts`; orden total (comparador transitivo); UI: métricas, 4 agrupaciones, orden cíclico recordados por dispositivo |
-| F09 | Marcar en progreso `[ ]→[/]` | RI-A §6.3 | F1/F4 | parcial | A | sin fallback peligroso; `markInProgress` + localización segura |
-| F10 | Cerrar tarea `[x] ✅ fecha` | RI-A §6.3 | F1/F4 | parcial | A | ✅ antes de `^bloque`; `markDone`, ✅ antes de `^bloque`, conserva CRLF |
+| F09 | Marcar en progreso `[ ]→[/]` | RI-A §6.3 | F1/F4 | mejorada | A | sin fallback peligroso; `markInProgress` + localización segura; al iniciar temporizador/Pomodoro y desde Journal/Weekly (acciones rápidas), con `vault.process` |
+| F10 | Cerrar tarea `[x] ✅ fecha` | RI-A §6.3 | F1/F4 | mejorada | A | ✅ antes de `^bloque`; `markDone`, ✅ antes de `^bloque`, conserva CRLF; casillas de Dashboard, Foco, Journal y Weekly + cierre al detener tiempo; nunca cierra otra tarea |
 | F11 | Dependencias `⛔ id` con enlace 🔗 navegable | RI-A §4.2 | F1/F5 | mejorada | A+M | ciclos → Inbox; 🔗 navegable vía taskById, ⚠️ si no existe; en Foco resuelve contra todo el vault |
 | F12 | Proyectos estancados (🟢 sin tareas, carpeta+2 niveles de enlaces) | RI-A §6.1 | F7 | mejorada | A+M | cuenta `[/]` como abierta; `core/panels/stalled.ts` sobre el índice; cuenta `[/]`, tolera selector de variación; usa `resolvedLinks` (incluye incrustaciones); 12 pruebas |
 
@@ -118,8 +118,8 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
 | F74 | Persistencia `data.json` (ajustes) | RI-C §2 | F2 | mejorada | A | schemaVersion 2, backup; `schemaVersion: 2`, merge profundo sin referencias compartidas, respaldo `data.v1.backup.json`, legado intacto, `onExternalSettingsChange` |
-| F75 | Pestaña de ajustes | RI-B §4 | F2+ | parcial | M | + carpetas, prefijos, Inbox, exclusiones; secciones General, Pomodoro, Journal; cada feature añade la suya |
-| F76 | Soporte móvil | RI-F §2.20 | todas | en curso | M | índice sin APIs de Node; caché por dispositivo con respaldo |
+| F75 | Pestaña de ajustes | RI-B §4 | F2+ | mejorada | M | + carpetas, prefijos, Inbox, exclusiones; secciones General, Pomodoro, Journal; cada feature añade la suya; secciones General, Tiempo, Pomodoro, Journal (+ vista previa), Backlinks (por dispositivo); guardado con debounce |
+| F76 | Soporte móvil | RI-F §2.20 | todas | parcial | M | índice sin APIs de Node; caché por dispositivo con respaldo; sin APIs de Node/Electron, táctil ≥ 44 px, inputs 16 px, comandos de paleta para todo; falta validación manual en iOS/Android |
 | F77 | Escritura incremental en menús | RI-B §3.6 | F6 | mejorada | A | Enter guarda sin opciones, espacio cierra, resaltado y orden por relevancia |
 | F78 | Migración `timelogs.json` | RI-C §2.4 | F3 | mejorada | A | v1 la perdía; v2 la importa; `timelogs.json` se importa (v1 lo borraba sin importar) |
 
@@ -134,3 +134,18 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | D05 | Valores de ejemplo de contextos/personas (`juan`, `maria`, `oficina`…) en el menú | Datos falsos; se usan solo los del vault |
 | D06 | `DovelaPluginData` duplicados de `focoModel.ts` | Obsoletos |
 | D07 | `detachLeavesOfType` en `onunload` | Desaconsejado por Obsidian; las hojas se restauran solas |
+
+## Nuevas en v2 (no existían en v1)
+
+| ID | Funcionalidad | Fase | Estado |
+|---|---|---|---|
+| N01 | Índice incremental compartido + comandos de diagnóstico (estado, reconstruir, depuración) | F2 | hecha |
+| N02 | Registro de tiempo por eventos por dispositivo (seguro con Sync) + importar/verificar/archivar historial v1 | F3 | hecha |
+| N03 | Vista independiente “Dovela: Tiempo” y comandos de paleta para detener/cancelar/registrar/descansar | F4 | hecha |
+| N04 | Motor de notas DOVELA (22 tipos) sin Templater, comandos por tipo y menús de carpeta/nota | F9 | hecha |
+| N05 | Comandos “Abrir/crear nota diaria/semanal/mensual/trimestral/anual” | F9 | hecha |
+| N06 | Selector de estado 🟡🟢🔵🔴 (comando, menús, barra de estado) | F9 | hecha |
+| N07 | Bloques nativos ```dovela-dia``` / ```dovela-semana``` (alternativa a datacorejsx) | F9 | hecha |
+| N08 | Lint “tareas en notas de conocimiento” en el panel de revisión | F7 | hecha |
+| N09 | Resumen de proyectos PGTD por nivel y antigüedad | F7 | hecha |
+| N10 | Exportación CSV (sustituye a Excel), también en móvil | F7 | hecha |

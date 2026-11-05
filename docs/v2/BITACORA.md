@@ -37,3 +37,11 @@ Una entrada por fase. Formato: fecha · fase · qué se hizo · decisiones · ve
 - Feature `time`: comandos de importar/verificar/archivar el historial, aviso de importación pendiente, sección de ajustes.
 - Verificación: 113 pruebas, typecheck, lint, build (`main.js` 45 KB).
 - Siguiente: F4–F9 en paralelo por módulos.
+
+## 2026-11-05 · F4–F9 · Funcionalidades (en paralelo por módulos)
+- Antes de repartir: componentes de UI compartidos (`ui/taskRow`, `ui/MonthGrid`, `ui/TaskPickerModal`), rutas de journal puras (`core/journal/paths.ts`, trimestre y año ISO corregidos) y contrato `mountTimeTab` entre el Dashboard y la UI de tiempo.
+- Siete agentes, cada uno con su carpeta (`features/<x>`, `core/<x>`, `tests/<x>`, `styles/NN-<x>.css`, `docs/v2/guia/<x>.md`), sin tocar contratos compartidos ni hacer commits. El orquestador integró cada área por separado verificando la **instantánea exacta del commit** en un directorio aislado (`git checkout-index`): tipos, lint, pruebas y build. (Incidente: un `git stash` temprano del orquestador ocultó por un instante archivos de los agentes; se recuperaron completos y se dejó de usar stash.)
+- F7 paneles (actividad, revisión) · F8 backlinks · F9 journalAPI/weeklyAPI · F6 Smart Inbox · F5/F8 Dashboard GTD + Foco sin fork · F4/F7 UI de tiempo y Pomodoro · F9 motor de notas + journals + selector de estado. Un commit por área.
+- Integración: `TimeService.stopTimer` conserva el tipo de sesión (petición del agente de tiempo); objetivos táctiles del calendario a 44 px en móvil.
+- Verificación final del árbol: 499 pruebas, typecheck (src + tests), lint, build (`main.js` ≈ 353 KB; v1 ≈ 1,6 MB).
+- Decisiones relevantes de los agentes documentadas en cada `docs/v2/guia/*.md` y resumidas en `06-estado-final.md`.
