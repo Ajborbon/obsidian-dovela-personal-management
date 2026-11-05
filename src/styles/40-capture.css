@@ -1,0 +1,125 @@
+/* Smart Inbox (F6): modal de captura, menú unificado @/#, calendario !, vista previa. */
+.dovela-capture-modal { width: min(640px, 96vw); }
+.dovela-capture { display: flex; flex-direction: column; gap: var(--size-4-2, 8px); }
+.dovela-capture .is-hidden { display: none !important; }
+
+.dovela-capture-input {
+  width: 100%;
+  font-size: var(--font-ui-medium);
+  padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+  min-height: 40px;
+}
+.dovela-capture-hint { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+
+/* Panel único bajo el input (en flujo, no flotante: el teclado virtual no lo tapa). */
+.dovela-capture-panel {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  background: var(--background-secondary);
+  max-height: min(var(--dovela-capture-panel-max, 360px), 360px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.dovela-capture-menu-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--size-4-2, 8px);
+  padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.dovela-capture-menu-title { font-weight: var(--font-semibold); font-size: var(--font-ui-small); }
+.dovela-capture-menu-keys { color: var(--text-faint); font-size: var(--font-ui-smaller); }
+.dovela-capture-menu-empty { padding: var(--size-4-2, 8px); color: var(--text-muted); font-size: var(--font-ui-small); }
+
+.dovela-capture-option {
+  padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
+  min-height: 36px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 3px solid transparent;
+}
+.dovela-capture-option.is-selected {
+  background: var(--background-modifier-hover);
+  border-left-color: var(--interactive-accent);
+}
+.dovela-capture-option-main { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.dovela-capture-option-prefix { color: var(--text-faint); }
+.dovela-capture-option-label { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.dovela-capture-hl { color: var(--text-accent); font-weight: var(--font-bold); }
+.dovela-capture-option-badge {
+  flex: none;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  background: var(--background-modifier-border);
+  border-radius: var(--radius-s, 4px);
+  padding: 0 6px;
+}
+.dovela-capture-option-detail { color: var(--text-muted); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; }
+
+/* Calendario */
+.dovela-capture-cal .dovela-month { padding: 0 var(--size-4-2, 8px); }
+.dovela-capture-cal-kinds { display: flex; gap: 4px; padding: var(--size-4-2, 8px); flex-wrap: wrap; }
+.dovela-capture-cal-kind { flex: 1 1 0; min-height: 36px; font-size: var(--font-ui-small); }
+.dovela-capture-cal-kind.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.dovela-capture-cal-typed { padding: 0 var(--size-4-2, 8px) var(--size-4-1, 4px); font-size: var(--font-ui-small); }
+.dovela-capture-cal-typed.is-ok { color: var(--text-success, var(--color-green)); }
+.dovela-capture-cal-typed.is-bad { color: var(--text-warning, var(--color-orange)); }
+.dovela-capture-cal-quick { display: flex; flex-wrap: wrap; gap: 4px; padding: var(--size-4-2, 8px); }
+.dovela-capture-cal-quick-btn { display: inline-flex; gap: 6px; align-items: baseline; min-height: 36px; font-size: var(--font-ui-small); }
+.dovela-capture-cal-quick-date { color: var(--text-faint); font-size: var(--font-ui-smaller); font-variant-numeric: tabular-nums; }
+.dovela-capture-cal-error { padding: 0 var(--size-4-2, 8px) var(--size-4-2, 8px); color: var(--text-error); font-size: var(--font-ui-small); }
+
+/* Vista previa y avisos */
+.dovela-capture-preview {
+  background: var(--background-primary-alt);
+  border-radius: var(--radius-s, 4px);
+  padding: var(--size-4-2, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dovela-capture-dest { color: var(--text-muted); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; }
+.dovela-capture-line { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--font-ui-small); background: none; padding: 0; }
+.dovela-capture-line.is-placeholder { color: var(--text-faint); font-family: var(--font-interface); }
+.dovela-capture-warnings { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.dovela-capture-warnings:empty { display: none; }
+.dovela-capture-warning { color: var(--text-warning, var(--color-orange)); font-size: var(--font-ui-smaller); }
+.dovela-capture-warning.is-info { color: var(--text-muted); }
+
+.dovela-capture-help { font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-capture-help summary { cursor: pointer; min-height: 28px; display: list-item; }
+.dovela-capture-help ul { margin: 4px 0 0; padding-left: var(--size-4-4, 16px); }
+.dovela-capture-help li { margin-bottom: 2px; }
+.dovela-capture-buttons { display: flex; justify-content: flex-end; gap: var(--size-4-2, 8px); }
+
+/* Móvil: arriba de la pantalla, inputs a 16px (sin zoom de iOS), áreas táctiles ≥ 44px. */
+.modal-container:has(> .dovela-capture-modal.is-mobile) { align-items: flex-start; }
+.dovela-capture-modal.is-mobile {
+  width: 100vw;
+  max-width: 100vw;
+  margin-top: max(env(safe-area-inset-top, 0px), 8px);
+  max-height: none;
+}
+.dovela-capture-modal.is-mobile .dovela-capture-input { font-size: 16px; min-height: 44px; }
+.dovela-capture-modal.is-mobile .dovela-capture-option,
+.dovela-capture-modal.is-mobile .dovela-capture-cal-kind,
+.dovela-capture-modal.is-mobile .dovela-capture-cal-quick-btn,
+.dovela-capture-modal.is-mobile .dovela-capture-buttons button,
+.dovela-capture-modal.is-mobile .dovela-capture-help summary { min-height: 44px; }
+.dovela-capture-modal.is-mobile .dovela-month-day { min-height: 44px; }
+.dovela-capture-modal.is-mobile .dovela-capture-menu-keys { display: none; }
+.dovela-capture-modal.is-mobile .dovela-capture-panel { max-height: var(--dovela-capture-panel-max, 45vh); }
+
+@media (max-width: 480px) {
+  .dovela-capture-buttons button { flex: 1 1 0; }
+  .dovela-capture-cal-quick-btn { flex: 1 1 calc(50% - 4px); justify-content: space-between; }
+}
+
+.dovela-capture-notice-link { text-decoration: underline; cursor: pointer; }

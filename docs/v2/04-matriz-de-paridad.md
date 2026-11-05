@@ -44,12 +44,12 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F26 | Smart Inbox (comando + ribbon `plus-circle`) | RI-B §3 | F6 | pendiente | M | |
-| F27 | `@` proyectos/áreas 🟢 con nota activa primero | RI-B §3.5 | F6 | pendiente | A+M | incluye `PQ -` |
-| F28 | `#` menú en cascada cx/px/gtd con filtrado incremental | RI-B §3.6 | F6 | pendiente | A+M | sin valores de ejemplo |
-| F29 | `!` calendario Start/Schedule/Due + accesos rápidos | RI-B §3.7 | F6 | pendiente | A+M | |
-| F30 | Fechas legacy `!hoy`, `!mañana`, día de semana | RI-B §3.3 | F6 | pendiente | A | + `YYMMDD` (backlog v0.9) |
-| F31 | Inserción en `## Tareas` o `00 - Inbox/Bandeja de entrada.md`, `#inbox`, `➕` | RI-B §3.4 | F6 | pendiente | A | ruta configurable |
+| F26 | Smart Inbox (comando + ribbon `plus-circle`) | RI-B §3 | F6 | mejorada | M | Modal nativo con vista previa en vivo, ayuda y botón Guardar; mismo id e icono |
+| F27 | `@` proyectos/áreas 🟢 con nota activa primero | RI-B §3.5 | F6 | mejorada | A+M | incluye `PQ -`; nota activa siempre primera; incluye PQ y RR; nombre más largo y `@[[…]]`; no consume la descripción |
+| F28 | `#` menú en cascada cx/px/gtd con filtrado incremental | RI-B §3.6 | F6 | mejorada | A+M | sin valores de ejemplo; contextos/personas reales sin ejemplos, acentos, GTD normalizado, etiquetas libres |
+| F29 | `!` calendario Start/Schedule/Due + accesos rápidos | RI-B §3.7 | F6 | mejorada | A+M | lunes primero independiente del locale; fechas pasadas solo para Vence también por teclado |
+| F30 | Fechas legacy `!hoy`, `!mañana`, día de semana | RI-B §3.3 | F6 | mejorada | A | + `YYMMDD` (backlog v0.9); español e inglés, “próximo X”, `YYMMDD`, aviso si no se reconoce |
+| F31 | Inserción en `## Tareas` o `00 - Inbox/Bandeja de entrada.md`, `#inbox`, `➕` | RI-B §3.4 | F6 | mejorada | A | ruta configurable; ruta y encabezado configurables, archivo nuevo con encabezado, ignora código/frontmatter, aviso con enlace |
 
 ## Tiempo y Pomodoro
 
@@ -120,7 +120,7 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F74 | Persistencia `data.json` (ajustes) | RI-C §2 | F2 | mejorada | A | schemaVersion 2, backup; `schemaVersion: 2`, merge profundo sin referencias compartidas, respaldo `data.v1.backup.json`, legado intacto, `onExternalSettingsChange` |
 | F75 | Pestaña de ajustes | RI-B §4 | F2+ | parcial | M | + carpetas, prefijos, Inbox, exclusiones; secciones General, Pomodoro, Journal; cada feature añade la suya |
 | F76 | Soporte móvil | RI-F §2.20 | todas | en curso | M | índice sin APIs de Node; caché por dispositivo con respaldo |
-| F77 | Escritura incremental en menús | RI-B §3.6 | F6 | pendiente | A | |
+| F77 | Escritura incremental en menús | RI-B §3.6 | F6 | mejorada | A | Enter guarda sin opciones, espacio cierra, resaltado y orden por relevancia |
 | F78 | Migración `timelogs.json` | RI-C §2.4 | F3 | mejorada | A | v1 la perdía; v2 la importa; `timelogs.json` se importa (v1 lo borraba sin importar) |
 
 ## Descartadas / no portadas (con motivo)
