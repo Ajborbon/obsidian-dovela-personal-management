@@ -9,9 +9,8 @@ import { analyzeSelection } from '../../../core/tasks/edit';
 import { expiredAction, noteName, runOf, statusBarInfo, type SessionMode } from '../../../core/time/display';
 import { isStale, type LiveSession, type TimeLog } from '../../../core/time/merge';
 import {
-  isExpired, overtimeAlertDue, overtimeSeconds, phaseEnd, pomodoroNotes, type PomodoroRun,
+  isExpired, overtimeAlertDue, overtimeSeconds, phaseEnd, type PomodoroRun,
 } from '../../../core/time/pomodoro';
-import type { LogEvent } from '../../../core/time/events';
 import { logger } from '../../../host/logger';
 import type { StopInput, TaskTarget, TimeService } from '../../../host/time/TimeService';
 import type { Pick as TaskPick } from '../../../ui/TaskPickerModal';
@@ -367,31 +366,8 @@ export class TimeUi {
     modal.open();
   }
 
-  /**
-   * Cierra una sesión con un registro (un único evento `log` con el mismo id).
-   * Para Pomodoro conserva `k: "pomodoro"` (TimeService.stopTimer siempre escribe `timer`).
-   */
-  async stopSession(s: LiveSession, input: StopInput): Promise<boolean> {
-    if (s.kind === 'timer') return this.service.stopTimer(s, input);
-    if (input.end < input.start) {
-      new Notice('Dovela: la hora de fin es anterior a la de inicio.');
-      return false;
-    }
-    const total = Math.floor((input.end - input.start) / 60_000);
-    const store = this.service.store;
-    const planned = s.plannedMin ?? this.ctx.settings.value.pomodoro.workDuration;
-    const ev: LogEvent = {
-      t: 'log', id: s.id, u: store.nextU(), dev: store.deviceId,
-      a: new Date(input.start).toISOString(), b: new Date(input.end).toISOString(),
-      p: input.path ?? s.path, k: 'pomodoro',
-      ...((input.desc ?? s.desc) ? { d: input.desc ?? s.desc } : {}),
-      n: pomodoroNotes(total, planned, 0, s.cycles ?? 0, input.notes),
-      ...(s.line !== undefined ? { l: s.line } : {}),
-      ...(s.taskId ? { i: s.taskId } : {}),
-      pl: planned, cy: s.cycles ?? 0,
-    };
-    await store.append([ev]);
-    if (input.closeTask) await this.service.closeTaskOf(s);
-    return true;
+  /** Cierra una sesión con un registro (un único evento `log`; TimeService conserva el tipo). */
+  stopSession(s: LiveSession, input: StopInput): Promise<boolean> {
+    return this.service.stopTimer(s, input);
   }
 }

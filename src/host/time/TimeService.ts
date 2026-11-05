@@ -148,19 +148,27 @@ export class TimeService {
     };
   }
 
-  /** Detener y registrar (un solo evento: el `log` con el mismo id cierra la sesión). */
+  /**
+   * Detener y registrar (un solo evento: el `log` con el mismo id cierra la sesión).
+   * Conserva el tipo: una sesión Pomodoro se registra como `pomodoro` con sus notas automáticas.
+   */
   async stopTimer(s: LiveSession, input: StopInput): Promise<boolean> {
     if (input.end < input.start) {
       new Notice('Dovela: la hora de fin es anterior a la de inicio.');
       return false;
     }
+    const isPomo = s.kind === 'pomodoro';
+    const planned = s.plannedMin ?? this.settings.value.pomodoro.workDuration;
+    const total = Math.floor((input.end - input.start) / 60_000);
+    const notes = isPomo ? pomodoroNotes(total, planned, 0, s.cycles ?? 0, input.notes) : input.notes;
     const ev: LogEvent = {
       t: 'log', ...this.base(s.id), a: new Date(input.start).toISOString(), b: new Date(input.end).toISOString(),
-      p: input.path ?? s.path, k: 'timer',
+      p: input.path ?? s.path, k: isPomo ? 'pomodoro' : 'timer',
       ...((input.desc ?? s.desc) ? { d: input.desc ?? s.desc } : {}),
-      ...(input.notes ? { n: input.notes } : {}),
+      ...(notes ? { n: notes } : {}),
       ...(s.line !== undefined ? { l: s.line } : {}),
       ...(s.taskId ? { i: s.taskId } : {}),
+      ...(isPomo ? { pl: planned, cy: s.cycles ?? 0 } : {}),
     };
     await this.store.append([ev]);
     if (input.closeTask) await this.closeTaskOf(s);
