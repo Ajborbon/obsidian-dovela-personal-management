@@ -19,3 +19,12 @@ Una entrada por fase. Formato: fecha · fase · qué se hizo · decisiones · ve
 - Verificación: `pnpm typecheck` (src + tests), `pnpm lint`, `pnpm test` → 85 pruebas en verde (escenario de oro de 23 tareas verificado contra v1), `pnpm build` → `main.js` mínimo.
 - Comportamientos que cambian a propósito respecto a v1 (todos con prueba): acentos en `#cx-`/`#px-`, `2^10` no es id, `⛔ ^id`, `⛔ a,b`, duraciones decimales, semanas activas, horas fuera de rango = conflicto, Start≤Scheduled≤Due completo, tareas en bloques de código/comentarios ignoradas, Vencidas agrupa por 📅 vencida, Ojalá Hoy ordenado, ciclos de dependencias → Bandeja.
 - Siguiente: F2 (índice incremental, ajustes, UI base).
+
+## 2026-11-05 · F2 · Capa de datos y plataforma
+- `core/index/store.ts`: almacén puro del índice (notas, tareas, enlaces de cuerpo y de `origen` con índice invertido incremental, memoización por versión, ids duplicados).
+- `host/index/VaultIndex.ts`: alimenta el almacén con `metadataCache` (`changed`, `deleted`, `resolved`) y `vault.rename`; **solo lee archivos cuyo `listItems` tiene tareas**; construcción inicial en lotes de 40 cediendo el hilo tras `onLayoutReady`; notificación de cambios con debounce de 250 ms.
+- `core/settings.ts` + `host/settingsStore.ts`: `data.json` v2 (`schemaVersion: 2`), merge profundo tipado, migración de v1 que conserva `timeLogs`/`activeTimer`/`activePomodoroSession`/`pomodoroStats` intactos en `legacy`, respaldo único `data.v1.backup.json`, guardado con debounce, recarga en `onExternalSettingsChange`.
+- `host/deviceCache.ts` (preferencias y `deviceId` por dispositivo), `host/taskWriter.ts` (ediciones con `vault.process` y localización segura), `host/navigation.ts`, `host/logger.ts`, `ui/VirtualList.ts`.
+- `main.ts` mínimo con registro de features (`features/registry.ts`); pestaña de ajustes extensible; comandos de diagnóstico del índice.
+- Verificación: 92 pruebas, typecheck, lint, build (`main.js` 25 KB).
+- Siguiente: F3 (almacenamiento de tiempo por eventos e importador).

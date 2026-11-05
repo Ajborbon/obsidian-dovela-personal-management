@@ -3,7 +3,7 @@
 Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (paridad + cambios documentados) · **descartada** (con motivo) · **parcial** (qué falta en la nota).
 “Fase” = fase del [plan](03-plan-de-desarrollo.md). “Prueba” = automatizada (A) / manual (M, ver guía 05).
 
-Última actualización: F1 (2026-11-05).
+Última actualización: F2 (2026-11-05).
 
 ## Núcleo de tareas
 
@@ -12,7 +12,7 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F01 | Parser de línea de tarea (estados ` `,`x`,`X`,`/`; fechas 🛫⏳📅; 🆔/^; hI/hF; duración; `[w::]`; ⛔; #cx/#px; tags GTD; prioridad) | RI-A §2 | F1 | parcial | A | R1–R12; núcleo `core/tasks/parse.ts` + 15 pruebas; integración en índice F2 |
 | F02 | Detección de conflictos hora/duración → Inbox | RI-A §2.4 | F1 | parcial | A | núcleo hecho; horas fuera de rango ahora son conflicto |
 | F03 | Tipos de nota por frontmatter/prefijo | RI-A §1.2 | F1 | parcial | A | acepta `Wly/Mly/Qly/Yly`; `core/notes/types.ts`; lee cualquier `type` conocido del frontmatter |
-| F04 | Exclusión de plantillas y `99 - Adjuntos` | RI-A §1.1 | F2 | pendiente | A | configurable |
+| F04 | Exclusión de plantillas y `99 - Adjuntos` | RI-A §1.1 | F2 | hecha | A | configurable; `core/settings.isExcludedPath` + `VaultIndex`; ahora con límite de carpeta y configurable |
 | F05 | Jerarquía carpeta↔nota, placeholders `[FALTA]`, conteos, orden | RI-A §5 | F1 | parcial | A | corrige B-H1; `core/notes/hierarchy.ts`, B-H1 corregido; UI en F5 |
 | F06 | Clasificación 10 listas GTD + displayStatus | RI-A §4 | F1 | parcial | A | 21 escenarios oro; `core/gtd/classify.ts`; 23 escenarios oro + 11 reglas; B-G1, B-G2, B-P6 corregidos; ciclos → Inbox |
 | F07 | Navegación (orden dinámico, ids de ancla, iconos) | RI-A §4.4 | F1 | parcial | A | `navigationItems`, anclas sin acentos |
@@ -117,9 +117,9 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F74 | Persistencia `data.json` (ajustes) | RI-C §2 | F2 | pendiente | A | schemaVersion 2, backup |
-| F75 | Pestaña de ajustes | RI-B §4 | F2+ | pendiente | M | + carpetas, prefijos, Inbox, exclusiones |
-| F76 | Soporte móvil | RI-F §2.20 | todas | pendiente | M | |
+| F74 | Persistencia `data.json` (ajustes) | RI-C §2 | F2 | mejorada | A | schemaVersion 2, backup; `schemaVersion: 2`, merge profundo sin referencias compartidas, respaldo `data.v1.backup.json`, legado intacto, `onExternalSettingsChange` |
+| F75 | Pestaña de ajustes | RI-B §4 | F2+ | parcial | M | + carpetas, prefijos, Inbox, exclusiones; secciones General, Pomodoro, Journal; cada feature añade la suya |
+| F76 | Soporte móvil | RI-F §2.20 | todas | en curso | M | índice sin APIs de Node; caché por dispositivo con respaldo |
 | F77 | Escritura incremental en menús | RI-B §3.6 | F6 | pendiente | A | |
 | F78 | Migración `timelogs.json` | RI-C §2.4 | F3 | pendiente | A | v1 la perdía; v2 la importa |
 

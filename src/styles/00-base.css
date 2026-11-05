@@ -7,3 +7,9 @@
   --dovela-future: var(--color-blue, #0091ff);
   --dovela-paused: var(--color-orange, #f76808);
 }
+
+/* Lista virtualizada */
+.dovela-vlist { position: relative; overflow-y: auto; }
+.dovela-vlist.is-virtual .dovela-vlist-content { position: absolute; top: 0; left: 0; right: 0; }
+.dovela-vlist-spacer { width: 1px; }
+.dovela-vlist:not(.is-virtual) .dovela-vlist-spacer { display: none; }

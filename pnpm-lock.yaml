@@ -24,8 +24,8 @@ importers:
         specifier: 9.17.0
         version: 9.17.0
       obsidian:
-        specifier: 1.7.2
-        version: 1.7.2(@codemirror/state@6.7.6)(@codemirror/view@6.43.15)
+        specifier: 1.8.7
+        version: 1.8.7(@codemirror/state@6.7.6)(@codemirror/view@6.43.15)
       typescript:
         specifier: 5.7.2
         version: 5.7.2
@@ -940,8 +940,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  obsidian@1.7.2:
-    resolution: {integrity: sha512-k9hN9brdknJC+afKr5FQzDRuEFGDKbDjfCazJwpgibwCAoZNYHYV8p/s3mM8I6AsnKrPKNXf8xGuMZ4enWelZQ==}
+  obsidian@1.8.7:
+    resolution: {integrity: sha512-h4bWwNFAGRXlMlMAzdEiIM2ppTGlrh7uGOJS6w4gClrsjc+ei/3YAtU2VdFUlCiPuTHpY4aBpFJJW75S1Tl/JA==}
     peerDependencies:
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
@@ -1973,7 +1973,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  obsidian@1.7.2(@codemirror/state@6.7.6)(@codemirror/view@6.43.15):
+  obsidian@1.8.7(@codemirror/state@6.7.6)(@codemirror/view@6.43.15):
     dependencies:
       '@codemirror/state': 6.7.6
       '@codemirror/view': 6.43.15
