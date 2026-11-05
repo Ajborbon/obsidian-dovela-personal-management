@@ -104,11 +104,11 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F66 | `journalAPI.renderTasksForDate` + `getTaskCounts` (8 grupos) | RI-E §3 | F9 | pendiente | A+M | firmas idénticas |
-| F67 | `journalAPI.getDailyNotePath`, `generateWeeklyLink`, `ensureFolderStructure`, `validateJournalSettings` | RI-E §3.3 | F9 | pendiente | A | trimestre corregido |
-| F68 | `weeklyAPI.renderTasksForWeek` + `getTaskCounts` + `ensureFolderStructure` | RI-E §4 | F9 | pendiente | A+M | |
-| F69 | Interacciones (abrir tarea, enlaces, dependencia) | RI-E §3.7 | F9 | pendiente | M | checkbox ahora completa |
-| F70 | Ajustes Journal con vista previa | RI-B §4 | F9 | pendiente | M | |
+| F66 | `journalAPI.renderTasksForDate` + `getTaskCounts` (8 grupos) | RI-E §3 | F9 | mejorada | A+M | firmas idénticas; firmas v1; vectores J1–J23; hora numérica, `^id` normalizado, prioridad tal cual, límite, opciones implementadas, refresco automático; `programmed` en conteos ahora correcto |
+| F67 | `journalAPI.getDailyNotePath`, `generateWeeklyLink`, `ensureFolderStructure`, `validateJournalSettings` | RI-E §3.3 | F9 | mejorada | A | trimestre corregido; trimestre corregido, fechas imposibles rechazadas, carpetas tolerantes a Sync |
+| F68 | `weeklyAPI.renderTasksForWeek` + `getTaskCounts` + `ensureFolderStructure` | RI-E §4 | F9 | mejorada | A+M | vectores K1–K15; semana anclada al 4 de enero; `overdueByDate` |
+| F69 | Interacciones (abrir tarea, enlaces, dependencia) | RI-E §3.7 | F9 | mejorada | M | checkbox ahora completa; la casilla completa/reabre; enlaces, dependencias y apertura en la línea |
+| F70 | Ajustes Journal con vista previa | RI-B §4 | F9 | mejorada | M | vista previa en vivo + bloques nativos `dovela-dia`/`dovela-semana` |
 | F71 | Plantillas de notas (22 tipos) — hoy vía Templater | RI-E §5 | F9 | pendiente | A | motor propio (02 §1) |
 | F72 | Notas de journal (Dly/Wly/Mly/Qly/Yly) con enlaces entre periodos | RI-E §5.6 | F9 | pendiente | A | sin nombrar a mano |
 | F73 | Selector de estado de nota 🟡🟢🔵🔴 | índice; RI-C §0.1 | F9 | pendiente | M | **no existía en v1**: nueva |
