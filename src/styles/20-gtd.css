@@ -1,0 +1,161 @@
+/* Dashboard GTD y Vista de Foco (features/gtd). Solo variables de Obsidian; breakpoints 768/480. */
+
+.dovela-gtd.view-content { padding: 0; }
+.dovela-gtd .is-hidden { display: none; }
+
+/* ── Cabecera pegajosa ── */
+.dovela-gtd-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: var(--size-4-2) var(--size-4-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+}
+.dovela-gtd-body { padding: var(--size-4-2) var(--size-4-3) var(--size-4-8); }
+
+.dovela-gtd-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.dovela-gtd-tabs::-webkit-scrollbar { display: none; }
+.dovela-gtd-tab, .dovela-gtd-refresh { flex: none; white-space: nowrap; }
+.dovela-gtd-tab.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.dovela-gtd-refresh { margin-left: auto; }
+
+.dovela-gtd-total { font-weight: var(--font-semibold); font-size: var(--font-ui-small); color: var(--text-muted); }
+.dovela-gtd-total:empty { display: none; }
+.dovela-count {
+  margin-left: 6px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Filtros ── */
+.dovela-gtd-filters-toggle { align-self: flex-start; }
+.dovela-gtd-filters.has-active .dovela-gtd-filters-toggle { color: var(--text-accent); }
+.dovela-gtd-filters-content { display: flex; flex-wrap: wrap; gap: var(--size-4-2); align-items: flex-end; margin-top: var(--size-4-2); }
+.dovela-gtd-filters.is-collapsed .dovela-gtd-filters-content { display: none; }
+.dovela-gtd-filter { display: flex; flex-direction: column; gap: 2px; flex: 1 1 160px; min-width: 0; }
+.dovela-gtd-filter label { font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-gtd-filter.has-value .dovela-gtd-input { border-color: var(--interactive-accent); }
+.dovela-gtd-input { width: 100%; }
+
+/* ── Navegación rápida ── */
+.dovela-gtd-nav > summary { cursor: pointer; font-size: var(--font-ui-small); color: var(--text-muted); }
+.dovela-gtd-nav-main { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0; }
+.dovela-gtd-nav-link { text-decoration: none; font-size: var(--font-ui-small); white-space: nowrap; }
+.dovela-gtd-subnav > summary { cursor: pointer; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-gtd-subnav-items { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 2px 0 4px 12px; }
+.dovela-gtd-nav { max-height: 40vh; overflow-y: auto; }
+
+/* ── Listas ── */
+.dovela-gtd-list { margin: 0 0 var(--size-4-3); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); }
+.dovela-gtd-list > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--size-4-2) var(--size-4-3);
+  font-weight: var(--font-semibold);
+  background: var(--background-secondary);
+  border-radius: var(--radius-m);
+  list-style: none;
+}
+.dovela-gtd-list > summary::-webkit-details-marker { display: none; }
+.dovela-gtd-list > summary::before { content: '▸'; color: var(--text-faint); width: 1em; }
+.dovela-gtd-list[open] > summary::before { content: '▾'; }
+.dovela-gtd-list[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.dovela-gtd-list-name { flex: 1 1 auto; min-width: 0; }
+.dovela-gtd-overdue-toggle { margin-left: auto; padding: 0 8px; height: auto; font-size: var(--font-ui-smaller); }
+.dovela-gtd-list-overdue > summary { color: var(--color-red); }
+.dovela-gtd-list-hopeToday > summary { color: var(--color-green); }
+.dovela-gtd-details-body { padding: 4px var(--size-4-2); }
+
+.dovela-gtd-group { margin: 6px 0 10px; }
+.dovela-gtd-subgroup { margin: 4px 0 8px 12px; }
+.dovela-gtd-group-title {
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  color: var(--text-muted);
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 2px;
+}
+.dovela-gtd-overdue-primary > .dovela-gtd-group-title { color: var(--color-red); }
+.dovela-gtd-more { margin: 6px 0 2px 8px; font-size: var(--font-ui-smaller); }
+.dovela-gtd-empty { color: var(--text-muted); padding: var(--size-4-6) var(--size-4-2); text-align: center; }
+
+/* ── En Progreso ── */
+.dovela-gtd-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--size-4-2); margin-bottom: var(--size-4-3); }
+.dovela-gtd-stat { background: var(--background-secondary); border-radius: var(--radius-m); padding: var(--size-4-2); text-align: center; }
+.dovela-gtd-stat-value { font-size: 1.3em; font-weight: var(--font-bold); font-variant-numeric: tabular-nums; }
+.dovela-gtd-stat-label { font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-gtd-stat.is-overdue .dovela-gtd-stat-value { color: var(--color-red); }
+.dovela-gtd-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: var(--size-4-3); }
+.dovela-gtd-segmented { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.dovela-gtd-segmented button.is-active, .dovela-gtd-toolbar button.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+
+/* ── Jerárquica ── */
+.dovela-gtd-hier-toolbar .dovela-gtd-input { flex: 1 1 200px; width: auto; }
+.dovela-gtd-hier-summary { min-height: 1.2em; margin-bottom: 4px; }
+.dovela-tree-node { margin-left: 0; }
+.dovela-tree-children { padding: 0 0 0 var(--size-4-4); border-left: 1px solid var(--background-modifier-border); margin-left: 9px; }
+.dovela-tree-node > summary { list-style: none; cursor: pointer; }
+.dovela-tree-node > summary::-webkit-details-marker { display: none; }
+.dovela-tree-header { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: var(--radius-s); min-height: 28px; }
+.dovela-tree-header:hover { background: var(--background-modifier-hover); }
+details.dovela-tree-node > summary::before { content: '▸'; color: var(--text-faint); width: 1em; flex: none; }
+details.dovela-tree-node[open] > summary::before { content: '▾'; }
+.dovela-tree-node.is-leaf > .dovela-tree-header { padding-left: calc(1em + 10px); }
+.dovela-tree-icon { flex: none; width: 1.3em; text-align: center; }
+.dovela-tree-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-normal); text-decoration: none; }
+a.dovela-tree-name:hover { color: var(--text-accent); text-decoration: underline; }
+.dovela-tree-estado { flex: none; }
+.dovela-tree-counts { flex: none; font-size: var(--font-ui-smaller); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.dovela-tree-own { color: var(--text-normal); }
+.dovela-tree-node.is-missing > .dovela-tree-header .dovela-tree-name { color: var(--text-faint); font-style: italic; }
+.dovela-tree-node.has-in-progress > .dovela-tree-header {
+  background: color-mix(in srgb, var(--color-yellow) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--color-yellow);
+}
+.dovela-tree-node.is-match-title > .dovela-tree-header .dovela-tree-name,
+.dovela-tree-node.is-match-content > .dovela-tree-header .dovela-tree-name { color: var(--text-accent); font-weight: var(--font-semibold); }
+
+/* ── Foco ── */
+.dovela-foco-header { display: flex; flex-direction: column; gap: 4px; }
+.dovela-foco-title { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: var(--font-bold); min-height: 32px; }
+.dovela-foco-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.dovela-foco-indicator { color: var(--text-faint); }
+.dovela-foco-header.is-collapsed .dovela-foco-content { display: none; }
+.dovela-foco-content .dovela-gtd-toolbar { margin-bottom: 0; }
+.dovela-gtd-extras:empty { display: none; }
+
+/* ── Móvil ── */
+.dovela-gtd.is-mobile .dovela-gtd-tab,
+.dovela-gtd.is-mobile .dovela-gtd-refresh,
+.dovela-gtd.is-mobile .dovela-gtd-toolbar button,
+.dovela-gtd.is-mobile .dovela-gtd-filters-toggle,
+.dovela-gtd.is-mobile .dovela-gtd-more { min-height: 44px; min-width: 44px; }
+.dovela-gtd.is-mobile .dovela-gtd-input,
+.dovela-gtd.is-mobile .dovela-gtd-filter input { font-size: 16px; min-height: 44px; }
+.dovela-gtd.is-mobile .dovela-gtd-list > summary,
+.dovela-gtd.is-mobile .dovela-tree-header,
+.dovela-gtd.is-mobile .dovela-gtd-nav > summary,
+.dovela-gtd.is-mobile .dovela-gtd-subnav > summary { min-height: 44px; }
+.dovela-gtd.is-mobile .dovela-gtd-nav-link { display: inline-flex; align-items: center; min-height: 44px; }
+.dovela-gtd.is-mobile .dovela-gtd-overdue-toggle { min-height: 36px; }
+
+@media (max-width: 768px) {
+  .dovela-gtd-header { padding: var(--size-4-2); }
+  .dovela-gtd-body { padding: var(--size-4-2); }
+  .dovela-gtd-filter { flex-basis: 100%; }
+}
+@media (max-width: 480px) {
+  .dovela-gtd-metrics { grid-template-columns: repeat(2, 1fr); }
+  .dovela-tree-children { padding-left: var(--size-4-2); }
+}

@@ -13,32 +13,32 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F02 | Detección de conflictos hora/duración → Inbox | RI-A §2.4 | F1 | parcial | A | núcleo hecho; horas fuera de rango ahora son conflicto |
 | F03 | Tipos de nota por frontmatter/prefijo | RI-A §1.2 | F1 | parcial | A | acepta `Wly/Mly/Qly/Yly`; `core/notes/types.ts`; lee cualquier `type` conocido del frontmatter |
 | F04 | Exclusión de plantillas y `99 - Adjuntos` | RI-A §1.1 | F2 | hecha | A | configurable; `core/settings.isExcludedPath` + `VaultIndex`; ahora con límite de carpeta y configurable |
-| F05 | Jerarquía carpeta↔nota, placeholders `[FALTA]`, conteos, orden | RI-A §5 | F1 | parcial | A | corrige B-H1; `core/notes/hierarchy.ts`, B-H1 corregido; UI en F5 |
-| F06 | Clasificación 10 listas GTD + displayStatus | RI-A §4 | F1 | parcial | A | 21 escenarios oro; `core/gtd/classify.ts`; 23 escenarios oro + 11 reglas; B-G1, B-G2, B-P6 corregidos; ciclos → Inbox |
-| F07 | Navegación (orden dinámico, ids de ancla, iconos) | RI-A §4.4 | F1 | parcial | A | `navigationItems`, anclas sin acentos |
-| F08 | En Progreso: métricas, agrupaciones, orden cíclico | RI-A §4.6 | F1 | parcial | A | `core/gtd/inprogress.ts`; orden total (comparador transitivo) |
+| F05 | Jerarquía carpeta↔nota, placeholders `[FALTA]`, conteos, orden | RI-A §5 | F1 | mejorada | A | corrige B-H1; `core/notes/hierarchy.ts`, B-H1 corregido; UI en F5; UI: árbol sobre el índice, hijos al abrir |
+| F06 | Clasificación 10 listas GTD + displayStatus | RI-A §4 | F1 | mejorada | A | 21 escenarios oro; `core/gtd/classify.ts`; 23 escenarios oro + 11 reglas; B-G1, B-G2, B-P6 corregidos; ciclos → Inbox; UI: listas y clases de displayStatus |
+| F07 | Navegación (orden dinámico, ids de ancla, iconos) | RI-A §4.4 | F1 | hecha | A | `navigationItems`, anclas sin acentos; navegación desde las mismas secciones pintadas |
+| F08 | En Progreso: métricas, agrupaciones, orden cíclico | RI-A §4.6 | F1 | hecha | A | `core/gtd/inprogress.ts`; orden total (comparador transitivo); UI: métricas, 4 agrupaciones, orden cíclico recordados por dispositivo |
 | F09 | Marcar en progreso `[ ]→[/]` | RI-A §6.3 | F1/F4 | parcial | A | sin fallback peligroso; `markInProgress` + localización segura |
 | F10 | Cerrar tarea `[x] ✅ fecha` | RI-A §6.3 | F1/F4 | parcial | A | ✅ antes de `^bloque`; `markDone`, ✅ antes de `^bloque`, conserva CRLF |
-| F11 | Dependencias `⛔ id` con enlace 🔗 navegable | RI-A §4.2 | F1/F5 | pendiente | A+M | ciclos → Inbox |
+| F11 | Dependencias `⛔ id` con enlace 🔗 navegable | RI-A §4.2 | F1/F5 | mejorada | A+M | ciclos → Inbox; 🔗 navegable vía taskById, ⚠️ si no existe; en Foco resuelve contra todo el vault |
 | F12 | Proyectos estancados (🟢 sin tareas, carpeta+2 niveles de enlaces) | RI-A §6.1 | F7 | mejorada | A+M | cuenta `[/]` como abierta; `core/panels/stalled.ts` sobre el índice; cuenta `[/]`, tolera selector de variación; usa `resolvedLinks` (incluye incrustaciones); 12 pruebas |
 
 ## Dashboard GTD (vista `gtd-view`)
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F13 | Comando “Open GTD Dashboard” + ribbon `list-checks` | RI-B §0.1 | F5 | pendiente | M | |
-| F14 | Pestañas (Jerárquica, Listas, En Progreso, Seguimiento, Estadísticas, Cronograma) + Refrescar | RI-B §0.2 | F5 | pendiente | M | refresco reactivo |
-| F15 | Contador de tareas abiertas (únicas) | RI-B §1.1 | F5 | pendiente | A+M | |
-| F16 | Filtros contexto/persona/texto con datalist y contadores filtrados | RI-B §1.3 | F5 | pendiente | A+M | filtra datos, no DOM |
-| F17 | Navegación rápida con sublistas y scroll suave | RI-B §1.3 | F5 | pendiente | M | |
-| F18 | Toggle Vencidas fecha‑primero / contexto‑primero | RI-B §1.3 | F5 | pendiente | A+M | |
-| F19 | Agenda de Hoy con total de tiempo y rango ⏰ | RI-B §1.3 | F5 | pendiente | A+M | orden por minutos |
-| F20 | Breadcrumb plegable de origen por tarea | RI-B §1.3 | F5 | pendiente | M | |
-| F21 | Clic abre nota en la línea | RI-B §1.1 | F5 | pendiente | M | |
-| F22 | Header pegajoso + filtros colapsables en móvil | RI-B §1.1 | F5 | pendiente | M | |
-| F23 | Vista Jerárquica: árbol, contadores, `[FALTA]`, expandir/colapsar todo | RI-B §1.2 | F5 | pendiente | M | render perezoso |
-| F24 | Búsqueda jerárquica por título y contenido | RI-B §1.2 | F5 | pendiente | M | contenido vía índice/cachedRead con cancelación |
-| F25 | Resaltado de notas con tareas en progreso | RI-B §1.1 | F5 | pendiente | M | sin lecturas extra |
+| F13 | Comando “Open GTD Dashboard” + ribbon `list-checks` | RI-B §0.1 | F5 | hecha | M | ids de comando y vista conservados |
+| F14 | Pestañas (Jerárquica, Listas, En Progreso, Seguimiento, Estadísticas, Cronograma) + Refrescar | RI-B §0.2 | F5 | mejorada | M | refresco reactivo; refresco reactivo; pestaña por dispositivo; pestañas de tiempo vía mountTimeTab |
+| F15 | Contador de tareas abiertas (únicas) | RI-B §1.1 | F5 | hecha | A+M | únicas por key |
+| F16 | Filtros contexto/persona/texto con datalist y contadores filtrados | RI-B §1.3 | F5 | mejorada | A+M | filtra datos, no DOM; filtra datos, no DOM; corrige subgrupos de Vencidas ocultos |
+| F17 | Navegación rápida con sublistas y scroll suave | RI-B §1.3 | F5 | hecha | M | dos niveles, scroll suave; abre la sección si estaba cerrada |
+| F18 | Toggle Vencidas fecha‑primero / contexto‑primero | RI-B §1.3 | F5 | mejorada | A+M | modo recordado por dispositivo |
+| F19 | Agenda de Hoy con total de tiempo y rango ⏰ | RI-B §1.3 | F5 | hecha | A+M | orden por minutos; “N citas - Xh Ymin”, orden por minutos |
+| F20 | Breadcrumb plegable de origen por tarea | RI-B §1.3 | F5 | hecha | M | derivado de la ruta, plegable |
+| F21 | Clic abre nota en la línea | RI-B §1.1 | F5 | mejorada | M | Ctrl/Cmd abre pestaña nueva; la casilla completa la tarea |
+| F22 | Header pegajoso + filtros colapsables en móvil | RI-B §1.1 | F5 | mejorada | M | position: sticky; filtros plegables con indicador |
+| F23 | Vista Jerárquica: árbol, contadores, `[FALTA]`, expandir/colapsar todo | RI-B §1.2 | F5 | mejorada | M | render perezoso; render perezoso, [FALTA], expandir/colapsar |
+| F24 | Búsqueda jerárquica por título y contenido | RI-B §1.2 | F5 | mejorada | M | contenido vía índice/cachedRead con cancelación; contenido con debounce y cancelación |
+| F25 | Resaltado de notas con tareas en progreso | RI-B §1.1 | F5 | mejorada | M | sin lecturas extra; sin lecturas extra |
 
 ## Captura
 
@@ -87,11 +87,11 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F54 | Vista de Foco (comando, ribbon `crosshair`) | RI-D §1 | F8 | pendiente | M | sin fork: dashboard con scope |
-| F55 | Expansión bidireccional (salientes N, entrantes M, terminación carpeta/notas) | RI-D §1.4 | F8 | pendiente | A | |
-| F56 | Badges de origen ➡️/⬅️ y estadísticas de foco | RI-D §1 | F8 | pendiente | M | |
-| F57 | Cabecera colapsable persistida | RI-D §1.6 | F8 | pendiente | M | caché por dispositivo |
-| F58 | Ajustes de Foco | RI-D §1.7 | F8 | pendiente | M | |
+| F54 | Vista de Foco (comando, ribbon `crosshair`) | RI-D §1 | F8 | mejorada | M | sin fork: dashboard con scope; sin fork (mismo Dashboard con ámbito); nota fijada persistida; seguir nota activa |
+| F55 | Expansión bidireccional (salientes N, entrantes M, terminación carpeta/notas) | RI-D §1.4 | F8 | hecha | A | `core/links/expand.ts` con pruebas E1–E13 de RI-D; índice invertido |
+| F56 | Badges de origen ➡️/⬅️ y estadísticas de foco | RI-D §1 | F8 | hecha | M | badges ➡️/⬅️/🛑 y resumen por origen |
+| F57 | Cabecera colapsable persistida | RI-D §1.6 | F8 | hecha | M | caché por dispositivo; caché por dispositivo; migra la clave v1 |
+| F58 | Ajustes de Foco | RI-D §1.7 | F8 | mejorada | M | modal nativo + migración v1 + includeOrigin / followActive |
 | F59 | Backlinks: misma carpeta + enlaces, sigue nota activa (comando, ribbon `link`, menú de archivo) | RI-D §2.1 | F8 | mejorada | A+M | + `origen` opcional; índice invertido O(k), `origen` opcional (🌱), refresco solo ante cambios relevantes; menú de archivo muestra la nota pulsada |
 | F60 | Árbol de backlinks con expansión inteligente de carpetas | RI-D §2.2–2.3 | F8 | mejorada | A+M | árbol y expansión inteligente puros con pruebas; 📍 aun sin backlinks; render perezoso |
 | F61 | Visor de pestañas abiertas agrupadas | RI-D §2.4 | F8 | mejorada | M | agrupado por panel/split, en vivo, siempre accesible |
