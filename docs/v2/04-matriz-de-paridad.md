@@ -109,9 +109,9 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F68 | `weeklyAPI.renderTasksForWeek` + `getTaskCounts` + `ensureFolderStructure` | RI-E §4 | F9 | mejorada | A+M | vectores K1–K15; semana anclada al 4 de enero; `overdueByDate` |
 | F69 | Interacciones (abrir tarea, enlaces, dependencia) | RI-E §3.7 | F9 | mejorada | M | checkbox ahora completa; la casilla completa/reabre; enlaces, dependencias y apertura en la línea |
 | F70 | Ajustes Journal con vista previa | RI-B §4 | F9 | mejorada | M | vista previa en vivo + bloques nativos `dovela-dia`/`dovela-semana` |
-| F71 | Plantillas de notas (22 tipos) — hoy vía Templater | RI-E §5 | F9 | pendiente | A | motor propio (02 §1) |
-| F72 | Notas de journal (Dly/Wly/Mly/Qly/Yly) con enlaces entre periodos | RI-E §5.6 | F9 | pendiente | A | sin nombrar a mano |
-| F73 | Selector de estado de nota 🟡🟢🔵🔴 | índice; RI-C §0.1 | F9 | pendiente | M | **no existía en v1**: nueva |
+| F71 | Plantillas de notas (22 tipos) — hoy vía Templater | RI-E §5 | F9 | mejorada | A | motor propio (02 §1); 17 especificaciones con pruebas byte a byte contra las plantillas reales (intérprete Templater solo en pruebas); comando por tipo, menú de carpeta/nota; sobrescritura opcional `Plt - <código>.md` |
+| F72 | Notas de journal (Dly/Wly/Mly/Qly/Yly) con enlaces entre periodos | RI-E §5.6 | F9 | mejorada | A | sin nombrar a mano; 5 comandos de journal sin nombrar a mano; bordes de año ISO corregidos (embeds verificados 2020–2030) |
+| F73 | Selector de estado de nota 🟡🟢🔵🔴 | índice; RI-C §0.1 | F9 | hecha | M | **no existía en v1**: nueva; nueva en v2: comando, menús de archivo/editor y barra de estado; `processFrontMatter` |
 
 ## Plataforma
 
