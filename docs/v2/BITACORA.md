@@ -28,3 +28,12 @@ Una entrada por fase. Formato: fecha · fase · qué se hizo · decisiones · ve
 - `main.ts` mínimo con registro de features (`features/registry.ts`); pestaña de ajustes extensible; comandos de diagnóstico del índice.
 - Verificación: 92 pruebas, typecheck, lint, build (`main.js` 25 KB).
 - Siguiente: F3 (almacenamiento de tiempo por eventos e importador).
+
+## 2026-11-05 · F3 · Almacenamiento de tiempo
+- `core/time/events.ts`: eventos `log` / `live` / `cancel` en JSON Lines dentro de un bloque ```dovela-tiempo``` de archivos `YYYY-MM · <dispositivo>.md` (frontmatter `type: RT`). Ids ordenables por tiempo.
+- `core/time/merge.ts`: fusión LWW por id con desempate por dispositivo; **el cierre es terminal** (una edición tardía de otro dispositivo no resucita un temporizador detenido); borrado lógico. Probado conmutativo e idempotente.
+- `core/time/stats.ts`, `timeline.ts`, `csv.ts`, `pomodoro.ts`, `legacyImport.ts`: árbol por ruta con reparto por día, periodos, mapa de calor, columnas de solape por intervalos, CSV con las columnas del Excel de v1, máquina de Pomodoro corregida, importador idempotente (ids `leg-*`, deduplicación, marca de incoherentes, minutos por mes).
+- `host/time/EventLogStore.ts` (lectura de todos los dispositivos, escritura solo propia con `vault.process` en cola, recarga por eventos de Sync) y `host/time/TimeService.ts` (temporizador y Pomodoro excluyentes, registros manuales, edición/borrado, cierre de tareas seguro, importación/verificación/archivado del historial v1).
+- Feature `time`: comandos de importar/verificar/archivar el historial, aviso de importación pendiente, sección de ajustes.
+- Verificación: 113 pruebas, typecheck, lint, build (`main.js` 45 KB).
+- Siguiente: F4–F9 en paralelo por módulos.

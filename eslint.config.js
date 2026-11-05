@@ -11,6 +11,7 @@ export default tseslint.config(
     files: ['src/**/*.ts'],
     rules: {
       'no-console': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-restricted-imports': ['error', { paths: nodeModules }],

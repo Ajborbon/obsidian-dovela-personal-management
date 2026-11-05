@@ -3,7 +3,7 @@
 Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (paridad + cambios documentados) · **descartada** (con motivo) · **parcial** (qué falta en la nota).
 “Fase” = fase del [plan](03-plan-de-desarrollo.md). “Prueba” = automatizada (A) / manual (M, ver guía 05).
 
-Última actualización: F2 (2026-11-05).
+Última actualización: F3 (2026-11-05).
 
 ## Núcleo de tareas
 
@@ -62,24 +62,24 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F36 | Registro manual | RI-C §3.7 | F4 | pendiente | M | permite cruzar medianoche |
 | F37 | Editar/borrar registros | RI-C §3.7 | F7 | pendiente | M | borrado con confirmación |
 | F38 | Barra de estado con tiempo; clic abre Seguimiento | RI-C §1.10 | F4 | pendiente | M | |
-| F39 | Sincronización del temporizador entre dispositivos | RI-C §2.5 | F3/F4 | pendiente | A+M | por eventos, sin sondeo |
-| F40 | Pomodoro trabajo/descanso, ciclos, overtime con alertas | RI-C §4 | F4 | pendiente | A+M | corrige 10 defectos |
+| F39 | Sincronización del temporizador entre dispositivos | RI-C §2.5 | F3/F4 | parcial | A+M | por eventos, sin sondeo; eventos por dispositivo + `vault.on(modify/create)`; el cierre es terminal; UI en F4 |
+| F40 | Pomodoro trabajo/descanso, ciclos, overtime con alertas | RI-C §4 | F4 | parcial | A+M | corrige 10 defectos; `core/time/pomodoro.ts` corrige ciclos, descansos, fin real, overtime; UI en F4 |
 | F41 | Modal de fin de Pomodoro (descanso/otro/overtime/finalizar, notas, cerrar tarea) | RI-C §4.4 | F4 | pendiente | M | |
 | F42 | Sonido, vibración, notificaciones | RI-C §4.2 | F4 | pendiente | M | |
-| F43 | Recuperación tras recarga (timer y pomodoro) | RI-C §4.6 | F4 | pendiente | A+M | fin = start+duración si expiró cerrado |
+| F43 | Recuperación tras recarga (timer y pomodoro) | RI-C §4.6 | F4 | parcial | A+M | fin = start+duración si expiró cerrado; lógica (`workLogFor`, sesiones `live` persistidas como eventos); UI en F4 |
 | F44 | Ajustes Pomodoro (duraciones, ciclos, overtime, auto‑inicio, sonido, notificaciones) | RI-B §4 | F4 | pendiente | M | auto‑inicio implementado |
-| F45 | Estadísticas Pomodoro | RI-B §4 | F7 | pendiente | A | recalculadas desde logs |
+| F45 | Estadísticas Pomodoro | RI-B §4 | F7 | parcial | A | recalculadas desde logs; `pomodoroStats()` recalculado desde registros |
 | F46 | Selector de tarea con 3 fuentes y búsqueda | RI-C §5.1 | F4/F7 | pendiente | M | desde índice |
-| F47 | Almacenamiento `data.json.timeLogs` | RI-C §2 | F3 | pendiente | A | **reemplazado** por eventos por dispositivo; importador |
+| F47 | Almacenamiento `data.json.timeLogs` | RI-C §2 | F3 | mejorada | A | **reemplazado** por eventos por dispositivo; importador; `EventLogStore` (eventos JSONL en `.md` por dispositivo y mes) + importador idempotente con verificación y archivado |
 
 ## Estadísticas, cronograma, actividad
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F48 | Árbol de tiempo por ruta con %, registros, nodos de tránsito, salto inteligente, colores por tipo | RI-B §1.6 | F7 | pendiente | A+M | |
-| F49 | Periodos (hoy/semana/mes/año/siempre/rango/día) + navegación ‹ › + DatePicker + heatmap | RI-B §1.6–1.7 | F7 | pendiente | A+M | |
-| F50 | Exportar a Excel (nodo + descendientes) | RI-B §1.6 | F7 | pendiente | A | **CSV** en lugar de xlsx (mismas columnas) |
-| F51 | Cronograma día/3/semana, zoom, mover/redimensionar/crear/copiar, multi‑día, colores, tooltip | RI-B §1.8 | F7 | pendiente | A+M | Pointer Events (táctil) |
+| F48 | Árbol de tiempo por ruta con %, registros, nodos de tránsito, salto inteligente, colores por tipo | RI-B §1.6 | F7 | parcial | A+M | `buildTimeTree`, tránsito, salto inteligente, reparto por día; UI en F7 |
+| F49 | Periodos (hoy/semana/mes/año/siempre/rango/día) + navegación ‹ › + DatePicker + heatmap | RI-B §1.6–1.7 | F7 | parcial | A+M | `periodRange`, `shiftAnchor`, `dailyTotals`; UI en F7 |
+| F50 | Exportar a Excel (nodo + descendientes) | RI-B §1.6 | F7 | parcial | A | **CSV** en lugar de xlsx (mismas columnas); `logsToCsv` (columnas v1, BOM, escape); UI en F7 |
+| F51 | Cronograma día/3/semana, zoom, mover/redimensionar/crear/copiar, multi‑día, colores, tooltip | RI-B §1.8 | F7 | parcial | A+M | Pointer Events (táctil); `blocksForDay`, columnas por intervalos, `snapMinutes`; UI en F7 |
 | F52 | Panel de actividad (capturadas/completadas, notas nuevas/modificadas, periodos, detalle) | RI-C §5.5 | F7 | pendiente | A+M | sobre índice |
 | F53 | Panel de revisión (añadir tarea, archivar 🔵, abrir carpeta) | RI-B §1.9 | F7 | pendiente | M | |
 
@@ -121,7 +121,7 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F75 | Pestaña de ajustes | RI-B §4 | F2+ | parcial | M | + carpetas, prefijos, Inbox, exclusiones; secciones General, Pomodoro, Journal; cada feature añade la suya |
 | F76 | Soporte móvil | RI-F §2.20 | todas | en curso | M | índice sin APIs de Node; caché por dispositivo con respaldo |
 | F77 | Escritura incremental en menús | RI-B §3.6 | F6 | pendiente | A | |
-| F78 | Migración `timelogs.json` | RI-C §2.4 | F3 | pendiente | A | v1 la perdía; v2 la importa |
+| F78 | Migración `timelogs.json` | RI-C §2.4 | F3 | mejorada | A | v1 la perdía; v2 la importa; `timelogs.json` se importa (v1 lo borraba sin importar) |
 
 ## Descartadas / no portadas (con motivo)
 
