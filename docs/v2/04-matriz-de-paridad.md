@@ -55,31 +55,31 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F32 | Iniciar temporizador para nota activa / tarea seleccionada (validación de selección) | RI-C §1.3 | F4 | pendiente | A+M | |
-| F33 | Detener con modal (fecha, inicio, fin, notas, cerrar tarea) | RI-C §3.5 | F4 | pendiente | M | |
-| F34 | Cancelar registro | RI-C §3.9 | F4 | pendiente | M | con confirmación |
-| F35 | Modificar temporizador en curso (inicio, notas) | RI-C §3.6 | F4 | pendiente | M | valida inicio ≤ ahora |
-| F36 | Registro manual | RI-C §3.7 | F4 | pendiente | M | permite cruzar medianoche |
-| F37 | Editar/borrar registros | RI-C §3.7 | F7 | pendiente | M | borrado con confirmación |
-| F38 | Barra de estado con tiempo; clic abre Seguimiento | RI-C §1.10 | F4 | pendiente | M | |
-| F39 | Sincronización del temporizador entre dispositivos | RI-C §2.5 | F3/F4 | parcial | A+M | por eventos, sin sondeo; eventos por dispositivo + `vault.on(modify/create)`; el cierre es terminal; UI en F4 |
-| F40 | Pomodoro trabajo/descanso, ciclos, overtime con alertas | RI-C §4 | F4 | parcial | A+M | corrige 10 defectos; `core/time/pomodoro.ts` corrige ciclos, descansos, fin real, overtime; UI en F4 |
-| F41 | Modal de fin de Pomodoro (descanso/otro/overtime/finalizar, notas, cerrar tarea) | RI-C §4.4 | F4 | pendiente | M | |
-| F42 | Sonido, vibración, notificaciones | RI-C §4.2 | F4 | pendiente | M | |
-| F43 | Recuperación tras recarga (timer y pomodoro) | RI-C §4.6 | F4 | parcial | A+M | fin = start+duración si expiró cerrado; lógica (`workLogFor`, sesiones `live` persistidas como eventos); UI en F4 |
-| F44 | Ajustes Pomodoro (duraciones, ciclos, overtime, auto‑inicio, sonido, notificaciones) | RI-B §4 | F4 | pendiente | M | auto‑inicio implementado |
-| F45 | Estadísticas Pomodoro | RI-B §4 | F7 | parcial | A | recalculadas desde logs; `pomodoroStats()` recalculado desde registros |
-| F46 | Selector de tarea con 3 fuentes y búsqueda | RI-C §5.1 | F4/F7 | pendiente | M | desde índice |
+| F32 | Iniciar temporizador para nota activa / tarea seleccionada (validación de selección) | RI-C §1.3 | F4 | mejorada | A+M | exclusión mutua; no arranca sobre tareas cerradas; [/] con localización segura |
+| F33 | Detener con modal (fecha, inicio, fin, notas, cerrar tarea) | RI-C §3.5 | F4 | mejorada | M | fecha+hora de inicio y fin (cruza medianoche), un solo evento, cierre de tarea seguro |
+| F34 | Cancelar registro | RI-C §3.9 | F4 | mejorada | M | con confirmación; con confirmación; también como comando |
+| F35 | Modificar temporizador en curso (inicio, notas) | RI-C §3.6 | F4 | mejorada | M | valida inicio ≤ ahora; valida inicio ≤ ahora y permite cambiar de día |
+| F36 | Registro manual | RI-C §3.7 | F4 | mejorada | M | permite cruzar medianoche; cruza medianoche, selector desde el índice, cerrar tarea opcional |
+| F37 | Editar/borrar registros | RI-C §3.7 | F7 | mejorada | M | borrado con confirmación; desde Estadísticas y Cronograma; borrado lógico con confirmación |
+| F38 | Barra de estado con tiempo; clic abre Seguimiento | RI-C §1.10 | F4 | mejorada | M | barra única con `⏰ decidir`, abandonada y simultáneas |
+| F39 | Sincronización del temporizador entre dispositivos | RI-C §2.5 | F3/F4 | mejorada | A+M | por eventos, sin sondeo; eventos por dispositivo + `vault.on(modify/create)`; el cierre es terminal; UI en F4; avisos de sesiones simultáneas/abandonadas; decide solo el dispositivo que inició |
+| F40 | Pomodoro trabajo/descanso, ciclos, overtime con alertas | RI-C §4 | F4 | mejorada | A+M | corrige 10 defectos; `core/time/pomodoro.ts` corrige ciclos, descansos, fin real, overtime; UI en F4; ronda “X de N”, descanso largo correcto, overtime con alertas |
+| F41 | Modal de fin de Pomodoro (descanso/otro/overtime/finalizar, notas, cerrar tarea) | RI-C §4.4 | F4 | mejorada | M | sin estado colgado; “Volver al trabajo” funciona; fin real de la fase |
+| F42 | Sonido, vibración, notificaciones | RI-C §4.2 | F4 | mejorada | M | pide permiso, WebAudio, vibración |
+| F43 | Recuperación tras recarga (timer y pomodoro) | RI-C §4.6 | F4 | mejorada | A+M | fin = start+duración si expiró cerrado; lógica (`workLogFor`, sesiones `live` persistidas como eventos); UI en F4; al reabrir: modal con fin = inicio + duración |
+| F44 | Ajustes Pomodoro (duraciones, ciclos, overtime, auto‑inicio, sonido, notificaciones) | RI-B §4 | F4 | mejorada | M | auto‑inicio implementado; auto-inicio implementado (v1 tenía los ajustes sin efecto) |
+| F45 | Estadísticas Pomodoro | RI-B §4 | F7 | mejorada | A | recalculadas desde logs; `pomodoroStats()` recalculado desde registros; pomodoros de hoy en Seguimiento, modal y Estadísticas |
+| F46 | Selector de tarea con 3 fuentes y búsqueda | RI-C §5.1 | F4/F7 | mejorada | M | desde índice; 3 fuentes desde el índice, búsqueda, lista virtualizada |
 | F47 | Almacenamiento `data.json.timeLogs` | RI-C §2 | F3 | mejorada | A | **reemplazado** por eventos por dispositivo; importador; `EventLogStore` (eventos JSONL en `.md` por dispositivo y mes) + importador idempotente con verificación y archivado |
 
 ## Estadísticas, cronograma, actividad
 
 | ID | Funcionalidad v1 | Fuente | Fase | Estado v2 | Prueba | Notas |
 |---|---|---|---|---|---|---|
-| F48 | Árbol de tiempo por ruta con %, registros, nodos de tránsito, salto inteligente, colores por tipo | RI-B §1.6 | F7 | parcial | A+M | `buildTimeTree`, tránsito, salto inteligente, reparto por día; UI en F7 |
-| F49 | Periodos (hoy/semana/mes/año/siempre/rango/día) + navegación ‹ › + DatePicker + heatmap | RI-B §1.6–1.7 | F7 | parcial | A+M | `periodRange`, `shiftAnchor`, `dailyTotals`; UI en F7 |
-| F50 | Exportar a Excel (nodo + descendientes) | RI-B §1.6 | F7 | parcial | A | **CSV** en lugar de xlsx (mismas columnas); `logsToCsv` (columnas v1, BOM, escape); UI en F7 |
-| F51 | Cronograma día/3/semana, zoom, mover/redimensionar/crear/copiar, multi‑día, colores, tooltip | RI-B §1.8 | F7 | parcial | A+M | Pointer Events (táctil); `blocksForDay`, columnas por intervalos, `snapMinutes`; UI en F7 |
+| F48 | Árbol de tiempo por ruta con %, registros, nodos de tránsito, salto inteligente, colores por tipo | RI-B §1.6 | F7 | mejorada | A+M | `buildTimeTree`, tránsito, salto inteligente, reparto por día; UI en F7; árbol perezoso; conserva lo abierto y el scroll |
+| F49 | Periodos (hoy/semana/mes/año/siempre/rango/día) + navegación ‹ › + DatePicker + heatmap | RI-B §1.6–1.7 | F7 | mejorada | A+M | `periodRange`, `shiftAnchor`, `dailyTotals`; UI en F7; periodos, ‹ ›, calendario con mapa de calor (minutos) |
+| F50 | Exportar a Excel (nodo + descendientes) | RI-B §1.6 | F7 | mejorada | A | **CSV** en lugar de xlsx (mismas columnas); `logsToCsv` (columnas v1, BOM, escape); UI en F7; CSV al vault (móvil) y descarga (escritorio) |
+| F51 | Cronograma día/3/semana, zoom, mover/redimensionar/crear/copiar, multi‑día, colores, tooltip | RI-B §1.8 | F7 | mejorada | A+M | Pointer Events (táctil); `blocksForDay`, columnas por intervalos, `snapMinutes`; UI en F7; Pointer Events táctiles, columnas por intervalos, línea de ahora, Esc cancela |
 | F52 | Panel de actividad (capturadas/completadas, notas nuevas/modificadas, periodos, detalle) | RI-C §5.5 | F7 | mejorada | A+M | sobre índice; `core/panels/activity.ts` sin leer el vault; rango personalizado inclusivo (defecto v1 corregido); desglose y serie; 14 pruebas |
 | F53 | Panel de revisión (añadir tarea, archivar 🔵, abrir carpeta) | RI-B §1.9 | F7 | mejorada | M | añadir tarea con cursor, archivar con confirmación, abrir nota, resumen por nivel PGTD, lint de notas de conocimiento; “Abrir carpeta” → “Abrir nota” |
 

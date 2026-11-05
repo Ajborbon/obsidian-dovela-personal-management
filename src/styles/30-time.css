@@ -1,0 +1,192 @@
+/* Tiempo y Pomodoro: barra de estado, vista “Dovela: Tiempo”, Seguimiento, Estadísticas, Cronograma, modales. */
+
+/* ───── Barra de estado ───── */
+.dovela-time-bar { cursor: pointer; font-variant-numeric: tabular-nums; }
+.dovela-time-bar.is-overtime { color: var(--text-error); font-weight: var(--font-bold); }
+.dovela-time-bar.is-decide { color: var(--text-warning, var(--color-orange)); font-weight: var(--font-semibold); }
+.dovela-time-bar.is-break { color: var(--color-green); }
+
+/* ───── Vista ───── */
+.dovela-time-view { display: flex; flex-direction: column; padding: 0 !important; }
+.dovela-time-tabs { display: flex; gap: 4px; padding: 8px 12px 0; border-bottom: 1px solid var(--background-modifier-border); flex: none; }
+.dovela-time-tab-btn { display: inline-flex; align-items: center; gap: 6px; background: transparent; box-shadow: none; border-radius: var(--radius-s) var(--radius-s) 0 0; padding: 6px 12px; color: var(--text-muted); border-bottom: 2px solid transparent; }
+.dovela-time-tab-btn.is-active { color: var(--text-normal); border-bottom-color: var(--interactive-accent); font-weight: var(--font-semibold); }
+.dovela-time-tab-icon { display: inline-flex; }
+.dovela-time-tab-icon svg { width: var(--icon-s); height: var(--icon-s); }
+.dovela-time-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px; }
+.dovela-time-view .dovela-time-body:has(.dovela-tl) { overflow: hidden; }
+.dovela-time-view .dovela-tl { height: 100%; }
+
+.dovela-time { display: flex; flex-direction: column; gap: var(--dovela-gap); }
+
+/* ───── Tarjetas y botones ───── */
+.dovela-time-card { background: var(--background-secondary); border: 1px solid var(--background-modifier-border); border-radius: var(--dovela-radius); padding: 12px; }
+.dovela-time-card-title { font-weight: var(--font-semibold); margin-bottom: 6px; }
+.dovela-time-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.dovela-time-btn { display: inline-flex; align-items: center; gap: 6px; }
+.dovela-time-btn-icon { display: inline-flex; }
+.dovela-time-btn-icon svg { width: var(--icon-s); height: var(--icon-s); }
+.dovela-time-link { background: transparent; box-shadow: none; color: var(--text-accent); padding: 0 6px; height: auto; font-size: var(--font-ui-smaller); }
+.dovela-time-chip { font-size: var(--font-ui-smaller); padding: 2px 10px; border-radius: var(--radius-l, 12px); background: var(--background-primary); box-shadow: none; border: 1px solid var(--background-modifier-border); }
+.dovela-time-chip.is-active { background: var(--interactive-accent); color: var(--text-on-accent); border-color: var(--interactive-accent); }
+.dovela-time-pill { font-size: var(--font-ui-smaller); background: var(--background-modifier-hover); border-radius: var(--radius-l, 12px); padding: 0 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dovela-time-warning { color: var(--text-warning, var(--color-orange)); }
+.dovela-time-error { color: var(--text-error); }
+.dovela-time-empty { color: var(--text-muted); padding: 24px 8px; text-align: center; }
+
+/* ───── Seguimiento ───── */
+.dovela-time-clock-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.dovela-time-state { color: var(--text-muted); font-size: var(--font-ui-small); text-align: center; }
+.dovela-time-clock { font-size: 2.6em; font-weight: var(--font-bold); font-variant-numeric: tabular-nums; letter-spacing: .02em; line-height: 1.1; }
+.dovela-time-clock.is-idle { color: var(--text-faint); }
+.dovela-time-control.is-running { border-left: 4px solid var(--interactive-accent); }
+.dovela-time-control.is-break { border-left-color: var(--color-green); }
+.dovela-time-control.is-overtime { border-left-color: var(--color-red); }
+.dovela-time-control.is-overtime .dovela-time-clock { color: var(--text-error); }
+.dovela-time-control.is-decide { border-left-color: var(--color-orange); }
+.dovela-time-control.is-decide .dovela-time-clock { color: var(--text-warning, var(--color-orange)); }
+.dovela-time-current { margin-top: 8px; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.dovela-time-current-task { font-weight: var(--font-semibold); }
+.dovela-time-current-notes { white-space: pre-wrap; color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.dovela-time-today { margin-top: 8px; }
+.dovela-time-concurrent { border-color: var(--color-orange); }
+.dovela-time-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px 0; }
+.dovela-time-row-text { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+
+.dovela-time-target { margin-bottom: 8px; overflow-wrap: anywhere; }
+.dovela-time-target-name { font-weight: var(--font-semibold); }
+.dovela-time-sources { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.dovela-time-search { width: 100%; margin-bottom: 6px; }
+.dovela-time-results { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-primary); }
+.dovela-time-results .dovela-vlist { max-height: 420px; }
+.dovela-time-results-count { margin-top: 4px; }
+.dovela-time-pick { display: flex; align-items: center; gap: 6px; min-height: 56px; box-sizing: border-box; padding: 4px 8px; border-bottom: 1px solid var(--background-modifier-border); }
+.dovela-time-pick:hover { background: var(--background-modifier-hover); }
+.dovela-time-pick.is-selected { background: var(--background-modifier-active-hover, var(--background-modifier-hover)); box-shadow: inset 3px 0 0 var(--interactive-accent); }
+.dovela-time-pick-main { flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.dovela-time-pick-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dovela-time-pick-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dovela-time-pick-actions { display: flex; gap: 2px; flex: none; }
+
+/* ───── Estadísticas ───── */
+.dovela-time-stats-header { display: flex; flex-direction: column; gap: 6px; }
+.dovela-time-nav { display: flex; align-items: center; gap: 6px; }
+.dovela-time-nav-btn { flex: none; min-width: 36px; }
+.dovela-time-nav-title { flex: 1 1 auto; min-width: 0; font-weight: var(--font-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dovela-time-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.dovela-time-summary { display: flex; gap: 8px; flex-wrap: wrap; }
+.dovela-time-summary-item { background: var(--background-secondary); border-radius: var(--radius-s); padding: 6px 10px; font-weight: var(--font-semibold); }
+.dovela-time-tree { display: flex; flex-direction: column; }
+.dovela-time-node > summary { list-style: none; }
+.dovela-time-node > summary::-webkit-details-marker { display: none; }
+.dovela-time-node-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px calc(6px + var(--dovela-level, 0) * 14px); border-radius: var(--radius-s); cursor: pointer; flex-wrap: wrap; }
+.dovela-time-node-row:hover { background: var(--background-modifier-hover); }
+.dovela-time-node-row::before { content: '▸'; color: var(--text-faint); width: 10px; flex: none; transition: transform .1s; }
+.dovela-time-node[open] > .dovela-time-node-row::before { transform: rotate(90deg); }
+.dovela-time-node-icon { flex: none; }
+.dovela-time-node-name { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+.dovela-time-node-stats { display: inline-flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+.dovela-time-bar-track { width: 70px; height: 6px; background: var(--background-modifier-border); border-radius: 3px; overflow: hidden; display: inline-block; }
+.dovela-time-bar-fill { display: block; height: 100%; background: var(--interactive-accent); border-radius: 3px; }
+.dovela-time-node-pct { width: 3.6em; text-align: right; font-size: var(--font-ui-smaller); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.dovela-time-node-dur { min-width: 5.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.dovela-time-node.is-transit > .dovela-time-node-row { opacity: .6; }
+.dovela-time-node[data-kind="root"] > .dovela-time-node-row { font-weight: var(--font-bold); }
+.dovela-time-node[data-kind="group"] > .dovela-time-node-row .dovela-time-node-name { color: var(--color-purple); font-weight: var(--font-semibold); }
+.dovela-time-node[data-kind="av"] > .dovela-time-node-row .dovela-time-node-name { color: var(--color-blue); }
+.dovela-time-node[data-kind="ai"] > .dovela-time-node-row .dovela-time-node-name { color: var(--color-cyan); }
+.dovela-time-node[data-kind="project"] > .dovela-time-node-row .dovela-time-node-name { color: var(--color-green); }
+.dovela-time-node[data-kind="group"] .dovela-time-bar-fill { background: var(--color-purple); }
+.dovela-time-node[data-kind="av"] .dovela-time-bar-fill { background: var(--color-blue); }
+.dovela-time-node[data-kind="ai"] .dovela-time-bar-fill { background: var(--color-cyan); }
+.dovela-time-node[data-kind="project"] .dovela-time-bar-fill { background: var(--color-green); }
+.dovela-time-node-more { flex: none; }
+.dovela-time-logs { margin: 2px 0 6px 28px; display: flex; flex-direction: column; gap: 4px; }
+.dovela-time-log { display: flex; gap: 8px; padding: 6px 8px; border-radius: var(--radius-s); background: var(--background-secondary); cursor: pointer; min-height: 56px; box-sizing: border-box; }
+.dovela-time-log:hover, .dovela-time-log:focus-visible { background: var(--background-modifier-hover); }
+.dovela-time-log-date { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 40px; border-radius: var(--radius-s); background: var(--background-primary); padding: 2px 4px; line-height: 1.1; }
+.dovela-time-log-day { font-weight: var(--font-bold); font-size: 1.1em; }
+.dovela-time-log-month { font-size: var(--font-ui-smaller); color: var(--text-muted); text-transform: uppercase; }
+.dovela-time-log-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dovela-time-log-line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dovela-time-log-task { overflow-wrap: anywhere; }
+.dovela-time-log-notes { color: var(--text-muted); font-size: var(--font-ui-smaller); white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.dovela-period-layout { display: flex; gap: 16px; flex-wrap: wrap; }
+.dovela-period-quick { display: flex; flex-direction: column; gap: 6px; flex: 1 1 160px; }
+.dovela-period-grid { flex: 2 1 260px; min-width: 240px; }
+
+/* ───── Cronograma ───── */
+.dovela-tl { position: relative; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.dovela-tl-header { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; }
+.dovela-tl-nav, .dovela-tl-tools, .dovela-tl-modes, .dovela-tl-zoom { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.dovela-tl-title { font-weight: var(--font-semibold); }
+.dovela-tl-zoom-label { min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--font-ui-smaller); }
+.dovela-tl-popover { position: absolute; top: 44px; left: 0; z-index: var(--layer-popover, 30); background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: var(--dovela-radius); box-shadow: var(--shadow-l); padding: 8px; width: min(320px, calc(100% - 16px)); }
+.dovela-tl-scroll { position: relative; flex: 1 1 auto; min-height: 320px; max-height: 75vh; overflow: auto; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-primary); overscroll-behavior: contain; }
+.dovela-time-view .dovela-tl-scroll { max-height: none; }
+.dovela-tl.is-week .dovela-tl-days, .dovela-tl.is-week .dovela-tl-grid { min-width: 600px; }
+.dovela-tl-days { display: flex; position: sticky; top: 0; z-index: 4; background: var(--background-primary); border-bottom: 1px solid var(--background-modifier-border); }
+.dovela-tl-gutter-head { width: 48px; flex: none; position: sticky; left: 0; background: var(--background-primary); }
+.dovela-tl-dayhead { flex: 1 1 0; min-width: 0; text-align: center; padding: 4px 0; font-size: var(--font-ui-small); color: var(--text-muted); }
+.dovela-tl-dayhead.is-clickable { cursor: pointer; }
+.dovela-tl-dayhead.is-today { color: var(--text-accent); font-weight: var(--font-bold); }
+.dovela-tl-grid { display: flex; position: relative; }
+.dovela-tl-gutter { width: 48px; flex: none; position: sticky; left: 0; z-index: 2; background: var(--background-primary); }
+.dovela-tl-hour-label { position: absolute; right: 6px; transform: translateY(-50%); font-size: var(--font-ui-smaller); color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.dovela-tl-hour-label:first-child { transform: none; }
+.dovela-tl-col { position: relative; flex: 1 1 0; min-width: 0; border-left: 1px solid var(--background-modifier-border); touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  background-image: repeating-linear-gradient(to bottom, var(--background-modifier-border) 0, var(--background-modifier-border) 1px, transparent 1px, transparent var(--dovela-tl-hour, 75px)); }
+.dovela-tl-col.is-today { background-color: color-mix(in srgb, var(--interactive-accent) 4%, transparent); }
+.dovela-tl-block { position: absolute; left: 1px; width: calc(100% - 2px); box-sizing: border-box; overflow: hidden; border-radius: var(--radius-s); padding: 2px 6px; font-size: var(--font-ui-smaller); line-height: 1.25; cursor: grab; touch-action: none;
+  background: color-mix(in srgb, var(--dovela-block-color, var(--interactive-accent)) 45%, var(--background-primary));
+  border-left: 3px solid var(--dovela-block-color, var(--interactive-accent)); color: var(--text-normal); z-index: 1; }
+.dovela-tl-block:hover, .dovela-tl-block.is-hover { box-shadow: 0 0 0 1px var(--interactive-accent); z-index: 2; }
+.dovela-tl-block.is-cont-before { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 2px dashed var(--dovela-block-color); }
+.dovela-tl-block.is-cont-after { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 2px dashed var(--dovela-block-color); }
+.dovela-tl-block-title { font-weight: var(--font-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dovela-tl-block-task, .dovela-tl-block-notes { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+.dovela-tl-block-dur { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.dovela-tl-block.size-tiny { padding: 0 4px; }
+.dovela-tl-block.size-tiny .dovela-tl-block-task, .dovela-tl-block.size-tiny .dovela-tl-block-dur, .dovela-tl-block.size-tiny .dovela-tl-block-notes { display: none; }
+.dovela-tl-block.size-small .dovela-tl-block-notes { display: none; }
+.dovela-tl-block.is-dragging { opacity: .35; }
+.dovela-tl-block.is-copy { outline: 2px dashed var(--interactive-accent); }
+.dovela-tl-block.is-ghost, .dovela-tl-block.is-preview { opacity: .85; z-index: 5; box-shadow: var(--shadow-s); pointer-events: none; }
+.dovela-tl-block.is-preview { background: color-mix(in srgb, var(--interactive-accent) 30%, transparent); border: 1px dashed var(--interactive-accent); }
+.dovela-tl-block[data-time]::after { content: attr(data-time); position: absolute; right: 4px; top: 2px; font-weight: var(--font-bold); color: var(--text-accent); background: var(--background-primary); border-radius: var(--radius-s); padding: 0 4px; }
+.dovela-tl-block.is-live { cursor: default; opacity: .75; border-left-style: dashed; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--dovela-block-color) 35%, var(--background-primary)) 0 8px, var(--background-primary) 8px 16px); }
+.dovela-tl-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: ns-resize; }
+.dovela-tl-block:hover .dovela-tl-resize { background: color-mix(in srgb, var(--dovela-block-color, var(--interactive-accent)) 70%, transparent); }
+.dovela-tl-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-red); z-index: 3; pointer-events: none; }
+.dovela-tl-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-red); }
+
+/* ───── Modales ───── */
+.dovela-time-modal .setting-item { padding: 8px 0; }
+.dovela-time-modal-label { display: block; font-weight: var(--font-semibold); margin: 8px 0 4px; }
+.dovela-time-notes { width: 100%; min-height: 80px; resize: vertical; }
+.dovela-time-modal-status { padding: 4px 0; font-variant-numeric: tabular-nums; }
+.dovela-time-modal-status.is-error { color: var(--text-error); }
+.dovela-time-dt .setting-item-control { gap: 6px; flex-wrap: wrap; }
+.dovela-time-dt input[type="date"] { min-width: 9.5em; }
+.dovela-time-dt input[type="time"] { min-width: 6.5em; }
+.dovela-time-modal-task .setting-item-description { overflow-wrap: anywhere; }
+.dovela-time-modal-buttons .setting-item-control { flex-wrap: wrap; gap: 6px; }
+.dovela-pomodoro-info { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.dovela-pomodoro-actions { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.dovela-pomodoro-actions button { width: 100%; justify-content: center; }
+
+/* ───── Móvil ───── */
+.is-mobile .dovela-time-btn, .is-mobile .dovela-time-chip, .is-mobile .dovela-tl-header button,
+.is-mobile .dovela-time-nav button, .is-mobile .dovela-pomodoro-actions button, .is-mobile .dovela-time-tab-btn,
+.is-mobile .dovela-time-pick-actions button, .is-mobile .dovela-time-node-more { min-height: 44px; min-width: 44px; }
+.is-mobile .dovela-time-node-row { min-height: 44px; }
+.is-mobile .dovela-time-search, .is-mobile .dovela-time-notes, .is-mobile .dovela-time-dt input { font-size: 16px; }
+.is-mobile .dovela-tl-resize { height: 16px; }
+@media (max-width: 480px) {
+  .dovela-time-clock { font-size: 2.1em; }
+  .dovela-time-bar-track { display: none; }
+  .dovela-time-tab-label { display: none; }
+  .dovela-time-node-pct { display: none; }
+  .dovela-tl-gutter, .dovela-tl-gutter-head { width: 38px; }
+}
