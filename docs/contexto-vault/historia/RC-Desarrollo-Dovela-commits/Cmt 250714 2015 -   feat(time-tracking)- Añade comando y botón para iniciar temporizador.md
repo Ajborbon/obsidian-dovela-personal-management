@@ -1,0 +1,19 @@
+---
+type: Cmt
+commit: ab8c903
+branch: feat/mejoras-varias
+tagVersion: 
+estado: 🟢
+tags:
+---
+Añade dos nuevos métodos para iniciar el control de tiempo, mejorando la accesibilidad y el flujo de trabajo del usuario:
+
+
+   1. Comando de Paleta: Se introduce el comando "Control de Tiempo: Iniciar temporizador para la nota activa". Este comando solo está disponible si hay una nota activa en el espacio de trabajo y no hay otro temporizador en curso.
+
+
+   2. Botón de Cinta (Ribbon): Se añade un nuevo icono de "play" en la cinta lateral. Este botón permite iniciar el temporizador para la nota activa con un solo clic. Incluye validaciones para notificar al usuario si ya hay un temporizador activo o si no hay ninguna nota abierta.
+
+
+  Ambas funcionalidades se integran con el sistema de startTracking existente, asegurando la consistencia con la lógica de persistencia y sincronización ya implementada.
+

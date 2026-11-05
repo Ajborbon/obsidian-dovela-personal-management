@@ -1,0 +1,26 @@
+---
+type: Cmt
+commit: "4312953"
+branch: feature/time-tracker-dashboard
+tagVersion: 
+estado: 🟢
+tags:
+---
+
+Se ha refactorizado el módulo de seguimiento de tiempo para utilizar la librería Moment.js, mejorando la manipulación y consistencia de fechas y horas. Además, se ha enriquecido la vista de estadísticas con una representación jerárquica de los registros de tiempo y filtros de fecha más robustos.
+
+Cambios detallados:
+
+- **Migración a Moment.js:**
+	- `timeLogModal.ts`: Actualización de tipos de fecha/hora a `moment.Moment`, inicialización, formateo, parseo y cálculo de duración utilizando Moment.js.
+	- `timeTrackerService.ts`: Adaptación de la lógica de filtrado de estadísticas para trabajar con objetos `moment`.
+	- `timeTrackerView.ts`: Conversión completa de la gestión de fechas y rangos de tiempo a Moment.js, incluyendo `customStartDate`, `customEndDate` y `getDateRange`.
+
+- **Mejoras en la Vista de Estadísticas (`timeTrackerView.ts`):**
+	- **Vista Jerárquica:** La función `buildTree` ahora procesa directamente los `TimeLogEntry` para construir una estructura de árbol que representa la jerarquía de las notas (carpetas y archivos).
+	- **Detalle de Registros:** Los nodos hoja (archivos) en la vista jerárquica ahora muestran los registros de tiempo individuales asociados, incluyendo la duración, notas y una ruta de navegación (breadcrumb).
+	- **Filtros de Fecha Mejorados:** Se han implementado filtros de fecha más precisos y dinámicos para las estadísticas, permitiendo rangos como "Hoy", "Esta Semana", "Este Mes", "Este Año" y rangos personalizados.
+	- **Visualización de Título Dinámico:** El título de las estadísticas ahora refleja el filtro de fecha activo.
+
+- **Actualización de `timelogs.json`:** Se han ajustado los formatos de fecha/hora en los registros de tiempo existentes para ser compatibles con el nuevo esquema de Moment.js.
+

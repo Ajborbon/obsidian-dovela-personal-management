@@ -1,0 +1,20 @@
+---
+type: Cmt
+commit: 403ec34
+branch: feat/mejoras-varias
+tagVersion: 
+estado: 🟢
+tags:
+---
+Introduce una nueva funcionalidad de "Panel de Actividad" que ofrece a los usuarios una visión consolidada de su productividad y actividad reciente dentro de Obsidian.
+
+Esta nueva vista incluye:
+- Un dashboard principal con métricas clave: tareas capturadas vs. completadas, y notas nuevas vs. modificadas.
+- Filtros de período de tiempo (Hoy, Ayer, Semana, Mes, y un rango de fechas personalizado) para analizar la actividad en diferentes lapsos.
+- Vistas de detalle interactivas: al hacer clic en una métrica, se muestra una lista detallada de las notas o tareas correspondientes.
+- El botón del filtro de período activo se resalta visualmente para mejorar la claridad.
+
+Se puede acceder al panel a través de un nuevo comando en la paleta ("Panel de Actividad: Mostrar resumen de actividad") y un nuevo icono en la cinta lateral.
+ 
+ La lógica de negocio está encapsulada en un nuevo `AnalyzerService`, y se han añadido estilos CSS dedicados para una presentación pulida.
+

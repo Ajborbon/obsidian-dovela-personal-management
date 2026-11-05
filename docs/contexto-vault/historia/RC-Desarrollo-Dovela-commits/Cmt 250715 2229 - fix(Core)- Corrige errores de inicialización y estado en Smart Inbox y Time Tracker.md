@@ -1,0 +1,24 @@
+---
+type: Cmt
+commit: 4313a10
+branch: feat/mejoras-varias
+tagVersion: 
+estado: 🟢
+tags:
+---
+Se corrigen varios errores relacionados con la inicialización del plugin y el manejo de estado, mejorando la robustez y la experiencia de usuario.
+
+ Cambios principales:
+ 
+ 1.  **Smart Inbox:**
+     *   **Problema:** Las sugerencias de autocompletado para contextos (`#cx-`) y proyectos (`#px-`) no funcionaban al iniciar el plugin, sino solo después de guardar la primera tarea.
+     *   **Solución:** Se ha retrasado la recolección de metadatos (`collectMetadata`) para que se ejecute dentro de `onLayoutReady`. Esto asegura que el caché de Obsidian esté completamente construido antes de intentar leer los tags, solucionando el problema de inicialización.
+ 
+ 2.  **Control de Tiempo (Time Tracker):**
+     *   **Problema:** Si el usuario cerraba el modal de registro de tiempo (con 'X' o 'Esc') después de detener un temporizador, el estado del temporizador quedaba "fantasma", impidiendo volver a detenerlo sin recargar el plugin.
+     *   **Solución:** Se ha añadido lógica al `TimeLogModal` para que, al cerrarse sin guardar, notifique al plugin para que reinicie el contador visual. Esto permite al usuario cancelar la acción de registro y reanudar el temporizador sin perder el control.
+ 
+ 3.  **Estadísticas de Tiempo:**
+     *   **Problema:** Después de guardar un registro de tiempo, el filtro de las estadísticas se reseteaba a "Siempre" en lugar de mantener la selección actual (ej. "Hoy").
+     *   **Solución:** Se ha modificado la función `refreshStatistics` en las vistas `GtdView` y `FocoView` para que, al refrescar, reutilicen el filtro de fecha que ya estaba activo, preservando la selección del usuario.
+

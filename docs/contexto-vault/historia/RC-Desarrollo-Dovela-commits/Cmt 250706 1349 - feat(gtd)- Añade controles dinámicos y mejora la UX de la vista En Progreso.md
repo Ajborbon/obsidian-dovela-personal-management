@@ -1,0 +1,28 @@
+---
+type: Cmt
+commit: f9b44d7
+branch: main
+tagVersion: 
+estado: 🟢
+tags:
+---
+Se ha mejorado significativamente la vista "En Progreso" para convertirla en un panel de control dinámico, añadiendo nuevas capacidades de agrupación y ordenamiento, y refinando la interfaz de usuario para una mejor experiencia.
+
+**Cambios Principales:**
+ 
+1.  **Controles de Foco Dinámicos:**
+ *   Se ha implementado una nueva sección de "Controles de Foco" que permite a los usuarios **agrupar** las tareas activas por  `Contexto`, `Persona` o `Proyecto`.
+ *   Se ha añadido un botón de **ordenamiento** cíclico para organizar las tareas por `Duración` (ascendente/descendente) o volver al orden por `Prioridad` por defecto.
+ *   La lógica de agrupación por `Proyecto` sigue un algoritmo refinado (PGTD > AI > Prefijo Estructural > Carpeta) para una clasificación más inteligente.
+
+ 1.  **Mejoras en la Interfaz de Usuario (UX):**
+     *   Se ha rediseñado la cabecera de la vista, encapsulando las estadísticas y los controles en un "Panel de Control" cohesivo con
+      mejor espaciado y agrupación visual.
+     *   Las estadísticas ahora se presentan de forma más clara y profesional.
+     *   Se ha añadido una nueva estadística, "Tiempo Definido", para comparar el tiempo explícitamente planificado con el "Tiempo Estimado" total.
+ 
+ 2.  **Refactorización del Código:**
+     *   El módulo `inProgressProcessor.ts` ha sido actualizado para manejar la lógica de agrupación y ordenamiento dinámico.
+     *   El modelo de datos (`model.ts`) y el generador de HTML (`htmlGenerator.ts`) han sido adaptados para soportar la nueva estructura de grupos y estadísticas.
+     *   El componente de la vista (`view.ts`) ahora gestiona el estado de los nuevos controles.
+

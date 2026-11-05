@@ -1,0 +1,13 @@
+---
+type: Cmt
+estado: 🟢
+tags:
+commit: bc761c9
+branch: main
+tagVersion: 
+---
+  
+
+ Se ha corregido un error en la generación de los enlaces de navegación de la vista GTD que impedía el correcto funcionamiento del ancla para la lista 'Algun dia/ Tal Vez'.
+    
+El problema se debía a que el carácter '/' en el nombre de la lista no se estaba saneando correctamente para el atributo `href`, lo que resultaba en un enlace roto. Se ha mejorado la expresión regular para que reemplace todos los caracteres no alfanuméricos (excepto guiones) por guiones, asegurando así que los IDs y los `href` sean válidos y coincidan.
