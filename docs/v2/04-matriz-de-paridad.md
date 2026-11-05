@@ -20,7 +20,7 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F09 | Marcar en progreso `[ ]→[/]` | RI-A §6.3 | F1/F4 | parcial | A | sin fallback peligroso; `markInProgress` + localización segura |
 | F10 | Cerrar tarea `[x] ✅ fecha` | RI-A §6.3 | F1/F4 | parcial | A | ✅ antes de `^bloque`; `markDone`, ✅ antes de `^bloque`, conserva CRLF |
 | F11 | Dependencias `⛔ id` con enlace 🔗 navegable | RI-A §4.2 | F1/F5 | pendiente | A+M | ciclos → Inbox |
-| F12 | Proyectos estancados (🟢 sin tareas, carpeta+2 niveles de enlaces) | RI-A §6.1 | F7 | pendiente | A+M | cuenta `[/]` como abierta |
+| F12 | Proyectos estancados (🟢 sin tareas, carpeta+2 niveles de enlaces) | RI-A §6.1 | F7 | mejorada | A+M | cuenta `[/]` como abierta; `core/panels/stalled.ts` sobre el índice; cuenta `[/]`, tolera selector de variación; usa `resolvedLinks` (incluye incrustaciones); 12 pruebas |
 
 ## Dashboard GTD (vista `gtd-view`)
 
@@ -80,8 +80,8 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F49 | Periodos (hoy/semana/mes/año/siempre/rango/día) + navegación ‹ › + DatePicker + heatmap | RI-B §1.6–1.7 | F7 | parcial | A+M | `periodRange`, `shiftAnchor`, `dailyTotals`; UI en F7 |
 | F50 | Exportar a Excel (nodo + descendientes) | RI-B §1.6 | F7 | parcial | A | **CSV** en lugar de xlsx (mismas columnas); `logsToCsv` (columnas v1, BOM, escape); UI en F7 |
 | F51 | Cronograma día/3/semana, zoom, mover/redimensionar/crear/copiar, multi‑día, colores, tooltip | RI-B §1.8 | F7 | parcial | A+M | Pointer Events (táctil); `blocksForDay`, columnas por intervalos, `snapMinutes`; UI en F7 |
-| F52 | Panel de actividad (capturadas/completadas, notas nuevas/modificadas, periodos, detalle) | RI-C §5.5 | F7 | pendiente | A+M | sobre índice |
-| F53 | Panel de revisión (añadir tarea, archivar 🔵, abrir carpeta) | RI-B §1.9 | F7 | pendiente | M | |
+| F52 | Panel de actividad (capturadas/completadas, notas nuevas/modificadas, periodos, detalle) | RI-C §5.5 | F7 | mejorada | A+M | sobre índice; `core/panels/activity.ts` sin leer el vault; rango personalizado inclusivo (defecto v1 corregido); desglose y serie; 14 pruebas |
+| F53 | Panel de revisión (añadir tarea, archivar 🔵, abrir carpeta) | RI-B §1.9 | F7 | mejorada | M | añadir tarea con cursor, archivar con confirmación, abrir nota, resumen por nivel PGTD, lint de notas de conocimiento; “Abrir carpeta” → “Abrir nota” |
 
 ## Foco y Backlinks
 

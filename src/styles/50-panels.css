@@ -1,0 +1,125 @@
+/* Paneles: Actividad y Revisión GTD (F7). Solo variables CSS de Obsidian. */
+.dovela-panels { padding: var(--size-4-3, 12px); }
+.dovela-panels h2 { margin: 0 0 2px; }
+.dovela-panels h3 { margin: 16px 0 6px; }
+.dovela-panels h4 { margin: 0 0 6px; }
+.dovela-panels-head { margin-bottom: 8px; }
+.dovela-panels-loading { margin: 4px 0 8px; }
+.dovela-panels button { min-height: 32px; }
+.dovela-panels-link { background: none; box-shadow: none; color: var(--text-accent); padding: 0 6px; }
+
+/* Botonera segmentada (periodos, modo de la serie). */
+.dovela-panels-seg { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+.dovela-panels-seg button { flex: 1 1 auto; font-size: var(--font-ui-small); }
+.dovela-panels-seg button.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.dovela-panels-seg.is-small { margin: 0; flex-wrap: nowrap; }
+.dovela-panels-seg.is-small button { flex: none; min-height: 28px; padding: 0 10px; font-size: var(--font-ui-smaller); }
+
+/* ── Actividad ─────────────────────────────────────────────────────────────── */
+.dovela-activity-range { margin: 4px 0 12px; padding: 8px; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); max-width: 360px; }
+.dovela-activity-range-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; font-size: var(--font-ui-small); }
+
+.dovela-activity-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 8px 0 16px; }
+.dovela-activity-card { background: var(--background-secondary); border-radius: var(--radius-m); padding: 10px 12px; }
+.dovela-activity-metric {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  min-height: 40px; padding: 6px 8px; margin: 2px 0; text-align: left;
+  background: transparent; box-shadow: none; border-radius: var(--radius-s); height: auto;
+}
+.dovela-activity-metric.is-clickable { cursor: pointer; }
+.dovela-activity-metric.is-clickable:hover { background: var(--background-modifier-hover); }
+.dovela-activity-metric:disabled { opacity: 1; cursor: default; }
+.dovela-activity-metric.is-balance { border-top: 1px solid var(--background-modifier-border); border-radius: 0; margin-top: 4px; }
+.dovela-activity-label { color: var(--text-muted); font-size: var(--font-ui-small); }
+.dovela-activity-value { font-size: 1.4em; font-weight: var(--font-semibold); font-variant-numeric: tabular-nums; }
+.dovela-activity-metric.is-clickable .dovela-activity-value { color: var(--text-accent); }
+.dovela-activity-value.is-positive { color: var(--color-green); }
+.dovela-activity-value.is-negative { color: var(--color-red); }
+.dovela-activity-hint { margin-top: 6px; }
+
+.dovela-activity-series { margin-top: 8px; }
+.dovela-activity-series-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.dovela-activity-series-head h4 { margin: 0; }
+.dovela-activity-legend { display: flex; gap: 12px; font-size: var(--font-ui-smaller); color: var(--text-muted); margin-bottom: 6px; }
+.dovela-activity-legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.dovela-activity-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.dovela-activity-swatch.is-a, .dovela-activity-bar.is-a { background: var(--color-blue); }
+.dovela-activity-swatch.is-b, .dovela-activity-bar.is-b { background: var(--color-green); }
+.dovela-activity-bars { display: flex; flex-direction: column; gap: 3px; }
+.dovela-activity-bar-row { display: grid; grid-template-columns: 4.5em 1fr; align-items: center; gap: 6px; padding: 1px 4px; border-radius: var(--radius-s); }
+.dovela-activity-bar-row.is-current { background: var(--background-modifier-hover); }
+.dovela-activity-bar-label { font-size: var(--font-ui-smaller); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dovela-activity-bar-group { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dovela-activity-bar-line { display: flex; align-items: center; gap: 4px; height: 8px; }
+.dovela-activity-bar { height: 6px; border-radius: 3px; min-width: 0; flex: none; max-width: calc(100% - 2.5em); }
+.dovela-activity-bar-num { font-size: 10px; line-height: 1; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+/* Detalle (lista, virtualizada si > 150) */
+.dovela-activity.is-detail { display: flex; flex-direction: column; overflow: hidden; }
+.dovela-activity-detail-head { flex: none; margin-bottom: 8px; }
+.dovela-activity-detail-head h3 { margin: 8px 0 4px; }
+.dovela-activity-detail { flex: 1 1 auto; min-height: 0; }
+.dovela-activity-detail .dovela-vlist { height: 100%; }
+.dovela-activity-row {
+  height: 56px; box-sizing: border-box; overflow: hidden; padding: 6px 8px; cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.dovela-activity-row:hover { background: var(--background-modifier-hover); }
+.dovela-activity-row-main { display: flex; gap: 6px; min-width: 0; }
+.dovela-activity-row-status { flex: none; color: var(--text-muted); }
+.dovela-activity-row-text, .dovela-activity-row-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dovela-activity-row-meta { font-size: var(--font-ui-smaller); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.dovela-activity-row-note { color: var(--text-faint); }
+
+/* ── Revisión ──────────────────────────────────────────────────────────────── */
+.dovela-review-head { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; }
+.dovela-review-head h2 { flex: 1 1 auto; }
+.dovela-review-head .dovela-muted { flex-basis: 100%; }
+.dovela-review-section { margin-bottom: 12px; }
+.dovela-review-empty { padding: 12px; border-radius: var(--radius-m); background: color-mix(in srgb, var(--color-green) 12%, transparent); }
+.dovela-review-list { list-style: none; padding: 0; margin: 0; }
+.dovela-review-item {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; margin-bottom: 6px; border-radius: var(--radius-m); background: var(--background-secondary);
+  border-left: 3px solid var(--color-orange);
+}
+.dovela-review-item-info { flex: 1 1 220px; min-width: 0; }
+.dovela-review-item-name { font-weight: var(--font-semibold); overflow-wrap: anywhere; }
+.dovela-review-item-info .dovela-muted { overflow-wrap: anywhere; }
+.dovela-review-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.dovela-review-actions button { font-size: var(--font-ui-small); }
+
+.dovela-review-days { margin: 4px 0 8px; font-size: var(--font-ui-small); }
+.dovela-review-days input { width: 5em; margin: 0 4px; }
+.dovela-review-table-wrap { overflow-x: auto; }
+.dovela-review-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: var(--font-ui-small); }
+.dovela-review-table th, .dovela-review-table td { padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--background-modifier-border); }
+.dovela-review-table tbody th, .dovela-review-table tfoot th { text-align: left; font-weight: var(--font-normal); white-space: nowrap; }
+.dovela-review-table tfoot { font-weight: var(--font-semibold); }
+.dovela-review-table td.is-warning { color: var(--color-orange); font-weight: var(--font-semibold); }
+
+.dovela-review-details { margin-top: 8px; }
+.dovela-review-details > summary { cursor: pointer; padding: 6px 0; font-weight: var(--font-semibold); }
+.dovela-review-details-body { padding: 4px 0 4px 8px; }
+.dovela-review-simple-list { list-style: none; padding: 0; margin: 4px 0 0; }
+.dovela-review-simple-item { display: flex; align-items: baseline; gap: 6px; padding: 4px 6px; border-radius: var(--radius-s); cursor: pointer; flex-wrap: wrap; }
+.dovela-review-simple-item:hover { background: var(--background-modifier-hover); }
+.dovela-review-simple-name { overflow-wrap: anywhere; }
+.dovela-review-badge { font-size: var(--font-ui-smaller); background: var(--background-modifier-border); border-radius: var(--radius-s); padding: 0 6px; }
+
+/* Móvil: áreas táctiles ≥ 44px */
+@media (max-width: 768px) {
+  .dovela-panels button, .dovela-activity-metric { min-height: 44px; }
+  .dovela-panels-seg.is-small button { min-height: 44px; }
+  .dovela-review-actions { width: 100%; }
+  .dovela-review-actions button { flex: 1 1 auto; }
+  .dovela-review-simple-item { min-height: 44px; align-items: center; }
+  .dovela-review-details > summary { min-height: 44px; display: flex; align-items: center; }
+  .dovela-review-days input { font-size: 16px; min-height: 44px; }
+  .dovela-activity-row { height: 56px; }
+}
+.is-mobile .dovela-panels button, .is-mobile .dovela-activity-metric { min-height: 44px; }
+.is-mobile .dovela-review-simple-item { min-height: 44px; align-items: center; }
+@media (max-width: 768px) { .dovela-activity-range .dovela-month-day { min-height: 44px; } .dovela-activity-range { max-width: none; } }
+.is-mobile .dovela-activity-range .dovela-month-day { min-height: 44px; }

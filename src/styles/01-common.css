@@ -34,5 +34,6 @@
 
 @media (max-width: 768px) {
   .dovela-task { padding: 8px; min-height: 44px; }
+  .dovela-month-day { min-height: 44px; }
   .dovela input[type="text"], .dovela input[type="search"], .dovela select { font-size: 16px; }
 }
