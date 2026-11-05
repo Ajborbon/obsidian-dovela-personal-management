@@ -1,0 +1,85 @@
+/* Backlinks organizados (vista lateral `dovela-backlinks-view`). Solo variables CSS de Obsidian. */
+.dovela-bl.view-content { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.dovela-bl-header { flex: none; padding: var(--size-4-2) var(--size-4-3) var(--size-4-1); border-bottom: 1px solid var(--background-modifier-border); display: flex; flex-direction: column; gap: 4px; }
+.dovela-bl-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--size-4-1) var(--size-4-2); }
+.dovela-bl-body.is-list { overflow: hidden; padding: 0; }
+.dovela-bl-body.is-list .dovela-vlist { height: 100%; padding: var(--size-4-1) var(--size-4-2); box-sizing: border-box; }
+
+/* Cabecera */
+.dovela-bl-top { display: flex; align-items: flex-start; gap: 6px; }
+.dovela-bl-note {
+  flex: 1 1 auto; min-width: 0; font-weight: var(--font-semibold); cursor: pointer;
+  display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
+}
+.dovela-bl-toolbar { display: flex; gap: 2px; flex: none; }
+.dovela-bl-btn { min-width: 28px; height: 28px; padding: 0 4px; font-size: var(--font-ui-small); }
+.dovela-bl-btn.is-active { background: var(--background-modifier-active-hover); }
+.dovela-bl-counts { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-bl-count-total { color: var(--text-normal); font-weight: var(--font-semibold); }
+.dovela-bl-path { font-size: var(--font-ui-smaller); }
+
+/* Ordenamiento */
+.dovela-bl-sort { display: flex; flex-wrap: wrap; gap: 4px; }
+.dovela-bl-sort-btn { display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px; height: auto; min-height: 26px; font-size: var(--font-ui-smaller); box-shadow: none; background: var(--background-secondary); }
+.dovela-bl-sort-btn.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.dovela-bl-sort-dir, .dovela-bl-expand-mark { font-weight: var(--font-bold); }
+
+/* Breadcrumb de carpeta */
+.dovela-bl-crumb { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; color: var(--text-muted); font-size: var(--font-ui-smaller); min-width: 0; }
+.dovela-bl-crumb-seg { cursor: pointer; border-radius: var(--radius-s); padding: 0 2px; overflow-wrap: anywhere; }
+.dovela-bl-crumb-seg:hover { color: var(--text-accent); background: var(--background-modifier-hover); }
+.dovela-bl-crumb-sep, .dovela-bl-crumb-ellipsis { color: var(--text-faint); }
+
+/* Fila de nota */
+.dovela-bl-item, .dovela-bl-tab {
+  box-sizing: border-box; padding: 6px 8px; margin-bottom: 2px; border-radius: var(--radius-s); cursor: pointer;
+  border-left: 3px solid transparent; display: flex; flex-direction: column; gap: 2px;
+}
+.dovela-bl-item:hover, .dovela-bl-tab:hover, .dovela-bl-item:focus-visible, .dovela-bl-tab:focus-visible { background: var(--background-modifier-hover); }
+.dovela-bl-item.has-backlink { border-left-color: var(--interactive-accent); }
+.dovela-bl-item.same-folder { border-left-color: var(--background-modifier-border); }
+.dovela-bl-item.is-current { background: var(--background-modifier-active-hover); border-left-color: var(--color-orange); }
+.dovela-bl-item.is-extra { opacity: .8; }
+.dovela-bl-item-head { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.dovela-bl-icons { flex: none; white-space: nowrap; }
+/* Títulos multilínea (hasta 3 líneas) — v1 commit 33621f4 */
+.dovela-bl-title {
+  flex: 1 1 auto; min-width: 0; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.dovela-bl-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
+.dovela-bl-money { font-size: var(--font-ui-smaller); color: var(--text-success, var(--color-green)); font-variant-numeric: tabular-nums; display: flex; gap: 4px; }
+.dovela-bl-dates { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: var(--font-ui-smaller); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Lista virtual: altura fija por fila (debe coincidir con ROW_H_* de view.ts) */
+.dovela-bl-body .dovela-vlist.is-virtual .dovela-bl-item { height: 62px; overflow: hidden; }
+.dovela-bl-body.is-detail .dovela-vlist.is-virtual .dovela-bl-item { height: 118px; }
+
+/* Árbol */
+.dovela-bl-body.is-tree .dovela-bl-item { margin-left: calc(var(--dovela-bl-level, 0) * 14px); }
+.dovela-bl-folder-summary { padding: 6px 4px; margin-left: calc(var(--dovela-bl-level, 0) * 14px); cursor: pointer; border-radius: var(--radius-s); list-style-position: inside; }
+.dovela-bl-folder-summary:hover { background: var(--background-modifier-hover); }
+.dovela-bl-folder-name { font-weight: var(--font-medium); overflow-wrap: anywhere; }
+.dovela-bl-note-hint { padding: 6px 8px; }
+
+/* Pestañas abiertas */
+.dovela-bl-tab-group { font-size: var(--font-ui-small); font-weight: var(--font-semibold); color: var(--text-muted); margin: 8px 4px 2px; }
+.dovela-bl-tab.is-active { background: var(--background-modifier-active-hover); border-left-color: var(--interactive-accent); }
+.dovela-bl-tab-path { overflow-wrap: anywhere; }
+
+/* Estados vacíos */
+.dovela-bl-empty { text-align: center; padding: var(--size-4-6) var(--size-4-3); color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; }
+.dovela-bl-empty-icon { font-size: 2em; }
+.dovela-bl-empty-title { color: var(--text-normal); font-weight: var(--font-semibold); }
+
+/* Móvil: áreas táctiles ≥ 44px */
+.is-mobile .dovela-bl-btn, .is-mobile .dovela-bl-sort-btn { min-width: 44px; min-height: 44px; }
+.is-mobile .dovela-bl-item, .is-mobile .dovela-bl-tab, .is-mobile .dovela-bl-folder-summary { min-height: 44px; }
+/* En móvil la ruta de la cabecera es navegable con objetivos de 44px; en las filas la ruta es informativa
+   (un toque abre la nota) para no crear objetivos táctiles diminutos dentro de la fila. */
+.is-mobile .dovela-bl-path .dovela-bl-crumb-seg { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
+.is-mobile .dovela-bl-item .dovela-bl-crumb { pointer-events: none; }
+@media (max-width: 768px) {
+  .dovela-bl-btn, .dovela-bl-sort-btn { min-width: 44px; min-height: 44px; }
+  .dovela-bl-item, .dovela-bl-tab, .dovela-bl-folder-summary { min-height: 44px; }
+}

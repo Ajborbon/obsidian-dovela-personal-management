@@ -92,13 +92,13 @@ Estados: **pendiente** · **en curso** · **hecha** (paridad) · **mejorada** (p
 | F56 | Badges de origen ➡️/⬅️ y estadísticas de foco | RI-D §1 | F8 | pendiente | M | |
 | F57 | Cabecera colapsable persistida | RI-D §1.6 | F8 | pendiente | M | caché por dispositivo |
 | F58 | Ajustes de Foco | RI-D §1.7 | F8 | pendiente | M | |
-| F59 | Backlinks: misma carpeta + enlaces, sigue nota activa (comando, ribbon `link`, menú de archivo) | RI-D §2.1 | F8 | pendiente | A+M | + `origen` opcional |
-| F60 | Árbol de backlinks con expansión inteligente de carpetas | RI-D §2.2–2.3 | F8 | pendiente | A+M | |
-| F61 | Visor de pestañas abiertas agrupadas | RI-D §2.4 | F8 | pendiente | M | |
-| F62 | Ordenamientos (archivo, tipo, estado, ruta, creación, modificación) | RI-D §2.5 | F8 | pendiente | A | |
-| F63 | Fechas detalladas + monto/moneda para Tx | RI-D §2.6 | F8 | pendiente | A | formato seguro |
-| F64 | Breadcrumbs (completo/inteligente/compacto) | RI-D §2.7 | F8 | pendiente | A | sin recursión |
-| F65 | Títulos multilínea | RI-D §2.8 | F8 | pendiente | M | |
+| F59 | Backlinks: misma carpeta + enlaces, sigue nota activa (comando, ribbon `link`, menú de archivo) | RI-D §2.1 | F8 | mejorada | A+M | + `origen` opcional; índice invertido O(k), `origen` opcional (🌱), refresco solo ante cambios relevantes; menú de archivo muestra la nota pulsada |
+| F60 | Árbol de backlinks con expansión inteligente de carpetas | RI-D §2.2–2.3 | F8 | mejorada | A+M | árbol y expansión inteligente puros con pruebas; 📍 aun sin backlinks; render perezoso |
+| F61 | Visor de pestañas abiertas agrupadas | RI-D §2.4 | F8 | mejorada | M | agrupado por panel/split, en vivo, siempre accesible |
+| F62 | Ordenamientos (archivo, tipo, estado, ruta, creación, modificación) | RI-D §2.5 | F8 | hecha | A | 6 claves asc/desc con la máquina de clics de v1; orden recordado por dispositivo |
+| F63 | Fechas detalladas + monto/moneda para Tx | RI-D §2.6 | F8 | mejorada | A | formato seguro; `formatMoney` nunca lanza; `monto` en texto interpretado |
+| F64 | Breadcrumbs (completo/inteligente/compacto) | RI-D §2.7 | F8 | mejorada | A | sin recursión; función única no recursiva (pruebas B1–B17, casos del crash de julio 2026) |
+| F65 | Títulos multilínea | RI-D §2.8 | F8 | hecha | M | line-clamp 3 |
 
 ## Journal, Weekly, notas
 
