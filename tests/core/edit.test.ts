@@ -34,13 +34,30 @@ describe('localización segura (B-S1)', () => {
   it('nunca cierra otra tarea: no encontrada o ambigua', () => {
     expect(locateTaskLine(lines, { line: 5, raw: '- [ ] zzz' })).toEqual({ ok: false, reason: 'not-found' });
     expect(locateTaskLine(lines, { line: 9, raw: '- [ ] b' })).toEqual({ ok: false, reason: 'ambiguous' });
-    expect(locateTaskLine(lines, { raw: '- [ ] a' })).toEqual({ ok: false, reason: 'not-found' });
+    // La misma tarea ya cerrada se localiza (el estado no cuenta), pero cerrarla de nuevo no aplica.
+    expect(locateTaskLine(lines, { raw: '- [ ] a' })).toEqual({ ok: true, line: 0, how: 'raw' });
+    expect(applyTaskEdit(lines.join('\n'), { raw: '- [ ] a' }, (l) => markDone(l, TODAY))).toEqual({ ok: false, reason: 'not-applicable' });
   });
   it('aplica la edición conservando CRLF', () => {
     const r = applyTaskEdit('# T\r\n- [ ] foo\r\n- [ ] bar\r\n', { line: 1, raw: '- [ ] foo' }, (l) => markDone(l, TODAY));
     expect(r).toEqual({ ok: true, line: 1, content: `# T\r\n- [x] foo ✅ ${TODAY}\r\n- [ ] bar\r\n` });
     const na = applyTaskEdit('- [x] foo', { line: 0, raw: '- [x] foo' }, (l) => markDone(l, TODAY));
     expect(na).toEqual({ ok: false, reason: 'not-applicable' });
+  });
+});
+
+describe('cerrar una tarea que la app puso en progreso (revisión #2)', () => {
+  it('el raw original `[ ]` localiza la línea ya `[/]`', () => {
+    const raw = '- [ ] escribir informe #cx-Oficina';
+    const started = applyTaskEdit(`# P\n${raw}\n`, { line: 1, raw }, markInProgress);
+    expect(started.ok).toBe(true);
+    const content = started.ok ? started.content : '';
+    expect(content).toContain('- [/] escribir informe');
+    const closed = applyTaskEdit(content, { line: 1, raw }, (l) => markDone(l, TODAY));
+    expect(closed).toEqual({ ok: true, line: 1, content: `# P\n- [x] escribir informe #cx-Oficina ✅ ${TODAY}\n` });
+    // también si la línea se movió
+    const moved = applyTaskEdit(`# P\nnueva línea\n- [/] escribir informe #cx-Oficina\n`, { line: 1, raw }, (l) => markDone(l, TODAY));
+    expect(moved.ok && moved.line).toBe(2);
   });
 });
 

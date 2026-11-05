@@ -66,7 +66,7 @@ export class TimeUi {
       this.decision?.modal.close();
       disposeAudio();
     });
-    void this.service.ready().then(() => this.tick());
+    this.service.ready().then(() => this.tick()).catch((e: unknown) => logger.error("Registro de tiempo no disponible", e));
   }
 
   /** Suscribe una vista al reloj de 1 s. */

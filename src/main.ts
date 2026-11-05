@@ -47,6 +47,8 @@ export default class DovelaPlugin extends Plugin {
   }
 
   override onunload(): void {
+    // Escribe los ajustes pendientes del debounce (revisión #7).
+    void this.ctx?.settings.flush();
     for (const f of this.features) {
       try {
         f.unload?.();

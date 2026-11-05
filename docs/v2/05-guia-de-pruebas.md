@@ -33,10 +33,12 @@ Crea un **vault remoto de prueba** en Obsidian Sync (no el real), conéctalo en 
 ### 3.1 Arranque y migración de `data.json`
 | Paso | Resultado esperado | Comparación con v1 |
 |---|---|---|
-| Activar v2 sobre un `data.json` de v1 | Aparece `data.v1.backup.json`; `data.json` tiene `"schemaVersion": 2` y una clave `legacy` con `timeLogs` intactos | v1 no versionaba |
+| Activar v2 sobre un `data.json` de v1 | Aparece `data.v1.backup.json` (copia exacta del `data.json` v1); `data.json` queda pequeño con `"schemaVersion": 2` y `"legacy": {"inBackup": true}` (el historial se lee del respaldo bajo demanda) | v1 no versionaba |
 | Ajustes → Dovela | Secciones General, Registro de tiempo, Pomodoro, Journal… con los valores de v1 (duraciones Pomodoro, carpeta de journals) | mismos valores |
 | Aviso “hay N registros de tiempo de v1 por importar” | Al tocarlo se importa y se muestra un informe; `Dovela/Registro de tiempo/AAAA-MM · importado-<disp>.md` | v1 guardaba en data.json |
 | Comando “Tiempo: verificar historial importado” | ✅ y minutos por mes iguales | — |
+| Reimportar (“Tiempo: importar historial de registros de v1”) tras borrar un registro importado | No reaparece el registro borrado; no se crea otra sesión en curso | — |
+| “Tiempo: archivar historial v1” tras verificar | El aviso de importación no vuelve a salir; `data.v1.backup.json` sigue en disco | — |
 
 ### 3.2 Índice incremental
 | Paso | Esperado |

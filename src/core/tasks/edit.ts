@@ -55,8 +55,13 @@ export type LocateResult =
   | { readonly ok: true; readonly line: number; readonly how: 'line' | 'id' | 'raw' }
   | { readonly ok: false; readonly reason: 'not-found' | 'ambiguous' };
 
+/**
+ * Normaliza para comparar: sin `\r`, sin espacios finales y con el carácter de estado
+ * neutralizado (`[ ]`, `[/]`, `[x]` comparan igual), porque entre la lectura y la escritura
+ * la propia app pudo poner la tarea en progreso (`[ ]` → `[/]`) o Sync pudo cambiarla.
+ */
 function norm(s: string): string {
-  return s.replace(/\r$/, '').trimEnd();
+  return s.replace(/\r$/, '').trimEnd().replace(/^(\s*-\s+\[).(\])/u, '$1 $2');
 }
 
 /**

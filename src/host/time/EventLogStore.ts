@@ -22,6 +22,9 @@ export class EventLogStore {
   private loadedOnce = false;
   private loading: Promise<void> | null = null;
   invalidLines = 0;
+  /** Archivos de registro que no se pudieron leer en la última carga. */
+  unreadable: string[] = [];
+  private readonly generation = new Map<string, number>();
 
   private readonly reloadDirty = debounce(() => void this.reloadPending(), 300, true);
   private readonly dirty = new Set<string>();
@@ -68,7 +71,12 @@ export class EventLogStore {
   /** Carga perezosa (primera vez que una feature necesita tiempo). */
   ensureLoaded(): Promise<void> {
     if (this.loadedOnce) return Promise.resolve();
-    if (!this.loading) this.loading = this.loadAll();
+    if (!this.loading) {
+      this.loading = this.loadAll().catch((e: unknown) => {
+        this.loading = null; // permite reintentar
+        throw e;
+      });
+    }
     return this.loading;
   }
 
@@ -85,31 +93,35 @@ export class EventLogStore {
     return this.lastU;
   }
 
-  /** Añade eventos al archivo de este dispositivo. El estado se actualiza al instante (optimista). */
+  /**
+   * Añade eventos al archivo de este dispositivo. El estado se actualiza al instante (optimista);
+   * si la escritura falla, los eventos se retiran del estado y el error se propaga (revisión #1).
+   */
   append(events: readonly TimeEvent[], opts: { device?: string; month?: string } = {}): Promise<void> {
     const fileDevice = opts.device ?? this.deviceId;
     if (events.length === 0) return Promise.resolve();
     this.pendingLocal.push(...events);
     this.refold();
+    const removePending = (): void => {
+      for (const e of events) {
+        const i = this.pendingLocal.indexOf(e);
+        if (i >= 0) this.pendingLocal.splice(i, 1);
+      }
+    };
     const job = async (): Promise<void> => {
       const month = opts.month ?? this.monthKey();
       const path = normalizePath(`${this.folder()}/${logFileName(month, fileDevice)}`);
       try {
         await this.ensureFolder();
-        const existing = this.app.vault.getAbstractFileByPath(path);
-        if (existing instanceof TFile) {
-          await this.app.vault.process(existing, (c) => appendEvents(c, events));
-        } else {
-          await this.app.vault.create(path, appendEvents(newLogFileContent(month, fileDevice), events));
-        }
+        await this.writeEvents(path, month, fileDevice, events);
         const file = this.app.vault.getAbstractFileByPath(path);
+        this.generation.set(path, (this.generation.get(path) ?? 0) + 1);
         if (file instanceof TFile) this.files.set(path, parseLogFile(await this.app.vault.read(file)).events);
-        for (const e of events) {
-          const i = this.pendingLocal.indexOf(e);
-          if (i >= 0) this.pendingLocal.splice(i, 1);
-        }
+        removePending();
         this.refold();
       } catch (e) {
+        removePending();
+        this.refold();
         logger.error('No se pudo escribir el registro de tiempo', e);
         throw e;
       }
@@ -117,6 +129,30 @@ export class EventLogStore {
     const p = this.queue.then(job, job);
     this.queue = p.catch(() => undefined);
     return p;
+  }
+
+  /** `process` sobre el archivo existente; si no existe se crea, y si `create` choca con un archivo recién llegado por Sync, se reintenta con `process`. */
+  private async writeEvents(path: string, month: string, device: string, events: readonly TimeEvent[]): Promise<void> {
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      await this.app.vault.process(existing, (c) => appendEvents(c, events));
+      return;
+    }
+    try {
+      await this.app.vault.create(path, appendEvents(newLogFileContent(month, device), events));
+    } catch (e) {
+      const again = this.app.vault.getAbstractFileByPath(path);
+      if (!(again instanceof TFile)) throw e;
+      await this.app.vault.process(again, (c) => appendEvents(c, events));
+    }
+  }
+
+  /** Recarga completa (p. ej. tras cambiar la carpeta de registros). */
+  async reloadAll(): Promise<void> {
+    this.files.clear();
+    this.loadedOnce = false;
+    this.loading = null;
+    await this.ensureLoaded();
   }
 
   private monthKey(): string {
@@ -144,10 +180,17 @@ export class EventLogStore {
   private async loadAll(): Promise<void> {
     const files = this.app.vault.getFiles().filter((f) => this.isLogFile(f.path));
     let invalid = 0;
+    this.unreadable = [];
     for (const f of files) {
-      const parsed = parseLogFile(await this.app.vault.cachedRead(f));
-      invalid += parsed.invalidLines;
-      this.files.set(f.path, parsed.events);
+      try {
+        const parsed = parseLogFile(await this.app.vault.cachedRead(f));
+        invalid += parsed.invalidLines;
+        this.files.set(f.path, parsed.events);
+      } catch (e) {
+        // Un archivo ilegible no debe dejar el módulo de tiempo inutilizable (revisión #5).
+        this.unreadable.push(f.path);
+        logger.error(`No se pudo leer el registro ${f.path}`, e);
+      }
     }
     this.invalidLines = invalid;
     this.loadedOnce = true;
@@ -160,9 +203,20 @@ export class EventLogStore {
     const paths = [...this.dirty];
     this.dirty.clear();
     for (const p of paths) {
-      const f = this.app.vault.getAbstractFileByPath(p);
-      if (f instanceof TFile) this.files.set(p, parseLogFile(await this.app.vault.read(f)).events);
-      else this.files.delete(p);
+      try {
+        const f = this.app.vault.getAbstractFileByPath(p);
+        if (!(f instanceof TFile)) {
+          this.files.delete(p);
+          continue;
+        }
+        const gen = this.generation.get(p) ?? 0;
+        const events = parseLogFile(await this.app.vault.read(f)).events;
+        // Si una escritura propia terminó mientras leíamos, este resultado es más viejo (revisión #12).
+        if ((this.generation.get(p) ?? 0) === gen) this.files.set(p, events);
+      } catch (e) {
+        logger.error(`No se pudo recargar ${p}`, e);
+        this.dirty.add(p);
+      }
     }
     this.refold();
   }

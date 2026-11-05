@@ -554,7 +554,7 @@ export function mountTimeline(root: HTMLElement, ui: TimeUi): () => void {
     }
     refresher.flush();
   }));
-  void svc.ready().then(() => refresher.invalidate());
+  svc.ready().then(() => refresher.invalidate()).catch(() => undefined);
 
   render();
 

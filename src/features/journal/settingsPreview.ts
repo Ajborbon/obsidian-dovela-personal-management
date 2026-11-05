@@ -38,6 +38,8 @@ function drawPreview(ctx: DovelaContext, box: HTMLElement): void {
 }
 
 export function registerJournalSettingsPreview(ctx: DovelaContext): void {
+  // Una sola suscripción viva: cada redibujado de la pestaña libera la anterior (revisión #15).
+  let off: (() => void) | null = null;
   addSettingsSection(ctx, {
     id: 'journal-preview',
     title: 'Journal: vista previa',
@@ -45,10 +47,11 @@ export function registerJournalSettingsPreview(ctx: DovelaContext): void {
     render(el, c) {
       const box = el.createDiv({ cls: 'dovela-jw-preview' });
       drawPreview(c, box);
-      // Se desuscribe en cuanto la pestaña de ajustes se redibuja o se cierra.
-      const off = c.settings.onChange(() => {
+      off?.();
+      off = c.settings.onChange(() => {
         if (!box.isConnected) {
-          off();
+          off?.();
+          off = null;
           return;
         }
         drawPreview(c, box);

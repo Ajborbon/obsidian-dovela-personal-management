@@ -5,7 +5,7 @@
  */
 import type { App } from 'obsidian';
 import { Notice, TFile } from 'obsidian';
-import type { DovelaSettings } from '../../core/settings';
+import type { LegacyData } from '../../core/settings';
 import { newEventId, type LiveEvent, type LogEvent, type LogKind, type PomodoroPhase } from '../../core/time/events';
 import { IMPORT_DEVICE, importLegacyLogs, legacyLiveSession, legacyMinutesByMonth, type LegacyReport } from '../../core/time/legacyImport';
 import { durationMinutes, type LiveSession, type TimeLog, type TimeState } from '../../core/time/merge';
@@ -46,6 +46,8 @@ export class TimeService {
     private readonly now: () => Date,
     /** Carpeta del plugin (para leer el `timelogs.json` de versiones antiguas). */
     private readonly pluginDir: string,
+    /** Ruta actual de una tarea por su 🆔 (índice); opcional. */
+    private readonly resolveTaskPath?: (taskId: string) => string | undefined,
   ) {
     this.store = new EventLogStore(app, () => settings.value.time.folder, deviceId, now);
   }
@@ -181,8 +183,10 @@ export class TimeService {
 
   async closeTaskOf(s: Pick<LiveSession, 'path' | 'raw' | 'line' | 'taskId'>): Promise<void> {
     if (s.raw === undefined && !s.taskId) return;
+    // Si la nota se movió o renombró durante la sesión, se busca la tarea por su 🆔 (revisión #11).
+    const moved = !this.pathExists(s.path) && s.taskId ? this.resolveTaskPath?.(s.taskId) : undefined;
     await this.tasks.markDone({
-      path: s.path,
+      path: moved ?? s.path,
       ...(s.raw !== undefined ? { raw: s.raw } : {}),
       ...(s.line !== undefined ? { line: s.line } : {}),
       ...(s.taskId ? { id: s.taskId } : {}),
@@ -314,15 +318,19 @@ export class TimeService {
 
   async importLegacy(): Promise<LegacyReport | null> {
     await this.ready();
-    const s = this.settings.value;
+    const legacy = await this.settings.loadLegacy();
     const sources: unknown[] = [];
-    if (Array.isArray(s.legacy?.timeLogs)) sources.push(...s.legacy.timeLogs);
+    if (Array.isArray(legacy.timeLogs)) sources.push(...legacy.timeLogs);
     const old = await this.readOldTimelogsJson();
     if (old) sources.push(...old);
     if (sources.length === 0) return null;
-    const existingIds = new Set(this.state.logs.keys());
+    // Todos los ids conocidos, incluidos borrados y cancelados: un registro importado que el
+    // usuario borró no debe reaparecer al reimportar (revisión #3).
+    const existingIds = new Set(this.store.allEvents().map((e) => e.id));
     const existingKeys = new Set(this.logs().map((l) => `${l.path}|${l.start}|${l.end}`));
-    const { events, report } = importLegacyLogs(sources, this.now().getTime(), existingIds, existingKeys);
+    // `u = 1`: cualquier edición o borrado real (u = instante) gana siempre a la versión importada,
+    // aunque otro dispositivo importe lo mismo más tarde (revisión #3).
+    const { events, report } = importLegacyLogs(sources, 1, existingIds, existingKeys);
     // Un archivo por mes de inicio, propio del importador de este dispositivo.
     const byMonth = new Map<string, LogEvent[]>();
     for (const e of events) {
@@ -333,7 +341,7 @@ export class TimeService {
       byMonth.set(m, arr);
     }
     for (const [month, evs] of [...byMonth.entries()].sort()) await this.appendToMonth(month, evs);
-    await this.importLegacyLive(s);
+    await this.importLegacyLive(legacy);
     this.settings.update((st) => {
       st.migration.importedAt = this.now().toISOString();
       st.migration.importedCount = (st.migration.importedCount ?? 0) + report.imported;
@@ -346,14 +354,18 @@ export class TimeService {
     await this.store.append(events, { device: `${IMPORT_DEVICE}-${this.store.deviceId}`, month });
   }
 
-  private async importLegacyLive(s: DovelaSettings): Promise<void> {
+  private async importLegacyLive(legacy: LegacyData): Promise<void> {
     if (this.current()) return;
     const nowMs = this.now().getTime();
-    const hours = s.time.staleLiveHours;
-    const timer = legacyLiveSession(s.legacy?.activeTimer, 'timer', nowMs, hours, this.store.deviceId, this.id());
-    const pomo = timer ? null : legacyLiveSession(s.legacy?.activePomodoroSession, 'pomodoro', nowMs, hours, this.store.deviceId, this.id());
+    const hours = this.settings.value.time.staleLiveHours;
+    const timer = legacyLiveSession(legacy.activeTimer, 'timer', nowMs, hours, this.store.deviceId, 'tmp');
+    const pomo = timer ? null : legacyLiveSession(legacy.activePomodoroSession, 'pomodoro', nowMs, hours, this.store.deviceId, 'tmp');
     const ev = timer ?? pomo;
-    if (ev) await this.store.append([{ ...ev, u: this.store.nextU() }]);
+    if (!ev) return;
+    // Id determinista: reimportar (o importar en otro dispositivo) no crea otra sesión viva (revisión #4).
+    const id = `leg-live-${Date.parse(ev.a)}`;
+    if (this.store.allEvents().some((e) => e.id === id)) return;
+    await this.store.append([{ ...ev, id, u: this.store.nextU() }]);
   }
 
   private async readOldTimelogsJson(): Promise<unknown[] | null> {
@@ -369,8 +381,8 @@ export class TimeService {
   }
 
   /** Compara minutos por mes del legado con los registros importados. */
-  verifyImport(): { ok: boolean; rows: Array<{ month: string; legacy: number; imported: number }> } {
-    const legacy = legacyMinutesByMonth(this.settings.value.legacy?.timeLogs ?? []);
+  async verifyImport(): Promise<{ ok: boolean; rows: Array<{ month: string; legacy: number; imported: number }> }> {
+    const legacy = legacyMinutesByMonth((await this.settings.loadLegacy()).timeLogs ?? []);
     const imported: Record<string, number> = {};
     for (const l of this.logs()) {
       if (!l.legacyId || l.bad) continue;
@@ -383,17 +395,11 @@ export class TimeService {
     return { ok: rows.every((r) => r.imported >= r.legacy), rows };
   }
 
-  /** Vacía `legacy.timeLogs` de data.json SOLO si la verificación es correcta (el respaldo v1 se conserva). */
-  archiveLegacy(): boolean {
-    if (!this.verifyImport().ok) return false;
-    this.settings.update((s) => {
-      if (s.legacy) {
-        delete s.legacy.timeLogs;
-        delete s.legacy.activeTimer;
-        delete s.legacy.activePomodoroSession;
-      }
-      s.migration.archivedAt = this.now().toISOString();
-    });
+  /** Olvida el historial v1 SOLO si la verificación es correcta (el respaldo `data.v1.backup.json` se conserva). */
+  async archiveLegacy(): Promise<boolean> {
+    const v = await this.verifyImport();
+    if (!v.ok || v.rows.length === 0) return false;
+    this.settings.archiveLegacy(this.now().toISOString());
     return true;
   }
 

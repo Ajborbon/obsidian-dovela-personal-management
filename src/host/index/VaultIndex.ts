@@ -6,7 +6,7 @@
  */
 import type { App, CachedMetadata, Component, TAbstractFile } from 'obsidian';
 import { TFile, debounce } from 'obsidian';
-import { IndexStore, basenameOf, folderOf, type NoteRecord } from '../../core/index/store';
+import { IndexStore, basenameOf, folderOf, sameContent, sameList, type NoteRecord } from '../../core/index/store';
 import { detectNoteType, normalizeEstado } from '../../core/notes/types';
 import { isExcludedPath, type GeneralSettings } from '../../core/settings';
 import { parseTasksInNote } from '../../core/tasks/parse';
@@ -40,6 +40,10 @@ export class VaultIndex {
   private readonly pending = new Set<string>();
   private readonly changed = new Set<string>();
   private building = false;
+  private buildDone: Promise<void> | null = null;
+  private rebuildRequested = false;
+  private relinkFull = false;
+  private readonly relinkPaths = new Set<string>();
   private readyResolve!: () => void;
   readonly ready: Promise<void> = new Promise((r) => (this.readyResolve = r));
   private isReady = false;
@@ -61,12 +65,21 @@ export class VaultIndex {
   start(owner: Component): void {
     const { metadataCache, vault, workspace } = this.app;
     owner.registerEvent(metadataCache.on('changed', (file) => this.enqueue(file.path)));
-    owner.registerEvent(metadataCache.on('deleted', (file) => this.drop(file.path)));
+    owner.registerEvent(metadataCache.on('deleted', (file) => {
+      this.relinkFull = true;
+      this.drop(file.path);
+    }));
+    owner.registerEvent(vault.on('create', () => {
+      // Una nota nueva puede resolver enlaces pendientes de otras notas.
+      this.relinkFull = true;
+    }));
     owner.registerEvent(
       vault.on('rename', (file: TAbstractFile, oldPath: string) => {
-        if (file instanceof TFile && file.extension === 'md') {
+        this.relinkFull = true;
+        if (oldPath.endsWith('.md')) {
+          // Nota renombrada (también a otra extensión: el registro viejo no debe quedar, revisión #14).
           this.drop(oldPath);
-          this.enqueue(file.path);
+          if (file instanceof TFile) this.enqueue(file.path);
         } else {
           // Carpeta renombrada: reindexar sus notas.
           for (const n of this.store.inFolder(oldPath, true)) this.drop(n.path);
@@ -85,6 +98,11 @@ export class VaultIndex {
 
   /** Reconstrucción completa (comando de diagnóstico o cambio de exclusiones). */
   async rebuild(): Promise<void> {
+    if (this.building) {
+      // Revisión #6: no vaciar el índice mientras otra construcción está en curso; se repite al terminar.
+      this.rebuildRequested = true;
+      return this.buildDone ?? Promise.resolve();
+    }
     this.store.clear();
     await this.buildAll();
   }
@@ -92,23 +110,38 @@ export class VaultIndex {
   private async buildAll(): Promise<void> {
     if (this.building) return;
     this.building = true;
+    let resolveDone!: () => void;
+    this.buildDone = new Promise((r) => (resolveDone = r));
     const t0 = performance.now();
-    const files = this.app.vault.getMarkdownFiles();
     let read = 0;
-    for (let i = 0; i < files.length; i += BATCH) {
-      for (const f of files.slice(i, i + BATCH)) {
-        if (await this.indexFile(f)) read++;
+    let files: TFile[] = [];
+    try {
+      files = this.app.vault.getMarkdownFiles();
+      for (let i = 0; i < files.length; i += BATCH) {
+        for (const f of files.slice(i, i + BATCH)) {
+          try {
+            if ((await this.indexFile(f)).read) read++;
+          } catch (e) {
+            logger.error(`No se pudo indexar ${f.path}`, e);
+          }
+        }
+        await yieldToMain();
       }
-      await yieldToMain();
+    } finally {
+      this.building = false;
+      logger.debug(`Índice: ${files.length} notas, ${read} leídas, ${Math.round(performance.now() - t0)} ms`);
+      if (!this.isReady) {
+        this.isReady = true;
+        this.readyResolve();
+      }
+      this.changed.add('*');
+      this.emitSoon();
+      resolveDone();
     }
-    this.building = false;
-    logger.debug(`Índice: ${files.length} notas, ${read} leídas, ${Math.round(performance.now() - t0)} ms`);
-    if (!this.isReady) {
-      this.isReady = true;
-      this.readyResolve();
+    if (this.rebuildRequested) {
+      this.rebuildRequested = false;
+      await this.rebuild();
     }
-    this.changed.add('*');
-    this.emitSoon();
   }
 
   private enqueue(path: string): void {
@@ -128,20 +161,25 @@ export class VaultIndex {
     const paths = [...this.pending];
     this.pending.clear();
     for (const p of paths) {
-      const f = this.app.vault.getAbstractFileByPath(p);
-      if (f instanceof TFile) await this.indexFile(f);
-      else this.drop(p);
-      this.changed.add(p);
+      try {
+        const f = this.app.vault.getAbstractFileByPath(p);
+        if (f instanceof TFile) {
+          // Solo se notifica si cambió algo visible (tareas, tipo, estado, enlaces…), revisión #9.
+          if ((await this.indexFile(f)).changed) this.changed.add(p);
+        } else this.drop(p);
+      } catch (e) {
+        logger.error(`No se pudo indexar ${p}`, e);
+      }
+      this.relinkPaths.add(p);
     }
-    if (paths.length) this.emitSoon();
+    if (this.changed.size) this.emitSoon();
   }
 
-  /** Indexa un archivo. Devuelve true si tuvo que leer su contenido. */
-  private async indexFile(file: TFile): Promise<boolean> {
-    if (file.extension !== 'md') return false;
+  /** Indexa un archivo. `read`: tuvo que leer el contenido; `changed`: el registro cambió de forma relevante. */
+  private async indexFile(file: TFile): Promise<{ read: boolean; changed: boolean }> {
+    if (file.extension !== 'md') return { read: false, changed: false };
     if (isExcludedPath(file.path, this.general())) {
-      this.store.remove(file.path);
-      return false;
+      return { read: false, changed: this.store.remove(file.path) };
     }
     const cache = this.app.metadataCache.getFileCache(file);
     let tasks: NoteRecord['tasks'] = [];
@@ -154,8 +192,14 @@ export class VaultIndex {
         logger.error(`No se pudo leer ${file.path}`, e);
       }
     }
-    this.store.upsert(this.makeRecord(file, cache, tasks));
-    return read;
+    const rec = this.makeRecord(file, cache, tasks);
+    const prev = this.store.get(file.path);
+    if (prev && sameContent(prev, rec)) {
+      this.store.replaceQuiet(rec); // solo cambian fechas de archivo: sin invalidar ni notificar
+      return { read, changed: false };
+    }
+    this.store.upsert(rec);
+    return { read, changed: true };
   }
 
   private makeRecord(file: TFile, cache: CachedMetadata | null, tasks: NoteRecord['tasks']): NoteRecord {
@@ -191,13 +235,22 @@ export class VaultIndex {
     return out;
   }
 
-  /** Tras `resolved`, actualiza enlaces cuyo destino se resolvió tarde (sin releer contenido). */
+  /**
+   * Tras `resolved`, actualiza enlaces que se resolvieron tarde (sin releer contenido).
+   * Pasada completa solo si se crearon/borraron/renombraron notas; si no, solo las notas
+   * reindexadas desde la última pasada (revisión #9). Incluye `origen` (revisión #10).
+   */
   private relinkAll(): void {
+    const full = this.relinkFull;
+    const targets = full ? [...this.store.all()] : [...this.relinkPaths].map((p) => this.store.get(p)).filter((r): r is NoteRecord => !!r);
+    this.relinkFull = false;
+    this.relinkPaths.clear();
     let n = 0;
-    for (const rec of [...this.store.all()]) {
+    for (const rec of targets) {
       const out = this.resolvedOut(rec.path);
-      if (out.length !== rec.outLinks.length || out.some((p, i) => p !== rec.outLinks[i])) {
-        this.store.upsert({ ...rec, outLinks: out });
+      const origin = rec.fm['origen'] !== undefined ? this.resolveOrigin(rec.fm['origen'], rec.path) : rec.originLinks;
+      if (!sameList(out, rec.outLinks) || !sameList(origin, rec.originLinks)) {
+        this.store.upsert({ ...rec, outLinks: out, originLinks: origin });
         this.changed.add(rec.path);
         n++;
       }

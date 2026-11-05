@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { IndexStore, type NoteRecord } from '../../src/core/index/store';
+import { IndexStore, sameContent, type NoteRecord } from '../../src/core/index/store';
 import { parseTasksInNote } from '../../src/core/tasks/parse';
-import { defaultSettings, isExcludedPath, loadSettings } from '../../src/core/settings';
+import { defaultSettings, isExcludedPath, legacyFromV1, loadSettings, toPersisted } from '../../src/core/settings';
 
 function rec(path: string, opts: Partial<NoteRecord> & { body?: string } = {}): NoteRecord {
   const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
@@ -105,5 +105,42 @@ describe('ajustes v2 y migración desde v1', () => {
     expect(isExcludedPath('X/Plantillas viejas/t.md', g)).toBe(false);
     expect(isExcludedPath('a/99 - Adjuntos/b.md', g)).toBe(true);
     expect(isExcludedPath('a/99 - Adjuntos.md', g)).toBe(false);
+  });
+});
+
+describe('persistencia de la migración (revisión #4 y #7)', () => {
+  it('conserva los campos opcionales de migration', () => {
+    const { settings } = loadSettings({ schemaVersion: 2, migration: { v1BackupWritten: true, importedAt: '2026-11-05T10:00:00Z', importedCount: 7, archivedAt: 'x', verifiedAt: 3 } });
+    expect(settings.migration).toEqual({ v1BackupWritten: true, importedAt: '2026-11-05T10:00:00Z', importedCount: 7, archivedAt: 'x' });
+  });
+  it('data.json no lleva el historial si está en el respaldo; el respaldo se puede releer', () => {
+    const v1 = { timeLogs: [{ id: '1' }], activeTimer: { a: 1 }, pomodoroSettings: { workDuration: 30 } };
+    const s = loadSettings(v1).settings;
+    expect(toPersisted(s)).toBe(s);
+    s.legacy = { ...s.legacy, inBackup: true };
+    const persisted = toPersisted(s);
+    expect(persisted.legacy).toEqual({ inBackup: true });
+    expect(persisted.pomodoro.workDuration).toBe(30);
+    expect(s.legacy.timeLogs).toEqual([{ id: '1' }]);
+    expect(legacyFromV1(v1)).toMatchObject({ timeLogs: [{ id: '1' }], activeTimer: { a: 1 } });
+  });
+});
+
+describe('cambios irrelevantes no invalidan el índice (revisión #9)', () => {
+  it('sameContent ignora fechas de archivo y detecta cambios de tareas, estado y enlaces', () => {
+    const a = rec('n.md', { body: '- [ ] a', mtime: 1 });
+    expect(sameContent(a, rec('n.md', { body: '- [ ] a', mtime: 2, ctime: 5 }))).toBe(true);
+    expect(sameContent(a, rec('n.md', { body: '- [x] a' }))).toBe(false);
+    expect(sameContent(a, rec('n.md', { body: '- [ ] a', estado: '🟢' }))).toBe(false);
+    expect(sameContent(a, rec('n.md', { body: '- [ ] a', outLinks: ['x.md'] }))).toBe(false);
+    expect(sameContent(a, rec('n.md', { body: '- [ ] a', fm: { moneda: 'COP' } }))).toBe(false);
+  });
+  it('replaceQuiet no cambia la versión', () => {
+    const s = new IndexStore();
+    s.upsert(rec('n.md', { body: '- [ ] a' }));
+    const v = s.version;
+    s.replaceQuiet(rec('n.md', { body: '- [ ] a', mtime: 9 }));
+    expect(s.version).toBe(v);
+    expect(s.get('n.md')?.mtime).toBe(9);
   });
 });

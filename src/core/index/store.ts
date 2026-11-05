@@ -38,6 +38,23 @@ export function basenameOf(path: string): string {
   return name.replace(/\.md$/i, '');
 }
 
+export function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** ¿Mismo contenido indexado (ignorando ctime/mtime)? */
+export function sameContent(a: NoteRecord, b: NoteRecord): boolean {
+  if (a.type !== b.type || a.estado !== b.estado || a.basename !== b.basename) return false;
+  if (!sameList(a.outLinks, b.outLinks) || !sameList(a.originLinks, b.originLinks)) return false;
+  if (a.tasks.length !== b.tasks.length) return false;
+  for (let i = 0; i < a.tasks.length; i++) {
+    const x = a.tasks[i];
+    const y = b.tasks[i];
+    if (!x || !y || x.raw !== y.raw || x.line !== y.line) return false;
+  }
+  return JSON.stringify(a.fm) === JSON.stringify(b.fm);
+}
+
 export class IndexStore {
   private readonly notes = new Map<string, NoteRecord>();
   private readonly inBody = new Map<string, Set<string>>();
@@ -60,6 +77,12 @@ export class IndexStore {
     this.notes.set(rec.path, rec);
     this.addLinks(rec);
     this.touch();
+  }
+
+  /** Sustituye un registro cuyo contenido indexado no cambió (solo fechas de archivo): no invalida ni versiona. */
+  replaceQuiet(rec: NoteRecord): void {
+    if (this.notes.has(rec.path)) this.notes.set(rec.path, rec);
+    else this.upsert(rec);
   }
 
   remove(path: string): boolean {

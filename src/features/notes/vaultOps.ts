@@ -55,7 +55,11 @@ export function noticeTemplaterCode(name: string): void {
 export async function insertLinkInParent(app: App, parent: TFile, link: string): Promise<void> {
   const view = app.workspace.getActiveViewOfType(MarkdownView);
   if (view && view.file?.path === parent.path && view.getMode() === 'source') {
-    view.editor.replaceSelection(link);
+    // Inserta tras la selección sin reemplazarla (revisión #8) y deja el cursor al final del enlace.
+    const editor = view.editor;
+    const at = editor.getCursor('to');
+    editor.replaceRange(link, at);
+    editor.setCursor(editor.offsetToPos(editor.posToOffset(at) + link.length));
     return;
   }
   await app.vault.process(parent, (text) => insertChildLink(text, link));

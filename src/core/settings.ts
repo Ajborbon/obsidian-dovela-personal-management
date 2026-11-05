@@ -62,6 +62,11 @@ export interface LegacyData {
   pomodoroStats?: unknown;
   /** Claves desconocidas de v1, conservadas tal cual. */
   extra?: Record<string, unknown>;
+  /**
+   * El contenido v1 está completo en `data.v1.backup.json`: `data.json` solo guarda esta marca
+   * (no se reescriben megas de historial con cada ajuste) y se lee del respaldo bajo demanda.
+   */
+  inBackup?: boolean;
 }
 
 export interface MigrationState {
@@ -167,6 +172,14 @@ export function loadSettings(raw: unknown): LoadResult {
   if (raw['schemaVersion'] === 2) {
     const s = mergeInto(base, raw);
     if (isObj(raw['legacy'])) s.legacy = raw['legacy'] as LegacyData;
+    // Campos opcionales de migración: `mergeInto` solo copia las claves del default (revisión #4).
+    const mig = raw['migration'];
+    if (isObj(mig)) {
+      for (const k of ['importedAt', 'verifiedAt', 'archivedAt'] as const) {
+        if (typeof mig[k] === 'string') s.migration[k] = mig[k];
+      }
+      if (typeof mig['importedCount'] === 'number') s.migration.importedCount = mig['importedCount'];
+    }
     return { settings: s, wasV1: false };
   }
   // v1
@@ -184,6 +197,17 @@ export function loadSettings(raw: unknown): LoadResult {
   const hasLegacy = Object.keys(legacy).length > 0;
   if (hasLegacy) s.legacy = legacy;
   return { settings: s, wasV1: hasLegacy || isObj(raw['pomodoroSettings']) || isObj(raw['journalSettings']) };
+}
+
+/** Lo que se escribe en `data.json`: sin el historial v1 si ya está a salvo en el respaldo. */
+export function toPersisted(s: DovelaSettings): DovelaSettings {
+  if (!s.legacy?.inBackup) return s;
+  return { ...s, legacy: { inBackup: true } };
+}
+
+/** Extrae los datos legados de un `data.json` v1 (el contenido del respaldo). */
+export function legacyFromV1(raw: unknown): LegacyData {
+  return loadSettings(raw).settings.legacy ?? {};
 }
 
 /** ¿La ruta está excluida del índice? */

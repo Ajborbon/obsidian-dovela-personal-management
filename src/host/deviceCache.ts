@@ -14,6 +14,7 @@ type LocalStorageApp = App & {
 
 export class DeviceCache {
   private readonly app: LocalStorageApp;
+  private cachedId: string | null = null;
 
   constructor(app: App) {
     this.app = app as LocalStorageApp;
@@ -47,11 +48,14 @@ export class DeviceCache {
 
   /** Identificador corto y estable de este dispositivo (se genera la primera vez). */
   deviceId(): string {
+    // En memoria: aunque el almacenamiento falle, el id no cambia durante la sesión (revisión #18).
+    if (this.cachedId) return this.cachedId;
     let id = this.get<string | null>('deviceId', null);
     if (!id || !/^[a-z0-9]{4,16}$/.test(id)) {
       id = randomId(6);
       this.set('deviceId', id);
     }
+    this.cachedId = id;
     return id;
   }
 
