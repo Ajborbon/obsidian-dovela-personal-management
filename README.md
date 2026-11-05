@@ -1,3 +1,23 @@
+# Dovela Personal Management — v2 (rama `rewrite/v2`)
+
+> **Estado:** reescritura v2 en pruebas. No está publicada en `main`. Documentación en [`docs/v2/`](docs/v2/):
+> [ingeniería inversa](docs/v2/01-ingenieria-inversa.md) · [decisiones](docs/v2/02-decisiones-de-diseno.md) ·
+> [plan](docs/v2/03-plan-de-desarrollo.md) · [matriz de paridad](docs/v2/04-matriz-de-paridad.md) ·
+> [guía de pruebas](docs/v2/05-guia-de-pruebas.md) · [estado final](docs/v2/06-estado-final.md) · [bitácora](docs/v2/BITACORA.md).
+
+```bash
+pnpm install
+pnpm build        # tsc estricto + esbuild → main.js y styles.css
+pnpm test         # pruebas de la lógica pura (vitest)
+pnpm check        # typecheck + lint + test + build
+```
+
+Estructura: `src/core` (lógica pura, sin Obsidian, probada) · `src/host` (adaptadores: índice incremental, ajustes, almacén de tiempo) ·
+`src/features/*` (una carpeta por funcionalidad) · `src/ui` (componentes DOM compartidos) · `src/styles` (→ `styles.css`).
+El código de v1 se conserva en `legacy-v1/` solo como referencia.
+
+---
+
 # Dovela Personal Management (Community Edition)  
 All‑in‑one **GTD task manager** + **Second‑Brain toolkit** for Obsidian
 
