@@ -1,0 +1,38 @@
+/* Componentes comunes: fila de tarea, chips, calendario mensual. */
+.dovela-muted { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+
+.dovela-task { padding: 4px 8px; border-radius: var(--radius-s); border-left: 3px solid transparent; cursor: pointer; }
+.dovela-task:hover { background: var(--background-modifier-hover); }
+.dovela-task-main { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.dovela-task-main input[type="checkbox"] { margin: 0; flex: none; }
+.dovela-task-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.dovela-task-time { color: var(--text-accent); font-variant-numeric: tabular-nums; font-size: var(--font-ui-smaller); }
+.dovela-task-badge { font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-task-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; padding-left: 22px; }
+.dovela-task-crumb { color: var(--text-muted); font-size: var(--font-ui-smaller); padding-left: 22px; }
+.dovela-chip { font-size: var(--font-ui-smaller); color: var(--text-muted); background: var(--background-secondary); border-radius: var(--radius-s); padding: 0 6px; white-space: nowrap; }
+.dovela-chip.is-overdue, .dovela-chip.is-conflict { color: var(--text-error); }
+.dovela-chip-dep { cursor: pointer; }
+.dovela-task.is-overdue { border-left-color: var(--color-red); }
+.dovela-task.is-today { border-left-color: var(--color-green); }
+.dovela-task.is-future { border-left-color: var(--color-blue); }
+.dovela-task.is-paused { border-left-color: var(--color-orange); }
+.dovela-task.is-in-progress .dovela-task-text { font-weight: var(--font-semibold); }
+
+.dovela-month { user-select: none; }
+.dovela-month-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.dovela-month-title { font-weight: var(--font-semibold); }
+.dovela-month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dovela-month-wd { text-align: center; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.dovela-month-day { padding: 6px 0; min-height: 36px; font-variant-numeric: tabular-nums; box-shadow: none; }
+.dovela-month-day.is-other-month { opacity: .45; }
+.dovela-month-day.is-today { outline: 1px solid var(--interactive-accent); }
+.dovela-month-day.is-selected, .dovela-month-day.is-in-range { background: var(--interactive-accent); color: var(--text-on-accent); }
+.dovela-month-day.heat-1 { background: color-mix(in srgb, var(--color-green) 20%, transparent); }
+.dovela-month-day.heat-2 { background: color-mix(in srgb, var(--color-green) 45%, transparent); }
+.dovela-month-day.heat-3 { background: color-mix(in srgb, var(--color-green) 70%, transparent); }
+
+@media (max-width: 768px) {
+  .dovela-task { padding: 8px; min-height: 44px; }
+  .dovela input[type="text"], .dovela input[type="search"], .dovela select { font-size: 16px; }
+}
