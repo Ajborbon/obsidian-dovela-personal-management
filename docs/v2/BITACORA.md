@@ -45,3 +45,9 @@ Una entrada por fase. Formato: fecha · fase · qué se hizo · decisiones · ve
 - Integración: `TimeService.stopTimer` conserva el tipo de sesión (petición del agente de tiempo); objetivos táctiles del calendario a 44 px en móvil.
 - Verificación final del árbol: 499 pruebas, typecheck (src + tests), lint, build (`main.js` ≈ 353 KB; v1 ≈ 1,6 MB).
 - Decisiones relevantes de los agentes documentadas en cada `docs/v2/guia/*.md` y resumidas en `06-estado-final.md`.
+
+## 2026-11-05 · F10 · Integración, revisión y cierre
+- Revisión de código independiente sobre toda la rama (agente revisor, solo lectura): 18 hallazgos verificados. Corregidos: pérdida de registro si fallaba una escritura (reversión del estado optimista y reintento create→process), “cerrar tarea” tras ponerla en progreso (localización que ignora el estado del checkbox), importador que resucitaba registros borrados y duplicaba sesiones vivas, campos de migración perdidos al recargar, historial v1 reescrito en cada ajuste (ahora vive en el respaldo), ajustes sin vaciar al descargar, construcción/reconstrucción frágil del índice, notificaciones por guardados sin cambios, `origen` sin reenlazar, renombrados a otra extensión, selección pisada al enlazar en el padre, fuga en la vista previa de ajustes, carpeta de registros aplicada por tecla, `deviceId` inestable. Pendientes de baja prioridad documentados (P5 de `06`).
+- Documentación final: `05-guia-de-pruebas.md` (instalación en vault de prueba, comprobaciones transversales, Sync, rendimiento, móvil) + 7 guías por funcionalidad en `docs/v2/guia/`; `06-estado-final.md`; README con el estado de la rama.
+- Verificación final: 504 pruebas, typecheck (src + tests), lint, build (`main.js` ≈ 357 KB).
+- Siguiente: validación manual por Andrés según la guía 05.
